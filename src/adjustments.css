@@ -1,8 +1,8 @@
-/* Hero visual: Using header-image.png with crisp resolution and smooth bottom fade-out effect */
+/* Hero visual: Using heroimage.png with crisp resolution and smooth bottom fade-out effect */
 .hero-visual {
-  background-image: url('/assets/header-image.png');
+  background-image: url('/assets/heroimage.png');
   background-size: cover;
-  background-position: center right;
+  background-position: center 15%;
   background-repeat: no-repeat;
   height: 100%;
   width: 58%;
