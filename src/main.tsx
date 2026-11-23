@@ -11,10 +11,10 @@ import {
 } from '@tanstack/react-router'
 import {
   BriefcaseBusiness, CalendarDays, Check,
-  CheckCircle2, ChevronDown, CirclePlay, GraduationCap, Handshake,
+  CheckCircle2, ChevronDown, CirclePlay, Clock, GraduationCap, Handshake,
   Headphones, Mail, Menu, MessageCircle, Mic2, MonitorPlay, Phone,
   Rocket, Search, ShieldCheck, Sparkles, Star, TrendingUp, UsersRound,
-  X, Zap, ClipboardCheck, MoveRight, Instagram, Youtube, Linkedin,
+  X, ClipboardCheck, MoveRight, Instagram, Youtube, Linkedin,
   Quote,
 } from 'lucide-react'
 import './styles.css'
@@ -318,7 +318,135 @@ function ResourcesSection() {
 }
 
 function SiteFooter({ onDemo }: { onDemo: () => void }) {
-  return <footer id="contact"><div className="footer-cta"><Brand light /><span className="footer-divider" /><div className="footer-cta-copy"><span className="paper-plane"><Zap size={27} fill="currentColor" /></span><div><strong>Ready to Learn? Let's Grow Together!</strong><p>Take the first step towards a more confident you.</p></div></div><button className="footer-get-started" onClick={onDemo}>Get Started</button></div><div className="footer-bottom"><div className="footer-nav"><a href="/#home">Home</a><a href="/#about">About Us</a><a href="/#courses">Courses</a><a href="/#stories">Success Stories</a><a href="/#resources">Blog</a><a href="/#contact">Contact</a></div><div className="social-placeholder" aria-label="Social links to be supplied"><span title="YouTube URL pending"><Youtube size={19} /></span><span title="LinkedIn URL pending"><Linkedin size={18} /></span><span title="Instagram URL pending"><Instagram size={18} /></span></div></div><div className="footer-legal"><span>© {new Date().getFullYear()} VERBORA. All rights reserved.</span><span>Website preview · Privacy policy & terms to be supplied by the client</span></div></footer>
+  return (
+    <footer id="contact" className="site-footer">
+      <div className="footer-container">
+        {/* Compact Pre-footer CTA */}
+        <div className="footer-cta-card">
+          <div className="footer-cta-left">
+            <div className="footer-cta-head-row">
+              <span className="footer-cta-badge">
+               Free Demo
+              </span>
+              <h3>Ready to Speak with Confidence?</h3>
+            </div>
+            <p>
+              Join ambitious learners and professionals who unlocked fluency and career growth with VERBORA.
+            </p>
+          </div>
+          <div className="footer-cta-right">
+            <button className="footer-cta-btn" onClick={onDemo}>
+              <span>Book Free Demo</span>
+              <MoveRight size={15} />
+            </button>
+            <span className="footer-cta-sub">Free 1:1 Consultation · Expert Feedback</span>
+          </div>
+        </div>
+
+        {/* Compact Multi-column Grid */}
+        <div className="footer-main-grid">
+          {/* Column 1: Brand & Mission */}
+          <div className="footer-col footer-col-brand">
+            <Brand light compact />
+            <p className="footer-brand-desc">
+              Empowering learners to express their authentic voice, speak fluently, and build unshakable confidence for career and life.
+            </p>
+            <div className="footer-social-links">
+              <a
+                href="https://linkedin.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="VERBORA on LinkedIn"
+                className="footer-social-btn"
+              >
+                <Linkedin size={15} />
+              </a>
+              <a
+                href="https://instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="VERBORA on Instagram"
+                className="footer-social-btn"
+              >
+                <Instagram size={15} />
+              </a>
+              <a
+                href="https://youtube.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="VERBORA on YouTube"
+                className="footer-social-btn"
+              >
+                <Youtube size={15} />
+              </a>
+            </div>
+          </div>
+
+          {/* Column 2: Programs */}
+          <div className="footer-col">
+            <h4 className="footer-col-title">Our Programs</h4>
+            <ul className="footer-links-list">
+              {courses.map(course => (
+                <li key={course.id}>
+                  <Link to="/courses/$courseSlug" params={{ courseSlug: course.id }}>
+                    {course.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Column 3: Quick Navigation */}
+          <div className="footer-col">
+            <h4 className="footer-col-title">Navigation</h4>
+            <ul className="footer-links-list">
+              <li><a href="/#home">Home</a></li>
+              <li><a href="/#courses">Courses</a></li>
+              <li><a href="/#about">Why VERBORA</a></li>
+              <li><a href="/#stories">Stories</a></li>
+              <li><a href="/#resources">Learning Desk</a></li>
+              <li><button className="footer-text-btn" onClick={onDemo}>Book Demo</button></li>
+            </ul>
+          </div>
+
+          {/* Column 4: Contact & Hours */}
+          <div className="footer-col footer-col-contact">
+            <h4 className="footer-col-title">Get in Touch</h4>
+            <div className="footer-contact-items">
+              <a href="mailto:hello@verbora.com" className="footer-contact-item">
+                <Mail size={14} />
+                <span>hello@verbora.com</span>
+              </a>
+              <a href="tel:+919876543210" className="footer-contact-item">
+                <Phone size={14} />
+                <span>+91 98765 43210</span>
+              </a>
+              <div className="footer-contact-item">
+                <Clock size={14} />
+                <span>Mon – Sat: 9 AM – 8 PM</span>
+              </div>
+            </div>
+            <div className="footer-batch-badge">
+              <span className="live-dot" />
+              <span>Batches start every Monday</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Bottom / Legal */}
+        <div className="footer-bottom-bar">
+          <p>© {new Date().getFullYear()} VERBORA Education. All rights reserved.</p>
+          <div className="footer-legal-links">
+            <a href="#privacy">Privacy</a>
+            <span className="footer-dot">•</span>
+            <a href="#terms">Terms</a>
+            <span className="footer-dot">•</span>
+            <a href="#cookies">Cookies</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  )
 }
 
 function DemoModal({ open, onClose }: { open: boolean; onClose: () => void }) {
