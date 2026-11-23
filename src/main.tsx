@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
   createRootRoute,
@@ -13,7 +13,7 @@ import {
   BriefcaseBusiness, CalendarDays, Check,
   CheckCircle2, ChevronDown, CirclePlay, GraduationCap, Handshake,
   Headphones, Mail, Menu, MessageCircle, Mic2, MonitorPlay, Phone,
-  Rocket, Search, ShieldCheck, Sparkles, Star, TrendingUp, UsersRound,
+  Rocket, Search, ShieldCheck, Star, TrendingUp, UsersRound,
   X, Zap, ClipboardCheck, MoveRight, Instagram, Youtube, Linkedin,
   Quote,
 } from 'lucide-react'
@@ -189,7 +189,7 @@ function SiteHeader({ onDemo }: { onDemo: () => void }) {
   return (
     <header className="site-header">
       <div className="header-inner">
-        <Brand />
+        <Brand compact />
         <nav className={`navigation ${menuOpen ? 'navigation-open' : ''}`} aria-label="Main navigation">
           <a href="/#home" className="nav-home" onClick={() => setMenuOpen(false)}>Home</a>
           <a href="/#about" onClick={() => setMenuOpen(false)}>About Us</a>
@@ -203,8 +203,8 @@ function SiteHeader({ onDemo }: { onDemo: () => void }) {
           <a href="/#contact" onClick={() => setMenuOpen(false)}>Contact</a>
         </nav>
         <div className="header-actions">
-          <button className="search-button" aria-label="Search courses" onClick={() => setSearchOpen(open => !open)}><Search size={21} /></button>
-          <button className="primary-button header-join" onClick={onDemo}>Join Now</button>
+          <button className="search-button" aria-label="Search courses" onClick={() => setSearchOpen(open => !open)}><Search size={20} /></button>
+          <button className="primary-button header-join" onClick={onDemo}>Join Now <MoveRight size={15} /></button>
           <button className="mobile-menu" aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={menuOpen} onClick={() => setMenuOpen(open => !open)}>{menuOpen ? <X /> : <Menu />}</button>
         </div>
       </div>
@@ -218,7 +218,6 @@ function Hero() {
     <section className="hero" id="home">
       <div className="hero-light-orb" aria-hidden="true" />
       <div className="hero-copy">
-        <div className="hero-trust"><CheckCircle2 size={19} fill="#0b9ce7" color="white" /><span>Communication skills for real life</span></div>
         <h1>Speak Confidently.<br />Communicate <span>Professionally.</span></h1>
         <p className="hero-description">VERBORA helps you build essential communication skills with practical learning, expert guidance, and the confidence to express yourself.</p>
         <div className="hero-buttons"><a href="/#courses" className="primary-button hero-primary">Explore Courses</a><a href="/#about" className="secondary-button"><CirclePlay size={19} fill="#0966bf" color="white" />How It Works</a></div>
@@ -276,7 +275,7 @@ function ResourcesSection() {
     { category: 'Interview Tip', title: 'Tell a story with your answer.', text: 'Describe the situation, your action, and what changed as a result.' },
     { category: 'Confidence Tip', title: 'Practice out loud every day.', text: 'Even a few intentional minutes can help you become more comfortable speaking.' },
   ]
-  return <section className="resources-section" id="resources"><div><span className="section-kicker">From The Learning Desk</span><h2>A little practice.<br /><span>A lot of progress.</span></h2><p>Small ideas to help you communicate more confidently, one day at a time.</p><div className="tip-dots">{tips.map((tip, index) => <button key={tip.title} className={index === active ? 'active' : ''} aria-label={`Show tip ${index + 1}`} onClick={() => setActive(index)} />)}</div></div><article className="tip-card"><span className="tip-badge"><Sparkles size={16} />{tips[active].category}</span><h3>{tips[active].title}</h3><p>{tips[active].text}</p><div className="tip-abstract"><span /><span /><span /></div></article></section>
+  return <section className="resources-section" id="resources"><div><span className="section-kicker">From The Learning Desk</span><h2>A little practice.<br /><span>A lot of progress.</span></h2><p>Small ideas to help you communicate more confidently, one day at a time.</p><div className="tip-dots">{tips.map((tip, index) => <button key={tip.title} className={index === active ? 'active' : ''} aria-label={`Show tip ${index + 1}`} onClick={() => setActive(index)} />)}</div></div><article className="tip-card"><h3>{tips[active].title}</h3><p>{tips[active].text}</p><div className="tip-abstract"><span /><span /><span /></div></article></section>
 }
 
 function SiteFooter({ onDemo }: { onDemo: () => void }) {
@@ -291,16 +290,36 @@ function DemoModal({ open, onClose }: { open: boolean; onClose: () => void }) {
 
 function LandingPage() {
   const [modalOpen, setModalOpen] = useState(false)
-  const [formOpen, setFormOpen] = useState(true)
-  const formRef = useRef<HTMLDivElement>(null)
-  const showDemo = () => {
-    if (window.matchMedia('(min-width: 1161px)').matches) {
-      setFormOpen(true)
-      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      window.requestAnimationFrame(() => formRef.current?.querySelector('input')?.focus({ preventScroll: true }))
-    } else setModalOpen(true)
-  }
-  return <><SiteHeader onDemo={showDemo} /><main><Hero />{formOpen ? <div className="floating-demo" ref={formRef}><button className="floating-close" aria-label="Close free demo form" onClick={() => setFormOpen(false)}><X size={17} /></button><DemoForm /></div> : <button className="floating-reopen" onClick={showDemo}><CalendarDays size={18} />Book Free Demo</button>}<div className={`content-shell ${formOpen ? 'with-demo' : 'without-demo'}`}><CoursesSection /><WhySection onDemo={showDemo} /><StoriesSection /><FocusStrip /><ResourcesSection /></div></main><SiteFooter onDemo={showDemo} /><DemoModal open={modalOpen} onClose={() => setModalOpen(false)} /></>
+  const showDemo = () => setModalOpen(true)
+
+  return (
+    <>
+      <SiteHeader onDemo={showDemo} />
+      <main>
+        <Hero />
+        {/* Book Free Demo floating card / button commented out as per instructions */}
+        {/*
+        {formOpen ? (
+          <div className="floating-demo" ref={formRef}>
+            <button className="floating-close" aria-label="Close free demo form" onClick={() => setFormOpen(false)}><X size={17} /></button>
+            <DemoForm />
+          </div>
+        ) : (
+          <button className="floating-reopen" onClick={showDemo}><CalendarDays size={18} />Book Free Demo</button>
+        )}
+        */}
+        <div className="content-shell without-demo">
+          <CoursesSection />
+          <WhySection onDemo={showDemo} />
+          <StoriesSection />
+          <FocusStrip />
+          <ResourcesSection />
+        </div>
+      </main>
+      <SiteFooter onDemo={showDemo} />
+      <DemoModal open={modalOpen} onClose={() => setModalOpen(false)} />
+    </>
+  )
 }
 
 function CourseDetail() {

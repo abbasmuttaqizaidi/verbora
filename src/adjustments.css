@@ -1,8 +1,99 @@
-/* The reference photograph is a crop of the supplied design, so the lower
-   part of the original page must stay outside the visible hero. */
+/* Proper photographic depth-of-field blur on Hero visual */
 .hero-visual {
-  height: 315px;
-  mask-image: linear-gradient(to bottom, #000 0%, #000 76%, transparent 100%);
+  height: 340px;
+  filter: blur(8px) saturate(1.12);
+  transform: scale(1.08);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 78%, transparent 100%);
+}
+
+/* Transparent and compact navigation bar with left logo, center routes, right actions */
+.site-header {
+  height: 62px;
+  background: transparent;
+  box-shadow: none;
+  position: relative;
+  z-index: 40;
+}
+
+.header-inner {
+  height: 100%;
+  max-width: 1510px;
+  margin: auto;
+  padding: 0 4%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.brand.brand-compact {
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.brand.brand-compact .brand-symbol {
+  width: 44px;
+  height: 42px;
+}
+
+.brand.brand-compact .brand-copy strong {
+  font-size: 21px;
+  letter-spacing: 0.05em;
+}
+
+.brand.brand-compact .brand-copy small {
+  font-size: 7.5px;
+  letter-spacing: 0.08em;
+}
+
+.navigation {
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 18px rgba(10, 45, 80, 0.07);
+  border: 1px solid rgba(220, 238, 250, 0.9);
+}
+
+.navigation > a,
+.nav-dropdown {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 12px;
+}
+
+.navigation .nav-home {
+  padding-inline: 16px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.header-join {
+  padding: 8px 18px;
+  font-size: 13px;
+  gap: 6px;
+  border-radius: 999px;
+}
+
+.search-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(215, 235, 248, 0.85);
+  box-shadow: 0 2px 8px rgba(10, 45, 80, 0.04);
+  color: #0b3260;
+  display: grid;
+  place-items: center;
 }
 
 .floating-close {
@@ -109,10 +200,26 @@
 }
 
 @media (max-width: 1160px) {
+  .site-header {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+  }
+  .navigation {
+    margin: 0;
+    background: #ffffff;
+    border-radius: 0 0 20px 20px;
+  }
   .floating-reopen { display: none; }
-  .hero-visual { height: 345px; }
+  .hero-visual { height: 345px; filter: blur(7px) saturate(1.1); }
 }
 
 @media (max-width: 640px) {
-  .hero-visual { height: 234px; mask-image: linear-gradient(#000 0%,#000 87%,transparent 100%); }
+  .site-header {
+    height: 60px;
+  }
+  .hero-visual {
+    height: 234px;
+    filter: blur(6px) saturate(1.1);
+    mask-image: linear-gradient(#000 0%,#000 87%,transparent 100%);
+  }
 }
