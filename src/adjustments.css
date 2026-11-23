@@ -1,0 +1,118 @@
+/* The reference photograph is a crop of the supplied design, so the lower
+   part of the original page must stay outside the visible hero. */
+.hero-visual {
+  height: 315px;
+  mask-image: linear-gradient(to bottom, #000 0%, #000 76%, transparent 100%);
+}
+
+.floating-close {
+  position: absolute;
+  z-index: 10;
+  right: 8px;
+  top: 8px;
+  width: 31px;
+  height: 31px;
+  border: 1px solid #c9e7f4;
+  border-radius: 50%;
+  color: #0b3265;
+  background: #f9feff;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 8px #1a70aa22;
+}
+
+.floating-reopen {
+  position: fixed;
+  z-index: 35;
+  right: 29px;
+  bottom: 30px;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  border: 0;
+  border-radius: 40px;
+  padding: 14px 20px;
+  background: linear-gradient(90deg,#06265b,#049de6);
+  color: white;
+  box-shadow: 0 8px 24px #035ba343;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.floating-reopen:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px #035ba360;
+}
+
+/* Gracefully expand layout when floating demo form is closed */
+.content-shell.without-demo .courses-section,
+.content-shell.without-demo .why-section,
+.content-shell.without-demo .stories-section {
+  padding-right: 0;
+  transition: padding-right 0.25s ease;
+}
+
+/* Fix typographic hierarchy in Stories section */
+.stories-heading .section-kicker {
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.stories-heading h2 {
+  font-size: 24px;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  margin: 4px 0 6px;
+}
+
+/* Display benefit subtitles on desktop */
+.benefit small {
+  display: block;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #56718c;
+  margin-top: 6px;
+  max-width: 140px;
+}
+
+/* Fix footer legal alignment without percentage margin hacks */
+.footer-legal {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 25px 6px;
+  border-top: 1px solid #ffffff20;
+  font-size: 11px;
+  color: #c1d0e4;
+}
+
+.footer-legal span:first-child {
+  margin-left: 0;
+}
+
+/* Legibility contrast polish */
+.preview-note {
+  color: #54718f;
+  font-weight: 600;
+}
+
+.hero-highlights small {
+  color: #274867;
+  font-weight: 700;
+}
+
+.form-trust {
+  color: #17375d;
+}
+
+@media (max-width: 1160px) {
+  .floating-reopen { display: none; }
+  .hero-visual { height: 345px; }
+}
+
+@media (max-width: 640px) {
+  .hero-visual { height: 234px; mask-image: linear-gradient(#000 0%,#000 87%,transparent 100%); }
+}
