@@ -13,55 +13,70 @@ import {
   BriefcaseBusiness, CalendarDays, Check,
   CheckCircle2, ChevronDown, CirclePlay, GraduationCap, Handshake,
   Headphones, Mail, Menu, MessageCircle, Mic2, MonitorPlay, Phone,
-  Rocket, Search, ShieldCheck, Star, TrendingUp, UsersRound,
+  Rocket, Search, ShieldCheck, Sparkles, Star, TrendingUp, UsersRound,
   X, Zap, ClipboardCheck, MoveRight, Instagram, Youtube, Linkedin,
   Quote,
 } from 'lucide-react'
 import './styles.css'
 import './adjustments.css'
 
-type CourseId = 'spoken-english' | 'business-english' | 'public-speaking' | 'interview-preparation'
+type CourseId = 'spoken-english' | 'business-english' | 'public-speaking' | 'interview-preparation' | 'personality-development'
 
 const courses = [
   {
     id: 'spoken-english' as CourseId,
     title: 'Spoken English',
     tagline: 'Speak fluently. Connect naturally.',
-    short: 'Speak Fluently',
+    short: 'Speak fluently. Be confident.',
     summary: 'Build the confidence to express yourself clearly in everyday conversations, discussions, and new situations.',
     icon: MessageCircle,
     iconClass: 'aqua',
+    cover: '/assets/courses-cover/spoken-english.png',
     topics: ['Everyday conversation practice', 'Pronunciation and clarity', 'Vocabulary in real situations', 'Building fluency without hesitation'],
   },
   {
     id: 'business-english' as CourseId,
     title: 'Business English',
     tagline: 'Sound clear. Work confidently.',
-    short: 'Excel Professionally',
+    short: 'Excel professionally.',
     summary: 'Communicate with clarity at work, from professional emails and meetings to presenting your ideas with confidence.',
     icon: BriefcaseBusiness,
     iconClass: 'purple',
+    cover: '/assets/courses-cover/business-english.png',
     topics: ['Professional conversations', 'Meetings and workplace vocabulary', 'Email and written communication', 'Confident presentations'],
   },
   {
     id: 'public-speaking' as CourseId,
     title: 'Public Speaking',
     tagline: 'Find your voice. Own the room.',
-    short: 'Speak with Impact',
+    short: 'Speak with impact.',
     summary: 'Learn to organize your thoughts, speak with presence, and deliver a message that people remember.',
     icon: Mic2,
     iconClass: 'mint',
+    cover: '/assets/courses-cover/public-speaking.png',
     topics: ['Structuring a compelling talk', 'Voice and body language', 'Handling nerves and questions', 'Storytelling and audience connection'],
   },
   {
     id: 'interview-preparation' as CourseId,
     title: 'Interview Preparation',
     tagline: 'Show your strengths. Get ready.',
-    short: 'Get Interview Ready',
+    short: 'Get Hired.',
     summary: 'Practice answering questions, communicating your strengths, and approaching important interviews with greater confidence.',
     icon: UsersRound,
     iconClass: 'amber',
+    cover: '/assets/courses-cover/interview-preparation.png',
     topics: ['Introducing yourself effectively', 'Common interview scenarios', 'Answer structure and delivery', 'Mock interviews and feedback'],
+  },
+  {
+    id: 'personality-development' as CourseId,
+    title: 'Personality Development',
+    tagline: 'Unlock your potential. Be your best.',
+    short: 'Be Your Best.',
+    summary: 'Develop personal presence, emotional intelligence, body language, and the mindset to succeed in personal and professional life.',
+    icon: Sparkles,
+    iconClass: 'teal',
+    cover: '/assets/courses-cover/personality-development.png',
+    topics: ['Body language and self-presence', 'Active listening and emotional intelligence', 'Overcoming self-doubt and hesitation', 'Etiquette and professional demeanor'],
   },
 ]
 
@@ -235,10 +250,34 @@ function Hero() {
 }
 
 function CoursesSection() {
-  return <section className="courses-section" id="courses">
-    <div className="section-title-wrap"><span className="eyebrow centered">Our Courses</span><h2>Comprehensive Programs for <span>Your Growth</span></h2><p>Choose a learning path that matches where you want to go.</p></div>
-    <div className="course-grid">{courses.map(course => <Link to="/courses/$courseSlug" params={{ courseSlug: course.id }} key={course.id} className="course-tile"><span className={`course-icon ${course.iconClass}`}><course.icon size={34} strokeWidth={1.9} /></span><span className="course-tile-copy"><strong>{course.title}</strong><small>{course.short}</small></span><span className="course-go"><MoveRight size={18} /></span></Link>)}</div>
-  </section>
+  return (
+    <section className="courses-section" id="courses">
+      <div className="section-title-wrap">
+        <span className="eyebrow centered">Our Courses</span>
+        <h2>Comprehensive Programs for <span>Your Growth</span></h2>
+        <p>Choose a learning path that matches where you want to go.</p>
+      </div>
+      <div className="course-grid">
+        {courses.map(course => (
+          <Link
+            to="/courses/$courseSlug"
+            params={{ courseSlug: course.id }}
+            key={course.id}
+            className="course-card"
+          >
+            <img src={course.cover} alt={course.title} className="course-card-img" />
+            <div className="course-card-overlay">
+              <span className="course-card-icon-wrap">
+                <course.icon size={19} strokeWidth={2.4} />
+              </span>
+              <strong className="course-card-heading">{course.title}</strong>
+              <span className="course-card-subheading">{course.short}</span>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
+  )
 }
 
 const benefits = [
@@ -327,7 +366,7 @@ function CourseDetail() {
   const course = courses.find(entry => entry.id === courseSlug)
   const [modalOpen, setModalOpen] = useState(false)
   if (!course) return <><SiteHeader onDemo={() => setModalOpen(true)} /><main className="not-found"><h1>Course not found</h1><p>We couldn't find that program.</p><Link to="/" className="primary-button">Back to Home</Link></main><SiteFooter onDemo={() => setModalOpen(true)} /><DemoModal open={modalOpen} onClose={() => setModalOpen(false)} /></>
-  return <><SiteHeader onDemo={() => setModalOpen(true)} /><main className="course-detail-page"><div className="course-detail-banner"><div className="detail-crumb"><Link to="/">Home</Link><span>/</span><a href="/#courses">Courses</a><span>/</span><strong>{course.title}</strong></div><span className={`course-icon ${course.iconClass}`}><course.icon size={38} /></span><h1>{course.title}</h1><p>{course.tagline}</p><button className="primary-button" onClick={() => setModalOpen(true)}>Book a Free Demo</button></div><div className="course-detail-body"><div><span className="section-kicker">The Program</span><h2>Find your voice. <span>Grow your confidence.</span></h2><p>{course.summary}</p><p>Sessions are designed around communication practice and practical feedback. Contact VERBORA to confirm the batch schedule, course format, fees, and trainer details.</p></div><div className="topic-card"><h3>What you'll work on</h3>{course.topics.map(topic => <div key={topic}><Check size={18} /><span>{topic}</span></div>)}</div></div><div className="detail-other"><h2>Explore more programs</h2><div className="course-grid">{courses.filter(entry => entry.id !== course.id).map(entry => <Link key={entry.id} to="/courses/$courseSlug" params={{ courseSlug: entry.id }} className="course-tile"><span className={`course-icon ${entry.iconClass}`}><entry.icon size={26} /></span><span className="course-tile-copy"><strong>{entry.title}</strong><small>{entry.short}</small></span></Link>)}</div></div></main><SiteFooter onDemo={() => setModalOpen(true)} /><DemoModal open={modalOpen} onClose={() => setModalOpen(false)} /></>
+  return <><SiteHeader onDemo={() => setModalOpen(true)} /><main className="course-detail-page"><div className="course-detail-banner"><div className="detail-crumb"><Link to="/">Home</Link><span>/</span><a href="/#courses">Courses</a><span>/</span><strong>{course.title}</strong></div><span className={`course-icon ${course.iconClass}`}><course.icon size={38} /></span><h1>{course.title}</h1><p>{course.tagline}</p><button className="primary-button" onClick={() => setModalOpen(true)}>Book a Free Demo</button></div><div className="course-detail-body"><div><span className="section-kicker">The Program</span><h2>Find your voice. <span>Grow your confidence.</span></h2><p>{course.summary}</p><p>Sessions are designed around communication practice and practical feedback. Contact VERBORA to confirm the batch schedule, course format, fees, and trainer details.</p></div><div className="topic-card"><h3>What you'll work on</h3>{course.topics.map(topic => <div key={topic}><Check size={18} /><span>{topic}</span></div>)}</div></div><div className="detail-other"><h2>Explore more programs</h2><div className="course-grid">{courses.filter(entry => entry.id !== course.id).map(entry => <Link key={entry.id} to="/courses/$courseSlug" params={{ courseSlug: entry.id }} className="course-card"><img src={entry.cover} alt={entry.title} className="course-card-img" /><div className="course-card-overlay"><span className="course-card-icon-wrap"><entry.icon size={19} strokeWidth={2.4} /></span><strong className="course-card-heading">{entry.title}</strong><span className="course-card-subheading">{entry.short}</span></div></Link>)}</div></div></main><SiteFooter onDemo={() => setModalOpen(true)} /><DemoModal open={modalOpen} onClose={() => setModalOpen(false)} /></>
 }
 
 function RootLayout() {

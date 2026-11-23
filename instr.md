@@ -1,4 +1,1 @@
-1. Communication skills for real life aur Communication Tip wali pills remove karo
-2. Navigation bar transparent hona chahiye aur left side logo beach mein home, About us... ye sare routes aur right side me search wala icon aur "Join Now ->" button aur nav bar ko compact karo
-3. Book my free demo wal floating button abhi ke liye comment kar do
-4. Hero image par proper blur aana chahiye!
+Spoken English This is the heading. The subheading is speak fluently full stop. Be confident full stop. Then the second one will be, the heading is Business English. And the subheading is Excel professionally, full stop. The third one is Public Speaking, which is the heading and its respective subheading is speak with impact. The fourth heading is Interview Preparation. The subheading is Get Hired. The fifth heading is Personality Development and its subheading is Be Your Best
