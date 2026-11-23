@@ -1,18 +1,35 @@
-/* Proper photographic depth-of-field blur on Hero visual */
+/* Hero visual: Crisp image (no blur) with smooth bottom fade-out effect */
 .hero-visual {
-  height: 340px;
-  filter: blur(8px) saturate(1.12);
-  transform: scale(1.08);
-  mask-image: linear-gradient(to bottom, #000 0%, #000 78%, transparent 100%);
+  height: 100%;
+  filter: saturate(1.05);
+  transform: none;
+  mask-image: linear-gradient(to bottom, #000 0%, #000 48%, rgba(0,0,0,0.72) 68%, rgba(0,0,0,0.25) 86%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 48%, rgba(0,0,0,0.72) 68%, rgba(0,0,0,0.25) 86%, transparent 100%);
 }
 
-/* Transparent and compact navigation bar with left logo, center routes, right actions */
+/* Transparent navbar floating directly on top of the hero image */
 .site-header {
-  height: 62px;
+  height: 64px;
   background: transparent;
   box-shadow: none;
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 40;
+}
+
+/* Hero section adjusted so content breathes below the overlay navbar */
+.hero {
+  height: 410px;
+}
+
+.hero-copy {
+  padding-top: 62px;
+}
+
+.course-detail-banner {
+  padding-top: 85px;
 }
 
 .header-inner {
@@ -201,25 +218,41 @@
 
 @media (max-width: 1160px) {
   .site-header {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(12px);
+    background: transparent;
+    backdrop-filter: none;
   }
   .navigation {
     margin: 0;
     background: #ffffff;
     border-radius: 0 0 20px 20px;
   }
+  .hero {
+    height: auto;
+    min-height: 440px;
+  }
+  .hero-copy {
+    padding-top: 75px;
+  }
   .floating-reopen { display: none; }
-  .hero-visual { height: 345px; filter: blur(7px) saturate(1.1); }
+  .hero-visual {
+    height: 100%;
+    filter: saturate(1.05);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 50%, rgba(0, 0, 0, 0.4) 75%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 50%, rgba(0, 0, 0, 0.4) 75%, transparent 100%);
+  }
 }
 
 @media (max-width: 640px) {
   .site-header {
     height: 60px;
   }
+  .hero-copy {
+    padding-top: 70px;
+  }
   .hero-visual {
-    height: 234px;
-    filter: blur(6px) saturate(1.1);
-    mask-image: linear-gradient(#000 0%,#000 87%,transparent 100%);
+    height: 250px;
+    filter: saturate(1.05);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
   }
 }
