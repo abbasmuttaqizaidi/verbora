@@ -292,15 +292,159 @@ function WhySection({ onDemo }: { onDemo: () => void }) {
   return <section className="why-section" id="about"><div className="why-copy"><span className="section-kicker">Why Choose VERBORA?</span><h2>More Than Just an <span>English Institute</span></h2><p>We're here to help learners become comfortable communicators—through practice, constructive feedback, and skills that feel useful in the real world.</p><button className="lime-button" onClick={onDemo}>Know More</button></div><div className="benefits" id="trainers">{benefits.map(benefit => <div className="benefit" key={benefit.title}><span className="benefit-icon"><benefit.icon size={35} strokeWidth={1.8} /></span><strong>{benefit.title}</strong><small>{benefit.text}</small></div>)}</div></section>
 }
 
-const stories = [
-  { initials: 'RV', name: 'Rohit Verma', role: 'Software Engineer · Spoken English', text: 'VERBORA helped me improve my communication and speak with genuine confidence in client calls.' },
-  { initials: 'SG', name: 'Sneha Gupta', role: 'Marketing Lead · Business English', text: 'A practical learning experience with engaging sessions and constructive, supportive guidance.' },
-  { initials: 'AS', name: 'Aman Singh', role: 'College Graduate · Interview Prep', text: 'The structured mock interviews gave me the clarity and confidence to crack my dream job.' },
+interface StoryItem {
+  name: string
+  role: string
+  image: string
+  video: string
+  text: string
+  badge?: string
+}
+
+const stories: StoryItem[] = [
+  {
+    name: 'Rohit Verma',
+    role: 'Software Engineer · Spoken English',
+    image: '/assets/testimonials/rohit.jpg',
+    video: '/assets/testimonials/sample-video.mp4',
+    text: 'VERBORA helped me improve my communication and speak with genuine confidence in client calls and global team presentations.',
+    badge: 'Fluency & Workplace English',
+  },
+  {
+    name: 'Sneha Gupta',
+    role: 'Marketing Lead · Business English',
+    image: '/assets/testimonials/sneha.jpg',
+    video: '/assets/testimonials/sample-video.mp4',
+    text: 'A practical learning experience with engaging sessions, constructive feedback, and continuous supportive guidance.',
+    badge: 'Leadership & Impact',
+  },
+  {
+    name: 'Aman Singh',
+    role: 'College Graduate · Interview Prep',
+    image: '/assets/testimonials/aman.jpg',
+    video: '/assets/testimonials/sample-video.mp4',
+    text: 'The structured mock interviews and body language practice gave me the clarity and confidence to crack my dream job.',
+    badge: 'Interview Success',
+  },
+  {
+    name: 'Priya Sharma',
+    role: 'Team Lead · Public Speaking',
+    image: '/assets/testimonials/priya.jpg',
+    video: '/assets/testimonials/sample-video.mp4',
+    text: 'Overcoming stage fright in front of a large audience was my biggest milestone. The trainers made public speaking enjoyable.',
+    badge: 'Stage & Presentation',
+  },
 ]
+
+function StoryVideoModal({ story, onClose }: { story: StoryItem | null; onClose: () => void }) {
+  useEffect(() => {
+    if (!story) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [story, onClose])
+
+  if (!story) return null
+
+  return (
+    <div
+      className="story-video-backdrop"
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="story-video-modal" role="dialog" aria-modal="true" aria-label={`Testimonial video of ${story.name}`}>
+        <div className="story-video-modal-header">
+          <div className="story-video-speaker">
+            <img src={story.image} alt={story.name} className="story-modal-avatar" />
+            <div>
+              <strong>{story.name}</strong>
+              <small>{story.role}</small>
+            </div>
+          </div>
+          <button className="modal-close" onClick={onClose} aria-label="Close video">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="story-video-player-wrap">
+          <video
+            src={story.video}
+            controls
+            autoPlay
+            playsInline
+            className="story-video-element"
+            poster={story.image}
+          >
+            Your browser does not support the video tag.
+          </video>
+        </div>
+
+        <div className="story-video-modal-footer">
+          <Quote size={16} fill="currentColor" />
+          <p>“{story.text}”</p>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function StoriesSection() {
   const [active, setActive] = useState(0)
-  return <section className="stories-section" id="stories"><div className="stories-heading"><span className="section-kicker">Student Success Stories</span><h2>Real People. Real Progress.</h2><p>Hear how VERBORA learners developed confidence and clarity in everyday and professional communication.</p><div className="story-controls"><button aria-label="Previous testimonial" onClick={() => setActive(index => (index + stories.length - 1) % stories.length)}>‹</button><button aria-label="Next testimonial" onClick={() => setActive(index => (index + 1) % stories.length)}>›</button></div></div><div className="story-cards">{[0, 1].map(offset => { const story = stories[(active + offset) % stories.length]; return <article className="story-card" key={story.name}><div className="avatar">{story.initials}</div><div><Quote size={19} fill="currentColor" /><p>“{story.text}”</p><strong>{story.name}</strong><small>{story.role}</small></div></article> })}</div></section>
+  const [videoStory, setVideoStory] = useState<StoryItem | null>(null)
+
+  return (
+    <>
+      <section className="stories-section" id="stories">
+        <div className="stories-heading">
+          <span className="section-kicker">Student Success Stories</span>
+          <h2>Real People. Real Progress.</h2>
+          <p>Hear how VERBORA learners developed confidence and clarity in everyday and professional communication.</p>
+          <div className="story-controls">
+            <button aria-label="Previous testimonial" onClick={() => setActive(index => (index + stories.length - 1) % stories.length)}>‹</button>
+            <button aria-label="Next testimonial" onClick={() => setActive(index => (index + 1) % stories.length)}>›</button>
+          </div>
+        </div>
+
+        <div className="story-cards">
+          {[0, 1].map(offset => {
+            const story = stories[(active + offset) % stories.length]
+            return (
+              <article className="story-card" key={story.name}>
+                <div className="story-avatar-wrap">
+                  <img src={story.image} alt={story.name} className="story-avatar-img" />
+                </div>
+                <div className="story-content">
+                  <div className="story-quote-row">
+                    <Quote size={18} fill="currentColor" />
+                    <p>“{story.text}”</p>
+                  </div>
+                  <div className="story-footer-row">
+                    <div className="story-author-info">
+                      <strong>{story.name}</strong>
+                      <small>{story.role}</small>
+                    </div>
+                    <button
+                      type="button"
+                      className="story-arrow-btn"
+                      onClick={() => setVideoStory(story)}
+                      aria-label={`Watch ${story.name}'s video story`}
+                      title="Watch video story"
+                    >
+                      <span>Watch Story</span>
+                      <MoveRight size={15} />
+                    </button>
+                  </div>
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      </section>
+
+      <StoryVideoModal story={videoStory} onClose={() => setVideoStory(null)} />
+    </>
+  )
 }
 
 function FocusStrip() {

@@ -389,6 +389,328 @@
 }
 
 /* ==========================================================================
+   TESTIMONIAL STORIES WITH PHOTOS & VIDEO MODAL
+   ========================================================================== */
+
+.stories-section {
+  padding: 30px 0 34px !important;
+  display: flex;
+  gap: 28px;
+  align-items: center;
+}
+
+.stories-heading {
+  flex: 0 0 260px;
+}
+
+.stories-heading .section-kicker {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #0284c7;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.stories-heading h2 {
+  font-size: 25px;
+  font-weight: 800;
+  line-height: 1.18;
+  letter-spacing: -0.03em;
+  color: #062656;
+  margin: 0 0 8px;
+}
+
+.stories-heading p {
+  font-size: 13px;
+  color: #57708e;
+  line-height: 1.45;
+  max-width: 240px;
+  margin: 0;
+}
+
+.story-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.story-controls button {
+  border: 1px solid rgba(2, 132, 199, 0.3);
+  background: #ffffff;
+  color: #075985;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 20px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.story-controls button:hover {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+  transform: translateY(-2px);
+}
+
+.story-cards {
+  display: flex;
+  gap: 18px;
+  min-width: 0;
+  flex: 1;
+}
+
+.story-card {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16px;
+  min-width: 0;
+  flex: 1;
+  border-radius: 20px;
+  border: 1px solid #dcebfa;
+  background: #ffffff;
+  padding: 20px 22px;
+  min-height: 154px;
+  box-shadow: 0 8px 24px rgba(3, 33, 69, 0.07);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  position: relative;
+}
+
+.story-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 32px rgba(3, 33, 69, 0.12);
+  border-color: #7dd3fc;
+}
+
+.story-avatar-wrap {
+  flex-shrink: 0;
+}
+
+.story-avatar-img {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #bae6fd;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.18);
+  display: block;
+}
+
+.story-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+}
+
+.story-quote-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.story-quote-row svg {
+  color: #38bdf8;
+  flex-shrink: 0;
+  margin-top: 2px;
+  float: none !important;
+}
+
+.story-quote-row p {
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+  color: #1e293b !important;
+  margin: 0 !important;
+  max-width: 100% !important;
+  font-style: normal;
+}
+
+.story-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.story-author-info strong {
+  display: block;
+  font-size: 13.5px !important;
+  color: #0f172a !important;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.story-author-info small {
+  display: block;
+  font-size: 11.5px !important;
+  color: #64748b !important;
+  margin-top: 2px;
+  line-height: 1.2;
+}
+
+/* The -> Action Button */
+.story-arrow-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 3px 10px rgba(2, 132, 199, 0.28);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.story-arrow-btn:hover {
+  background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%);
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.45);
+}
+
+.story-arrow-btn svg {
+  transition: transform 0.2s ease;
+}
+
+.story-arrow-btn:hover svg {
+  transform: translateX(3px);
+}
+
+/* Video Modal */
+.story-video-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 12, 30, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 100;
+}
+
+.story-video-modal {
+  background: #041634;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 30px rgba(2, 132, 199, 0.2);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 620px;
+  overflow: hidden;
+  color: #ffffff;
+  animation: modal-scale 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modal-scale {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.story-video-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: rgba(2, 16, 38, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.story-video-speaker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.story-modal-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #38bdf8;
+}
+
+.story-video-speaker strong {
+  display: block;
+  font-size: 14.5px;
+  color: #ffffff;
+}
+
+.story-video-speaker small {
+  display: block;
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+.story-video-player-wrap {
+  position: relative;
+  background: #000;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.story-video-element {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.story-video-modal-footer {
+  padding: 14px 20px;
+  background: rgba(2, 16, 38, 0.9);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #cbd5e1;
+}
+
+.story-video-modal-footer svg {
+  color: #38bdf8;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.story-video-modal-footer p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+@media (max-width: 860px) {
+  .stories-section {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .stories-heading {
+    flex: initial;
+    max-width: 100%;
+  }
+  .story-cards {
+    flex-direction: column;
+  }
+}
+
+/* ==========================================================================
    IMPROVED COMPACT SITE FOOTER
    ========================================================================== */
 
