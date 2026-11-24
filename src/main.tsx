@@ -623,7 +623,8 @@ function LandingPage() {
           <CoursesSection />
           <WhySection onDemo={showDemo} />
           <StoriesSection />
-          <FocusStrip />
+          {/* Removing deliberately */}
+          {/* <FocusStrip /> */}
           <ResourcesSection />
         </div>
       </main>
