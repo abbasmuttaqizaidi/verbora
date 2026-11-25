@@ -464,7 +464,7 @@ function Hero() {
           preload="auto"
         >
           <source
-            src="https://res.cloudinary.com/mtjv4nu9/video/upload/f_auto,q_auto:eco,ac_none,w_1280/v1795637076/VIDEO-2026-11-25-15-59-08.mp4"
+            src="https://res.cloudinary.com/mtjv4nu9/video/upload/v1795637076/VIDEO-2026-11-25-15-59-08.mp4"
             type="video/mp4"
           />
         </video>
