@@ -6125,3 +6125,104 @@ footer.site-footer::before {
   }
 }
 
+/* ==========================================================================
+   CLEAN LIGHT CONFIRMATION MODAL (CENTERED TICK, MINIMAL, NO PILLS)
+   ========================================================================== */
+
+.confirmation-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 20px;
+  animation: confirmFadeIn 0.2s ease-out forwards;
+}
+
+.confirmation-modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 34px 28px 28px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.16);
+  text-align: center;
+  box-sizing: border-box;
+  animation: confirmZoomIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.confirmation-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.confirmation-modal-close:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.confirmation-tick-wrap {
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: #ecfdf5;
+  border: 2px solid #a7f3d0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #10b981;
+}
+
+.confirmation-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 8px;
+  letter-spacing: -0.02em;
+}
+
+.confirmation-desc {
+  font-size: 13.5px;
+  color: #64748b;
+  line-height: 1.55;
+  margin: 0 0 24px;
+}
+
+.confirmation-done-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+@keyframes confirmFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes confirmZoomIn {
+  from { opacity: 0; transform: scale(0.94) translateY(12px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+
+

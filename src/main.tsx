@@ -1898,6 +1898,7 @@ function StoriesPage() {
 
 function ContactPage() {
   const [modalOpen, setModalOpen] = useState(false)
+  const [showEnergyModal, setShowEnergyModal] = useState(false)
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -1984,8 +1985,7 @@ function ContactPage() {
     } finally {
       setLoading(false)
       setSubmitted(true)
-      // 3. Open WhatsApp directly in new window/tab
-      window.open(waUrl, '_blank', 'noopener,noreferrer')
+      setShowEnergyModal(true)
     }
   }
 
@@ -2359,6 +2359,62 @@ function ContactPage() {
 
       <SiteFooter onDemo={showDemo} />
       <DemoModal open={modalOpen} onClose={() => setModalOpen(false)} />
+
+      {/* Clean Light Confirmation Modal (Centered Tick, Concise, No Trainer Name, No Pills) */}
+      {showEnergyModal && (
+        <div className="confirmation-modal-overlay" role="dialog" aria-modal="true" aria-label="Enquiry Sent">
+          <div className="confirmation-modal-card">
+            <button
+              type="button"
+              className="confirmation-modal-close"
+              onClick={() => {
+                setShowEnergyModal(false)
+                setSubmitted(false)
+                setForm({
+                  name: '',
+                  email: '',
+                  phone: '',
+                  course: 'spoken-english',
+                  goal: 'hesitation',
+                  message: '',
+                })
+              }}
+              aria-label="Close modal"
+              title="Close"
+            >
+              <X size={17} />
+            </button>
+
+            <div className="confirmation-tick-wrap">
+              <Check size={36} strokeWidth={2.8} />
+            </div>
+
+            <h2 className="confirmation-title">Enquiry Sent!</h2>
+            <p className="confirmation-desc">
+              Your request for a free 1-on-1 diagnostic call has been recorded. Our team will reach out to you on WhatsApp shortly.
+            </p>
+
+            <button
+              type="button"
+              className="primary-button confirmation-done-btn"
+              onClick={() => {
+                setShowEnergyModal(false)
+                setSubmitted(false)
+                setForm({
+                  name: '',
+                  email: '',
+                  phone: '',
+                  course: 'spoken-english',
+                  goal: 'hesitation',
+                  message: '',
+                })
+              }}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
     </>
   )
 }
