@@ -56,3 +56,30 @@ export interface NewsletterSubscriber {
   email: string
   status: 'active' | 'unsubscribed'
 }
+
+export interface Testimonial {
+  id: string
+  created_at: string
+  name: string
+  role: string
+  image: string
+  video?: string | null
+  text: string
+  badge?: string | null
+  is_active: boolean
+  display_order?: number
+}
+
+export type CreateTestimonialInput = {
+  name: string
+  role: string
+  image: string
+  video?: string | null
+  text: string
+  badge?: string | null
+  is_active?: boolean
+  display_order?: number
+}
+
+export type UpdateTestimonialInput = Partial<CreateTestimonialInput>
+

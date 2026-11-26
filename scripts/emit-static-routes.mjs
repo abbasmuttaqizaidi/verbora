@@ -11,9 +11,26 @@ for (const slug of slugs) {
 }
 
 // Standalone routes
-const pages = ['about', 'trainer', 'trainers', 'stories', 'success-stories', 'contact', 'contact-us', 'verbora-edu-admin', 'shivam-admin']
+const pages = [
+  'about',
+  'trainer',
+  'trainers',
+  'stories',
+  'success-stories',
+  'contact',
+  'contact-us',
+  'verbora-edu-admin',
+  'verbora-edu-admin/leads',
+  'verbora-edu-admin/testimonials',
+  'shivam-admin',
+  'shivam-admin/leads',
+  'shivam-admin/testimonials',
+  'admin',
+  'admin/leads',
+  'admin/testimonials',
+]
 for (const page of pages) {
-  const directory = resolve(dist, page)
+  const directory = resolve(dist, ...page.split('/'))
   mkdirSync(directory, { recursive: true })
   copyFileSync(resolve(dist, 'index.html'), resolve(directory, 'index.html'))
 }

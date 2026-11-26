@@ -18,11 +18,13 @@ import {
   Quote, HeartHandshake, Target, Award, BadgeCheck, ShieldCheck,
   MapPin, Send, Lock, KeyRound, RefreshCw, Trash2, Download, LogOut,
   Eye, EyeOff, Database, Inbox, Calendar, AlertCircle,
+  Plus, Edit3, Image, Upload, Video, ExternalLink,
 } from 'lucide-react'
 import './styles.css'
 import './adjustments.css'
 import { api } from './api'
-import { DemoBooking, ContactMessage, NewsletterSubscriber } from './types/database'
+import { DemoBooking, ContactMessage, NewsletterSubscriber, Testimonial } from './types/database'
+import { uploadImageToCloudinary, getSavedUploadPreset, saveUploadPreset, CLOUDINARY_CLOUD_NAME } from './lib/cloudinary'
 
 type CourseId = 'spoken-english' | 'business-english' | 'public-speaking' | 'interview-preparation' | 'personality-development'
 
@@ -630,6 +632,45 @@ function StoryVideoModal({ story, onClose }: { story: StoryItem | null; onClose:
 function StoriesSection() {
   const [active, setActive] = useState(0)
   const [videoStory, setVideoStory] = useState<StoryItem | null>(null)
+  const [testimonialsList, setTestimonialsList] = useState<StoryItem[]>(() => {
+    try {
+      const local = api.testimonials.getLocalTestimonials()
+      const activeItems = local.filter(t => t.is_active)
+      if (activeItems.length > 0) {
+        return activeItems.map(t => ({
+          name: t.name,
+          role: t.role,
+          image: t.image,
+          video: t.video || 'https://res.cloudinary.com/mtjv4nu9/video/upload/v1795687985/VIDEO-2026-11-25-15-59-08_2.mp4',
+          text: t.text,
+          badge: t.badge || undefined,
+        }))
+      }
+    } catch {}
+    return stories
+  })
+
+  useEffect(() => {
+    let mounted = true
+    api.testimonials.getTestimonials().then(res => {
+      if (mounted && res.data && res.data.length > 0) {
+        const activeItems = res.data.filter(t => t.is_active)
+        if (activeItems.length > 0) {
+          setTestimonialsList(activeItems.map(t => ({
+            name: t.name,
+            role: t.role,
+            image: t.image,
+            video: t.video || 'https://res.cloudinary.com/mtjv4nu9/video/upload/v1795687985/VIDEO-2026-11-25-15-59-08_2.mp4',
+            text: t.text,
+            badge: t.badge || undefined,
+          })))
+        }
+      }
+    })
+    return () => { mounted = false }
+  }, [])
+
+  const currentStories = testimonialsList.length > 0 ? testimonialsList : stories
 
   return (
     <>
@@ -639,16 +680,16 @@ function StoriesSection() {
           <h2>Real People. Real Progress.</h2>
           <p>Hear how VERBORA learners developed confidence and clarity in everyday and professional communication.</p>
           <div className="story-controls">
-            <button aria-label="Previous testimonial" onClick={() => setActive(index => (index + stories.length - 1) % stories.length)}>‹</button>
-            <button aria-label="Next testimonial" onClick={() => setActive(index => (index + 1) % stories.length)}>›</button>
+            <button aria-label="Previous testimonial" onClick={() => setActive(index => (index + currentStories.length - 1) % currentStories.length)}>‹</button>
+            <button aria-label="Next testimonial" onClick={() => setActive(index => (index + 1) % currentStories.length)}>›</button>
           </div>
         </div>
 
         <div className="story-cards">
           {[0, 1].map(offset => {
-            const story = stories[(active + offset) % stories.length]
+            const story = currentStories[(active + offset) % currentStories.length]
             return (
-              <article className="story-card" key={story.name}>
+              <article className="story-card" key={(story?.name || 'story') + offset}>
                 <div className="story-avatar-wrap">
                   <img src={story.image} alt={story.name} className="story-avatar-img" />
                 </div>
@@ -1253,7 +1294,7 @@ function TrainerPage() {
     {
       name: 'Rohit Verma',
       role: 'Senior Software Engineer',
-      quote: 'Abbas Sir completely transformed my confidence on US client calls. I used to translate every Hindi word in my head before speaking. In 4 weeks, that hesitation vanished.',
+      quote: 'Bijay Sir completely transformed my confidence on US client calls. I used to translate every Hindi word in my head before speaking. In 4 weeks, that hesitation vanished.',
       tag: 'Fluency & Client Calls',
     },
     {
@@ -1265,7 +1306,7 @@ function TrainerPage() {
     {
       name: 'Aman Singh',
       role: 'College Graduate',
-      quote: 'I had 3 rejections due to communication anxiety. Abbas Sir coached me through mock interviews and body language. Cleared my Deloitte interview on the first attempt!',
+      quote: 'I had 3 rejections due to communication anxiety. Bijay Sir coached me through mock interviews and body language. Cleared my Deloitte interview on the first attempt!',
       tag: 'Interview Cleared',
     },
   ]
@@ -1295,7 +1336,7 @@ function TrainerPage() {
                   <span>“Fluency isn’t about using complex, difficult words. It’s about calming your mind, organizing your thoughts with clarity, and speaking with unwavering confidence.”</span>
                 </blockquote>
                 <p className="trainer-hero-lead">
-                  With over 10 years of intensive speech mentorship and 12,000+ students coached, Syed Abbas has helped engineers, managers, founders, and students break through English anxiety, master executive presence, and unlock their full career potential.
+                  With over 10 years of intensive speech mentorship and 12,000+ students coached, Bijay Adhikari has helped engineers, managers, founders, and students break through English anxiety, master executive presence, and unlock their full career potential.
                 </p>
 
                 {/* Quick Credential Chips */}
@@ -1441,7 +1482,7 @@ function TrainerPage() {
           <section className="trainer-reviews-section">
             <div className="about-section-header">
               <span className="section-kicker">Alumni Feedback</span>
-              <h2>What Students Say About <span>Abbas Sir</span></h2>
+              <h2>What Students Say About <span>Bijay Sir</span></h2>
               <p>Real stories from working professionals and students whose careers accelerated with VERBORA.</p>
             </div>
             <div className="trainer-reviews-grid">
@@ -1548,7 +1589,7 @@ function StoriesPage() {
       video: '/assets/testimonials/sample-video.mp4',
       challenge: 'Hesitated to speak in high-stakes executive meetings and held back strategic ideas due to lack of corporate vocal polish.',
       breakthrough: 'Mastered executive tonality, strategic pauses, and persuasive meeting vocabulary. Promoted to Regional Lead within 3 months.',
-      quote: 'Abbas Sir taught me how to command the room with composure. I learned that pausing with poise is a mark of confidence, not hesitation.',
+      quote: 'Bijay Sir taught me how to command the room with composure. I learned that pausing with poise is a mark of confidence, not hesitation.',
       metric: 'Promoted to Regional Lead',
       metricLabel: 'Boardroom Diplomacy',
     },
@@ -1952,7 +1993,7 @@ function ContactPage() {
       `🎯 *Speaking Hurdle:* ${selectedGoalTitle}`,
       form.message.trim() ? `💬 *Goal Details:* ${form.message.trim()}` : null,
       ``,
-      `Hi Syed Abbas & Verbora team, I would like to book my Free 1-on-1 Diagnostic Call. Please confirm my slot!`,
+      `Hi Bijay Adhikari & Verbora team, I would like to book my Free 1-on-1 Diagnostic Call. Please confirm my slot!`,
     ].filter(Boolean).join('\n')
 
     const cleanNumber = WHATSAPP_PHONE_NUMBER.replace(/\D/g, '')
@@ -1993,7 +2034,7 @@ function ContactPage() {
   const faqs = [
     {
       q: 'How soon can I start my sessions after contacting?',
-      a: 'Our small-cohort batches start every single Monday. If you opt for 1-on-1 executive mentorship with Syed Abbas Zaidi, your sessions can begin within 48 hours following your initial speech diagnostic evaluation.',
+      a: 'Our small-cohort batches start every single Monday. If you opt for 1-on-1 executive mentorship with Bijay Adhikari, your sessions can begin within 48 hours following your initial speech diagnostic evaluation.',
     },
     {
       q: 'Are sessions conducted online or offline?',
@@ -2060,7 +2101,7 @@ function ContactPage() {
               <span className="section-kicker">Get In Touch</span>
               <h1>Let’s Talk About Your <span>Speech Journey.</span></h1>
               <p className="contact-hero-lead">
-                Have questions about our course batches, fees, or 1-on-1 mentorship with Syed Abbas Zaidi? Connect directly with our counselor and speech coaching desk.
+                Have questions about our course batches, fees, or 1-on-1 mentorship with Bijay Adhikari? Connect directly with our counselor and speech coaching desk.
               </p>
               <div className="contact-hero-chips">
                 <span><Clock size={15} /> Response within 2 hours</span>
@@ -2334,7 +2375,7 @@ function ContactPage() {
                 <span className="banner-kicker">Direct Leadership Access</span>
                 <h2>Prefer To Meet The Master Coach First?</h2>
                 <p>
-                  Explore Syed Abbas Zaidi’s 10+ years of executive coaching experience, the 4-pillar speech methodology, verified student reviews, and global alumni achievements.
+                  Explore Bijay Adhikari’s 10+ years of executive coaching experience, the 4-pillar speech methodology, verified student reviews, and global alumni achievements.
                 </p>
                 <div className="trainer-banner-actions">
                   <Link to="/trainer" className="primary-button">
@@ -2349,7 +2390,7 @@ function ContactPage() {
               <div className="trainer-banner-img-wrap">
                 <img
                   src="/assets/trainer-profile.jpg"
-                  alt="Syed Abbas Zaidi"
+                  alt="Bijay Adhikari"
                   className="trainer-banner-img"
                 />
               </div>
@@ -2476,7 +2517,8 @@ function downloadCSV(filename: string, rows: (string | number)[][]) {
   document.body.removeChild(link)
 }
 
-function VerboraEduAdminPage() {
+function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testimonials' }) {
+  const pathname = useRouterState({ select: state => state.location.pathname })
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
       return sessionStorage.getItem(ADMIN_STORAGE_KEY) === ADMIN_PASSKEY
@@ -2488,16 +2530,69 @@ function VerboraEduAdminPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
 
+  // Determine active section from URL or props
+  const isTestimonialsRoute = pathname.includes('/testimonials') || defaultRoute === 'testimonials'
+  const activeSection: 'leads' | 'testimonials' = isTestimonialsRoute ? 'testimonials' : 'leads'
+
+  // Determine base admin path (/verbora-edu-admin, /shivam-admin, /admin)
+  const baseAdminPath = pathname.startsWith('/shivam-admin')
+    ? '/shivam-admin'
+    : pathname.startsWith('/admin')
+      ? '/admin'
+      : '/verbora-edu-admin'
+
+  const leadsRoutePath = `${baseAdminPath}/leads`
+  const testimonialsRoutePath = `${baseAdminPath}/testimonials`
+
+  // Mobile sidebar state
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
   // Data states
   const [activeTab, setActiveTab] = useState<'bookings' | 'contacts' | 'subscribers'>('bookings')
   const [bookings, setBookings] = useState<DemoBooking[]>([])
   const [contacts, setContacts] = useState<ContactMessage[]>([])
   const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([])
+  const [testimonials, setTestimonials] = useState<Testimonial[]>(() => {
+    try {
+      return api.testimonials.getLocalTestimonials()
+    } catch {
+      return []
+    }
+  })
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+
+  // Testimonials filter & modal state
+  const [testimonialFilter, setTestimonialFilter] = useState<'all' | 'active' | 'hidden'>('all')
+  const [isTestimonialModalOpen, setIsTestimonialModalOpen] = useState(false)
+  const [editingTestimonial, setEditingTestimonial] = useState<Testimonial | null>(null)
+  const [testimonialForm, setTestimonialForm] = useState<{
+    name: string
+    role: string
+    image: string
+    video: string
+    text: string
+    badge: string
+    is_active: boolean
+  }>({
+    name: '',
+    role: '',
+    image: '',
+    video: '',
+    text: '',
+    badge: '',
+    is_active: true,
+  })
+
+  // Cloudinary upload state
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [uploadSuccessUrl, setUploadSuccessUrl] = useState<string | null>(null)
+  const [customPreset, setCustomPreset] = useState<string>(() => getSavedUploadPreset())
+  const [showCloudinarySettings, setShowCloudinarySettings] = useState(false)
 
   const showToast = (msg: string) => {
     setToastMessage(msg)
@@ -2528,18 +2623,147 @@ function VerboraEduAdminPage() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [bRes, cRes, sRes] = await Promise.all([
+      const [bRes, cRes, sRes, tRes] = await Promise.all([
         api.bookings.getDemoBookings(),
         api.contact.getContactMessages(),
         api.subscribers.getSubscribers(),
+        api.testimonials.getTestimonials(),
       ])
       if (bRes.data) setBookings(bRes.data)
       if (cRes.data) setContacts(cRes.data)
       if (sRes.data) setSubscribers(sRes.data)
+      if (tRes.data) setTestimonials(tRes.data)
     } catch (err) {
       console.error('Error fetching admin data:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Testimonials Handlers
+  const handleOpenAddTestimonial = () => {
+    setEditingTestimonial(null)
+    setTestimonialForm({
+      name: '',
+      role: '',
+      image: '/assets/testimonials/sample-avatar.jpg',
+      video: '',
+      text: '',
+      badge: '',
+      is_active: true,
+    })
+    setUploadError(null)
+    setUploadSuccessUrl(null)
+    setIsTestimonialModalOpen(true)
+  }
+
+  const handleOpenEditTestimonial = (item: Testimonial) => {
+    setEditingTestimonial(item)
+    setTestimonialForm({
+      name: item.name,
+      role: item.role,
+      image: item.image,
+      video: item.video || '',
+      text: item.text,
+      badge: item.badge || '',
+      is_active: item.is_active,
+    })
+    setUploadError(null)
+    setUploadSuccessUrl(null)
+    setIsTestimonialModalOpen(true)
+  }
+
+  const handleToggleTestimonialActive = async (id: string, current: boolean) => {
+    const next = !current
+    setUpdatingId(id)
+    setTestimonials(prev => prev.map(t => (t.id === id ? { ...t, is_active: next } : t)))
+    const res = await api.testimonials.updateTestimonial(id, { is_active: next })
+    if (res.success) {
+      showToast(`Testimonial is now ${next ? 'Published on Home' : 'Hidden from Website'}`)
+    }
+    setUpdatingId(null)
+  }
+
+  const handleDeleteTestimonial = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete testimonial by "${name}"?`)) return
+    setUpdatingId(id)
+    const res = await api.testimonials.deleteTestimonial(id)
+    if (res.success) {
+      setTestimonials(prev => prev.filter(t => t.id !== id))
+      showToast(`Testimonial by "${name}" deleted.`)
+    }
+    setUpdatingId(null)
+  }
+
+  const handleSaveTestimonial = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!testimonialForm.name.trim()) return alert('Please enter student name.')
+    if (!testimonialForm.role.trim()) return alert('Please enter student role or course.')
+    if (!testimonialForm.text.trim()) return alert('Please enter testimonial quote text.')
+    if (!testimonialForm.image.trim()) return alert('Please provide or upload an avatar image.')
+
+    setLoading(true)
+    try {
+      if (editingTestimonial) {
+        const res = await api.testimonials.updateTestimonial(editingTestimonial.id, {
+          name: testimonialForm.name.trim(),
+          role: testimonialForm.role.trim(),
+          image: testimonialForm.image.trim(),
+          video: testimonialForm.video.trim() || null,
+          text: testimonialForm.text.trim(),
+          badge: testimonialForm.badge.trim() || null,
+          is_active: testimonialForm.is_active,
+        })
+        if (res.data) {
+          setTestimonials(prev => prev.map(t => (t.id === editingTestimonial.id ? res.data! : t)))
+          showToast(`Testimonial for "${res.data.name}" updated!`)
+        }
+      } else {
+        const res = await api.testimonials.createTestimonial({
+          name: testimonialForm.name.trim(),
+          role: testimonialForm.role.trim(),
+          image: testimonialForm.image.trim(),
+          video: testimonialForm.video.trim() || null,
+          text: testimonialForm.text.trim(),
+          badge: testimonialForm.badge.trim() || null,
+          is_active: testimonialForm.is_active,
+        })
+        if (res.data) {
+          setTestimonials(prev => [res.data!, ...prev])
+          showToast(`New testimonial for "${res.data.name}" added to Home!`)
+        }
+      }
+      setIsTestimonialModalOpen(false)
+    } catch (err) {
+      console.error('Error saving testimonial:', err)
+      alert('Failed to save testimonial. Please check console.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleUploadImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingImage(true)
+    setUploadError(null)
+    setUploadSuccessUrl(null)
+
+    try {
+      saveUploadPreset(customPreset)
+      const result = await uploadImageToCloudinary(file, customPreset)
+      if (result.url) {
+        setTestimonialForm(prev => ({ ...prev, image: result.url! }))
+        setUploadSuccessUrl(result.url)
+        showToast('Image uploaded to Cloudinary successfully!')
+      } else {
+        setUploadError(result.error || 'Failed to upload image.')
+      }
+    } catch (err: any) {
+      setUploadError(err?.message || 'Error uploading file.')
+    } finally {
+      setUploadingImage(false)
     }
   }
 
@@ -2701,13 +2925,19 @@ function VerboraEduAdminPage() {
     )
   }
 
-  // Calculate Metrics
+  // Calculate Leads Metrics
   const totalBookings = bookings.length
   const newBookingsCount = bookings.filter(b => b.status === 'new').length
   const totalContacts = contacts.length
   const unreadContactsCount = contacts.filter(c => c.status === 'unread').length
   const totalSubscribers = subscribers.length
   const contactedRate = totalBookings > 0 ? Math.round(((totalBookings - newBookingsCount) / totalBookings) * 100) : 0
+
+  // Calculate Testimonials Metrics
+  const totalTestimonials = testimonials.length
+  const activeTestimonialsCount = testimonials.filter(t => t.is_active).length
+  const hiddenTestimonialsCount = totalTestimonials - activeTestimonialsCount
+  const videoTestimonialsCount = testimonials.filter(t => !!t.video).length
 
   // Filter lists
   const filteredBookings = bookings.filter(b => {
@@ -2738,47 +2968,146 @@ function VerboraEduAdminPage() {
     return !q || s.email.toLowerCase().includes(q)
   })
 
+  const filteredTestimonials = testimonials.filter(t => {
+    const q = searchQuery.toLowerCase().trim()
+    const matchesSearch = !q ||
+      t.name.toLowerCase().includes(q) ||
+      t.role.toLowerCase().includes(q) ||
+      t.text.toLowerCase().includes(q) ||
+      (t.badge && t.badge.toLowerCase().includes(q))
+    const matchesStatus =
+      testimonialFilter === 'all' ||
+      (testimonialFilter === 'active' ? t.is_active : !t.is_active)
+    return matchesSearch && matchesStatus
+  })
+
   return (
     <div className="admin-page-root">
-      {/* Admin Sticky Navigation */}
-      <header className="admin-nav">
-        <div className="admin-nav-brand">
-          <Link to="/" className="admin-nav-logo">VERBORA</Link>
-          <span className="admin-nav-badge">Edu Admin</span>
-        </div>
+      <div className="admin-layout-sidebar">
+        {/* Mobile Backdrop */}
+        {sidebarOpen && (
+          <div
+            className="admin-sidebar-backdrop"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
 
-        <div className="admin-nav-actions">
-          <div className="admin-live-indicator" title="Connected to Supabase PostgreSQL">
-            <span className="admin-live-dot" />
-            <span>Database Live</span>
+        {/* Sidebar */}
+        <aside className={`admin-sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
+          <div className="admin-sidebar-brand">
+            <Link to="/" className="admin-nav-logo">VERBORA</Link>
+            <span className="admin-nav-badge">Edu Admin</span>
           </div>
 
-          <button
-            type="button"
-            className="admin-icon-btn"
-            onClick={loadData}
-            disabled={loading}
-            title="Refresh Leads Data"
-          >
-            <RefreshCw size={14} className={loading ? 'spin' : ''} />
-            <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
-          </button>
+          <nav className="admin-sidebar-nav">
+            <div className="admin-sidebar-section-title">CHANNELS & DATA</div>
 
-          <button
-            type="button"
-            className="admin-icon-btn admin-logout-btn"
-            onClick={handleLogout}
-            title="Lock Dashboard & Logout"
-          >
-            <LogOut size={14} />
-            <span>Logout</span>
-          </button>
-        </div>
-      </header>
+            <Link
+              to={leadsRoutePath}
+              className={`admin-sidebar-link ${activeSection === 'leads' ? 'active' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            >
+              <UsersRound size={18} />
+              <span className="admin-sidebar-link-text">Leads & Inquiries</span>
+              {newBookingsCount + unreadContactsCount > 0 ? (
+                <span className="admin-sidebar-pill">
+                  {newBookingsCount + unreadContactsCount}
+                </span>
+              ) : (
+                <span className="admin-sidebar-pill-subtle">
+                  {totalBookings + totalContacts}
+                </span>
+              )}
+            </Link>
 
-      {/* Main Container */}
-      <main className="admin-container">
-        {/* KPI Stats Overview */}
+            <Link
+              to={testimonialsRoutePath}
+              className={`admin-sidebar-link ${activeSection === 'testimonials' ? 'active' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            >
+              <Quote size={18} />
+              <span className="admin-sidebar-link-text">Home Testimonials</span>
+              <span className="admin-sidebar-pill admin-sidebar-pill-secondary">
+                {totalTestimonials}
+              </span>
+            </Link>
+          </nav>
+
+          <div className="admin-sidebar-footer">
+            <div className="admin-live-indicator" title="Connected to Supabase PostgreSQL & Cloudinary">
+              <span className="admin-live-dot" />
+              <span>Database Live</span>
+            </div>
+
+            <a
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="admin-sidebar-view-site"
+            >
+              <ExternalLink size={14} />
+              <span>View Live Website</span>
+            </a>
+          </div>
+        </aside>
+
+        {/* Main Content Area */}
+        <div className="admin-main-wrapper">
+          {/* Top Bar Header */}
+          <header className="admin-topbar">
+            <div className="admin-topbar-left">
+              <button
+                type="button"
+                className="admin-sidebar-toggle-btn"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                aria-label="Toggle navigation menu"
+              >
+                <Menu size={20} />
+              </button>
+
+              <div className="admin-breadcrumbs">
+                <span className="admin-breadcrumb-muted">Admin</span>
+                <span className="admin-breadcrumb-sep">/</span>
+                <span className="admin-breadcrumb-active">
+                  {activeSection === 'leads' ? 'Leads & Inquiries' : 'Home Testimonials'}
+                </span>
+              </div>
+            </div>
+
+            <div className="admin-topbar-right">
+              <div className="admin-live-indicator-desktop" title="Supabase PostgreSQL">
+                <span className="admin-live-dot" />
+                <span>Supabase Live</span>
+              </div>
+
+              <button
+                type="button"
+                className="admin-icon-btn"
+                onClick={loadData}
+                disabled={loading}
+                title="Refresh leads and testimonials"
+              >
+                <RefreshCw size={14} className={loading ? 'spin' : ''} />
+                <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
+              </button>
+
+              <button
+                type="button"
+                className="admin-icon-btn admin-logout-btn"
+                onClick={handleLogout}
+                title="Lock Dashboard & Logout"
+              >
+                <LogOut size={14} />
+                <span>Logout</span>
+              </button>
+            </div>
+          </header>
+
+          {/* Main Content Container */}
+          <main className="admin-container">
+            {activeSection === 'leads' && (
+              <>
+                {/* KPI Stats Overview */}
         <section className="admin-stats-grid">
           <div className="admin-stat-card">
             <div className="admin-stat-header">
@@ -3291,7 +3620,493 @@ function VerboraEduAdminPage() {
             </div>
           </div>
         )}
-      </main>
+              </>
+            )}
+
+            {/* Testimonials Section */}
+            {activeSection === 'testimonials' && (
+              <>
+                {/* Testimonials KPI Stats */}
+                <section className="admin-stats-grid">
+                  <div className="admin-stat-card">
+                    <div className="admin-stat-header">
+                      <span className="admin-stat-label">Total Testimonials</span>
+                      <div className="admin-stat-icon"><Quote size={18} /></div>
+                    </div>
+                    <div className="admin-stat-value">{totalTestimonials}</div>
+                    <div className="admin-stat-sub">
+                      <span className="admin-stat-sub-badge">{activeTestimonialsCount} Active</span>
+                      <span>shown on home page</span>
+                    </div>
+                  </div>
+
+                  <div className="admin-stat-card">
+                    <div className="admin-stat-header">
+                      <span className="admin-stat-label">Active on Website</span>
+                      <div className="admin-stat-icon"><CheckCircle2 size={18} /></div>
+                    </div>
+                    <div className="admin-stat-value">{activeTestimonialsCount}</div>
+                    <div className="admin-stat-sub">
+                      <span className="admin-stat-sub-badge">Live</span>
+                      <span>visible to visitors</span>
+                    </div>
+                  </div>
+
+                  <div className="admin-stat-card">
+                    <div className="admin-stat-header">
+                      <span className="admin-stat-label">Draft / Hidden</span>
+                      <div className="admin-stat-icon"><EyeOff size={18} /></div>
+                    </div>
+                    <div className="admin-stat-value">{hiddenTestimonialsCount}</div>
+                    <div className="admin-stat-sub">
+                      <span className="admin-stat-sub-badge">Not visible</span>
+                      <span>in home carousel</span>
+                    </div>
+                  </div>
+
+                  <div className="admin-stat-card">
+                    <div className="admin-stat-header">
+                      <span className="admin-stat-label">Video Stories</span>
+                      <div className="admin-stat-icon"><Video size={18} /></div>
+                    </div>
+                    <div className="admin-stat-value">{videoTestimonialsCount}</div>
+                    <div className="admin-stat-sub">
+                      <span className="admin-stat-sub-badge">With video modal</span>
+                      <span>interactive stories</span>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Testimonials Toolbar */}
+                <div className="admin-toolbar">
+                  <div className="admin-toolbar-actions admin-toolbar-testimonials">
+                    <div className="admin-search-box">
+                      <Search size={14} className="admin-search-icon" />
+                      <input
+                        type="text"
+                        placeholder="Search student, role, quote, badge..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        className="admin-search-input"
+                      />
+                      {searchQuery && (
+                        <button
+                          type="button"
+                          className="admin-search-clear"
+                          onClick={() => setSearchQuery('')}
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
+
+                    <select
+                      className="admin-filter-select"
+                      value={testimonialFilter}
+                      onChange={e => setTestimonialFilter(e.target.value as any)}
+                    >
+                      <option value="all">All Statuses ({totalTestimonials})</option>
+                      <option value="active">Active Only ({activeTestimonialsCount})</option>
+                      <option value="hidden">Hidden Only ({hiddenTestimonialsCount})</option>
+                    </select>
+
+                    <button
+                      type="button"
+                      className="admin-btn-primary"
+                      onClick={handleOpenAddTestimonial}
+                    >
+                      <Plus size={15} />
+                      <span>Add Testimonial</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Cloudinary Info Banner */}
+                <div className="admin-cloud-banner">
+                  <div className="admin-cloud-banner-icon">
+                    <Upload size={18} />
+                  </div>
+                  <div className="admin-cloud-banner-body">
+                    <strong>Cloudinary Avatar Storage</strong>
+                    <p>
+                      Images uploaded for student testimonials are stored directly on your Cloudinary cloud <code>{CLOUDINARY_CLOUD_NAME}</code> and synced dynamically to the Home page stories carousel.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="admin-cloud-banner-settings-btn"
+                    onClick={() => setShowCloudinarySettings(!showCloudinarySettings)}
+                  >
+                    Preset: <code>{customPreset}</code>
+                  </button>
+                </div>
+
+                {showCloudinarySettings && (
+                  <div className="admin-cloud-settings-drawer">
+                    <div className="admin-cloud-settings-header">
+                      <h4>Cloudinary Upload Preset Configuration</h4>
+                      <p>
+                        Cloud name: <code>{CLOUDINARY_CLOUD_NAME}</code>. Cloudinary requires an <em>Unsigned</em> upload preset for direct frontend uploads. Default is <code>verbora_uploads</code>. If your preset has a different name, specify it below:
+                      </p>
+                    </div>
+                    <div className="admin-cloud-settings-row">
+                      <input
+                        type="text"
+                        value={customPreset}
+                        onChange={e => setCustomPreset(e.target.value.trim())}
+                        placeholder="e.g. verbora_uploads or ml_default"
+                        className="admin-input-styled"
+                      />
+                      <button
+                        type="button"
+                        className="admin-btn-primary"
+                        onClick={() => {
+                          saveUploadPreset(customPreset)
+                          showToast('Upload preset updated and saved in browser!')
+                          setShowCloudinarySettings(false)
+                        }}
+                      >
+                        Save Preset
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Testimonials Cards Grid */}
+                {filteredTestimonials.length === 0 ? (
+                  <div className="admin-table-card">
+                    <div className="admin-empty-state">
+                      <Quote size={40} className="admin-empty-icon" />
+                      <p>No testimonials found matching your filter.</p>
+                      <button
+                        type="button"
+                        className="admin-btn-primary"
+                        style={{ marginTop: 14 }}
+                        onClick={handleOpenAddTestimonial}
+                      >
+                        <Plus size={15} />
+                        <span>Create First Testimonial</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="admin-testimonials-grid">
+                    {filteredTestimonials.map(t => (
+                      <div
+                        key={t.id}
+                        className={`admin-testimonial-card ${!t.is_active ? 'card-inactive' : ''}`}
+                      >
+                        <div className="admin-testi-card-header">
+                          <div className="admin-testi-avatar-wrap">
+                            <img
+                              src={t.image}
+                              alt={t.name}
+                              className="admin-testi-avatar-img"
+                              onError={e => {
+                                ;(e.target as HTMLImageElement).src =
+                                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80'
+                              }}
+                            />
+                            {t.video && (
+                              <span className="admin-testi-video-badge" title="Has attached video story">
+                                <Video size={11} />
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="admin-testi-meta">
+                            <div className="admin-testi-name-row">
+                              <h3 className="admin-testi-name">{t.name}</h3>
+                              <button
+                                type="button"
+                                className={`admin-status-pill ${t.is_active ? 'pill-active' : 'pill-hidden'}`}
+                                onClick={() => handleToggleTestimonialActive(t.id, t.is_active)}
+                                title={t.is_active ? 'Click to hide from website' : 'Click to show on website'}
+                              >
+                                {t.is_active ? '● Active' : '○ Hidden'}
+                              </button>
+                            </div>
+                            <p className="admin-testi-role">{t.role}</p>
+                            {t.badge && (
+                              <span className="admin-testi-tag">
+                                <Sparkles size={11} />
+                                {t.badge}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="admin-testi-quote-wrap">
+                          <Quote size={16} className="admin-testi-quote-icon" />
+                          <p className="admin-testi-quote-text">"{t.text}"</p>
+                        </div>
+
+                        {t.video && (
+                          <div className="admin-testi-video-link">
+                            <Video size={13} />
+                            <a href={t.video} target="_blank" rel="noopener noreferrer">
+                              Watch Video Story Link
+                            </a>
+                          </div>
+                        )}
+
+                        <div className="admin-testi-card-footer">
+                          <div className="admin-testi-date">
+                            {new Date(t.created_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </div>
+
+                          <div className="admin-testi-card-actions">
+                            <button
+                              type="button"
+                              className="admin-action-btn admin-btn-edit"
+                              onClick={() => handleOpenEditTestimonial(t)}
+                              title="Edit testimonial"
+                            >
+                              <Edit3 size={13} />
+                              <span>Edit</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              className="admin-action-btn admin-action-delete"
+                              onClick={() => handleDeleteTestimonial(t.id, t.name)}
+                              title="Delete testimonial"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </main>
+        </div>
+      </div>
+
+      {/* Add / Edit Testimonial Modal */}
+      {isTestimonialModalOpen && (
+        <div className="admin-modal-overlay">
+          <div className="admin-modal-dialog">
+            <div className="admin-modal-header">
+              <div className="admin-modal-title-group">
+                <div className="admin-modal-icon">
+                  <Quote size={18} />
+                </div>
+                <div>
+                  <h3 className="admin-modal-title">
+                    {editingTestimonial ? 'Edit Student Testimonial' : 'Add New Home Testimonial'}
+                  </h3>
+                  <p className="admin-modal-sub">
+                    This testimonial is shown dynamically in the Stories carousel on the Home page.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="admin-modal-close-btn"
+                onClick={() => setIsTestimonialModalOpen(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveTestimonial} className="admin-modal-form">
+              <div className="admin-form-grid-2">
+                <div className="admin-form-group">
+                  <label className="admin-form-label">
+                    Student Full Name <span className="req">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Priyanshu Sharma"
+                    value={testimonialForm.name}
+                    onChange={e => setTestimonialForm(prev => ({ ...prev, name: e.target.value }))}
+                    className="admin-input-styled"
+                  />
+                </div>
+
+                <div className="admin-form-group">
+                  <label className="admin-form-label">
+                    Role / Course Title <span className="req">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Software Engineer, Spoken English"
+                    value={testimonialForm.role}
+                    onChange={e => setTestimonialForm(prev => ({ ...prev, role: e.target.value }))}
+                    className="admin-input-styled"
+                  />
+                </div>
+              </div>
+
+              <div className="admin-form-grid-2">
+                <div className="admin-form-group">
+                  <label className="admin-form-label">
+                    Badge / Tagline (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Fluency Breakthrough, Job Placement"
+                    value={testimonialForm.badge}
+                    onChange={e => setTestimonialForm(prev => ({ ...prev, badge: e.target.value }))}
+                    className="admin-input-styled"
+                  />
+                </div>
+
+                <div className="admin-form-group">
+                  <label className="admin-form-label">
+                    Story Video URL (Optional)
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://res.cloudinary.com/... or MP4 video"
+                    value={testimonialForm.video}
+                    onChange={e => setTestimonialForm(prev => ({ ...prev, video: e.target.value }))}
+                    className="admin-input-styled"
+                  />
+                </div>
+              </div>
+
+              {/* Cloudinary Avatar Upload Section */}
+              <div className="admin-avatar-upload-block">
+                <label className="admin-form-label">
+                  Student Avatar Image <span className="req">*</span>
+                </label>
+
+                <div className="admin-avatar-upload-row">
+                  <div className="admin-avatar-preview-box">
+                    {testimonialForm.image ? (
+                      <img
+                        src={testimonialForm.image}
+                        alt="Avatar preview"
+                        className="admin-avatar-preview-img"
+                        onError={e => {
+                          ;(e.target as HTMLImageElement).src =
+                            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80'
+                        }}
+                      />
+                    ) : (
+                      <div className="admin-avatar-empty">
+                        <Image size={24} />
+                        <span>No Avatar</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="admin-avatar-upload-controls">
+                    <div className="admin-avatar-file-upload">
+                      <label className="admin-file-picker-btn">
+                        <Upload size={14} className={uploadingImage ? 'spin' : ''} />
+                        <span>{uploadingImage ? 'Uploading to Cloudinary...' : 'Upload Image to Cloudinary'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleUploadImageFile}
+                          disabled={uploadingImage}
+                          style={{ display: 'none' }}
+                        />
+                      </label>
+                      <span className="admin-upload-note">
+                        Saved directly to Cloudinary cloud <strong>{CLOUDINARY_CLOUD_NAME}</strong>
+                      </span>
+                    </div>
+
+                    <div className="admin-avatar-url-fallback">
+                      <span className="admin-or-divider">or paste direct image URL</span>
+                      <input
+                        type="url"
+                        placeholder="https://res.cloudinary.com/... or image link"
+                        value={testimonialForm.image}
+                        onChange={e => setTestimonialForm(prev => ({ ...prev, image: e.target.value }))}
+                        className="admin-input-styled admin-input-url"
+                      />
+                    </div>
+
+                    {uploadError && (
+                      <div className="admin-upload-alert admin-upload-error">
+                        <AlertCircle size={14} />
+                        <span>{uploadError}</span>
+                      </div>
+                    )}
+
+                    {uploadSuccessUrl && (
+                      <div className="admin-upload-alert admin-upload-success">
+                        <CheckCircle2 size={14} />
+                        <span>Image uploaded to Cloudinary successfully!</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="admin-form-group">
+                <label className="admin-form-label">
+                  Student Testimonial Quote <span className="req">*</span>
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Share what the student experienced, their journey, transformation, and results with Verbora..."
+                  value={testimonialForm.text}
+                  onChange={e => setTestimonialForm(prev => ({ ...prev, text: e.target.value }))}
+                  className="admin-textarea-styled"
+                />
+              </div>
+
+              <div className="admin-form-checkbox-row">
+                <label className="admin-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={testimonialForm.is_active}
+                    onChange={e => setTestimonialForm(prev => ({ ...prev, is_active: e.target.checked }))}
+                    className="admin-checkbox"
+                  />
+                  <span>Publish actively on Home page</span>
+                </label>
+              </div>
+
+              <div className="admin-modal-footer">
+                <button
+                  type="button"
+                  className="admin-btn-secondary"
+                  onClick={() => setIsTestimonialModalOpen(false)}
+                  disabled={loading || uploadingImage}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="admin-btn-primary"
+                  disabled={loading || uploadingImage}
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw size={14} className="spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check size={14} />
+                      <span>{editingTestimonial ? 'Update Testimonial' : 'Save & Publish'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Toast Notification */}
       {toastMessage && (
@@ -3307,7 +4122,7 @@ function VerboraEduAdminPage() {
 function RootLayout() {
   const pathname = useRouterState({ select: state => state.location.pathname })
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }) }, [pathname])
-  const isAdmin = pathname.startsWith('/verbora-edu-admin') || pathname.startsWith('/shivam-admin')
+  const isAdmin = pathname.startsWith('/verbora-edu-admin') || pathname.startsWith('/shivam-admin') || pathname.startsWith('/admin')
   return (
     <>
       <Outlet />
@@ -3326,9 +4141,42 @@ const storiesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/stor
 const successStoriesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/success-stories', component: StoriesPage })
 const contactRoute = createRoute({ getParentRoute: () => rootRoute, path: '/contact', component: ContactPage })
 const contactUsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/contact-us', component: ContactPage })
-const verboraEduAdminRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin', component: VerboraEduAdminPage })
-const shivamAdminRoute = createRoute({ getParentRoute: () => rootRoute, path: '/shivam-admin', component: VerboraEduAdminPage })
-const routeTree = rootRoute.addChildren([indexRoute, courseRoute, aboutRoute, trainerRoute, trainersRoute, storiesRoute, successStoriesRoute, contactRoute, contactUsRoute, verboraEduAdminRoute, shivamAdminRoute])
+
+// Admin Routes (Main portal, Leads, Testimonials)
+const verboraEduAdminRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
+const verboraEduAdminLeadsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin/leads', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
+const verboraEduAdminTestimonialsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin/testimonials', component: () => <VerboraEduAdminPage defaultRoute="testimonials" /> })
+
+// Shivam-admin Aliases
+const shivamAdminRoute = createRoute({ getParentRoute: () => rootRoute, path: '/shivam-admin', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
+const shivamAdminLeadsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/shivam-admin/leads', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
+const shivamAdminTestimonialsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/shivam-admin/testimonials', component: () => <VerboraEduAdminPage defaultRoute="testimonials" /> })
+
+// General admin Aliases
+const adminRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admin', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
+const adminLeadsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admin/leads', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
+const adminTestimonialsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admin/testimonials', component: () => <VerboraEduAdminPage defaultRoute="testimonials" /> })
+
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  courseRoute,
+  aboutRoute,
+  trainerRoute,
+  trainersRoute,
+  storiesRoute,
+  successStoriesRoute,
+  contactRoute,
+  contactUsRoute,
+  verboraEduAdminRoute,
+  verboraEduAdminLeadsRoute,
+  verboraEduAdminTestimonialsRoute,
+  shivamAdminRoute,
+  shivamAdminLeadsRoute,
+  shivamAdminTestimonialsRoute,
+  adminRoute,
+  adminLeadsRoute,
+  adminTestimonialsRoute,
+])
 const router = createRouter({ routeTree })
 
 declare module '@tanstack/react-router' { interface Register { router: typeof router } }
