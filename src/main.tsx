@@ -509,33 +509,27 @@ function Hero() {
 
 function CoursesSection() {
   return (
-    <section className="home-row-section" id="courses">
+    <section className="courses-section" id="courses">
       <div className="home-row-header">
         <h2 className="home-row-title">Comprehensive Courses for Your Growth</h2>
         <p className="home-row-sub">Choose a structured program designed to build fluent, confident, and professional speech.</p>
       </div>
 
-      <div className="home-cards-scroll-track">
+      <div className="course-grid">
         {courses.map(course => (
           <Link
             to="/courses/$courseSlug"
             params={{ courseSlug: course.id }}
             key={course.id}
-            className="home-course-item-card"
+            className="course-card"
           >
-            <div className="home-course-thumb-wrap">
-              <img src={course.cover} alt={course.title} className="home-course-thumb-img" />
-              <span className="home-course-icon-badge">
-                <course.icon size={18} strokeWidth={2.4} />
+            <img src={course.cover} alt={course.title} className="course-card-img" />
+            <div className="course-card-overlay">
+              <span className="course-card-icon-wrap">
+                <course.icon size={19} strokeWidth={2.4} />
               </span>
-            </div>
-            <div className="home-course-info">
-              <strong className="home-course-name">{course.title}</strong>
-              <p className="home-course-tagline">{course.short}</p>
-              <div className="home-course-card-footer">
-                <span className="home-course-link-text">Explore Program</span>
-                <MoveRight size={14} />
-              </div>
+              <strong className="course-card-heading">{course.title}</strong>
+              <span className="course-card-subheading">{course.short}</span>
             </div>
           </Link>
         ))}

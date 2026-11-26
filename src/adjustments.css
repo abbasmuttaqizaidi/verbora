@@ -7866,7 +7866,7 @@ footer.site-footer::before {
   max-width: 1540px;
   width: 100%;
   margin: 0 auto 20px;
-  padding: 0 3.4%;
+  padding: 0;
   box-sizing: border-box;
 }
 
@@ -7897,7 +7897,7 @@ footer.site-footer::before {
   gap: 18px !important;
   overflow-x: auto !important;
   overflow-y: hidden !important;
-  padding: 8px 3.4% 20px !important;
+  padding: 8px 0 20px !important;
   margin: 0 !important;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
@@ -8195,7 +8195,7 @@ footer.site-footer::before {
 .home-resources-container {
   max-width: 1540px;
   margin: 0 auto;
-  padding: 0 3.4%;
+  padding: 0;
   box-sizing: border-box;
 }
 
@@ -8263,7 +8263,7 @@ footer.site-footer::before {
   }
   .home-row-header {
     margin-bottom: 14px;
-    padding: 0 16px;
+    padding: 0;
   }
   .home-row-title {
     font-size: 22px !important;
@@ -8273,7 +8273,7 @@ footer.site-footer::before {
   }
   .home-cards-scroll-track {
     gap: 14px !important;
-    padding: 4px 16px 16px !important;
+    padding: 4px 0 16px !important;
   }
   .home-course-item-card {
     flex: 0 0 280px !important;
@@ -8290,7 +8290,7 @@ footer.site-footer::before {
     padding: 16px;
   }
   .home-resources-container {
-    padding: 0 16px;
+    padding: 0;
   }
   .home-tip-card {
     padding: 18px 16px;
