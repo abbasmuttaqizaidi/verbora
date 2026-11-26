@@ -68,6 +68,8 @@ export interface Testimonial {
   badge?: string | null
   is_active: boolean
   display_order?: number
+  video_size_bytes?: number | null
+  image_size_bytes?: number | null
 }
 
 export type CreateTestimonialInput = {
@@ -79,6 +81,8 @@ export type CreateTestimonialInput = {
   badge?: string | null
   is_active?: boolean
   display_order?: number
+  video_size_bytes?: number | null
+  image_size_bytes?: number | null
 }
 
 export type UpdateTestimonialInput = Partial<CreateTestimonialInput>

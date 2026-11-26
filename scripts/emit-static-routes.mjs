@@ -22,12 +22,15 @@ const pages = [
   'verbora-edu-admin',
   'verbora-edu-admin/leads',
   'verbora-edu-admin/testimonials',
+  'verbora-edu-admin/testimonials/add',
   'shivam-admin',
   'shivam-admin/leads',
   'shivam-admin/testimonials',
+  'shivam-admin/testimonials/add',
   'admin',
   'admin/leads',
   'admin/testimonials',
+  'admin/testimonials/add',
 ]
 for (const page of pages) {
   const directory = resolve(dist, ...page.split('/'))

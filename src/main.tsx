@@ -18,13 +18,20 @@ import {
   Quote, HeartHandshake, Target, Award, BadgeCheck, ShieldCheck,
   MapPin, Send, Lock, KeyRound, RefreshCw, Trash2, Download, LogOut,
   Eye, EyeOff, Database, Inbox, Calendar, AlertCircle,
-  Plus, Edit3, Image, Upload, Video, ExternalLink,
+  Plus, Edit3, Image, Upload, Video, ExternalLink, ArrowLeft, HardDrive, Zap,
 } from 'lucide-react'
 import './styles.css'
 import './adjustments.css'
 import { api } from './api'
 import { DemoBooking, ContactMessage, Testimonial } from './types/database'
-import { uploadImageToCloudinary, getSavedUploadPreset, saveUploadPreset, CLOUDINARY_CLOUD_NAME } from './lib/cloudinary'
+import {
+  uploadImageToCloudinary,
+  uploadVideoToCloudinary,
+  getSavedUploadPreset,
+  saveUploadPreset,
+  CLOUDINARY_CLOUD_NAME,
+  MAX_STORAGE_BYTES,
+} from './lib/cloudinary'
 
 type CourseId = 'spoken-english' | 'business-english' | 'public-speaking' | 'interview-preparation' | 'personality-development'
 
@@ -2517,8 +2524,10 @@ function downloadCSV(filename: string, rows: (string | number)[][]) {
   document.body.removeChild(link)
 }
 
-function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testimonials' }) {
+function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testimonials' | 'testimonials-add' }) {
   const pathname = useRouterState({ select: state => state.location.pathname })
+  const editIdMatch = pathname.match(/\/testimonials\/edit\/([^/?#]+)/)
+  const editId = editIdMatch ? editIdMatch[1] : undefined
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
       return sessionStorage.getItem(ADMIN_STORAGE_KEY) === ADMIN_PASSKEY
@@ -2530,8 +2539,12 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const [showPassword, setShowPassword] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
 
-  // Determine active section from URL or props
-  const isTestimonialsRoute = pathname.includes('/testimonials') || defaultRoute === 'testimonials'
+  // Determine active section and view mode from URL or props
+  const isTestimonialsAddRoute = pathname.includes('/testimonials/add') || defaultRoute === 'testimonials-add'
+  const isTestimonialsEditRoute = (pathname.includes('/testimonials/edit/') || (pathname.includes('/testimonials') && !!editId))
+  const isTestimonialsFormRoute = isTestimonialsAddRoute || isTestimonialsEditRoute
+
+  const isTestimonialsRoute = isTestimonialsFormRoute || pathname.includes('/testimonials') || defaultRoute === 'testimonials'
   const activeSection: 'leads' | 'testimonials' = isTestimonialsRoute ? 'testimonials' : 'leads'
 
   // Determine base admin path (/verbora-edu-admin, /shivam-admin, /admin)
@@ -2543,6 +2556,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
 
   const leadsRoutePath = `${baseAdminPath}/leads`
   const testimonialsRoutePath = `${baseAdminPath}/testimonials`
+  const addTestimonialRoutePath = `${baseAdminPath}/testimonials/add`
 
   // Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -2563,9 +2577,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
-  // Testimonials filter & modal state
+  // Testimonials filter & form state
   const [testimonialFilter, setTestimonialFilter] = useState<'all' | 'active' | 'hidden'>('all')
-  const [isTestimonialModalOpen, setIsTestimonialModalOpen] = useState(false)
   const [editingTestimonial, setEditingTestimonial] = useState<Testimonial | null>(null)
   const [testimonialForm, setTestimonialForm] = useState<{
     name: string
@@ -2578,7 +2591,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   }>({
     name: '',
     role: '',
-    image: '',
+    image: '/assets/testimonials/sample-avatar.jpg',
     video: '',
     text: '',
     badge: '',
@@ -2587,10 +2600,14 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
 
   // Cloudinary upload state
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadingVideo, setUploadingVideo] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [videoUploadError, setVideoUploadError] = useState<string | null>(null)
   const [uploadSuccessUrl, setUploadSuccessUrl] = useState<string | null>(null)
+  const [videoSuccessUrl, setVideoSuccessUrl] = useState<string | null>(null)
   const [customPreset, setCustomPreset] = useState<string>(() => getSavedUploadPreset())
   const [showCloudinarySettings, setShowCloudinarySettings] = useState(false)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
   const showToast = (msg: string) => {
     setToastMessage(msg)
@@ -2636,21 +2653,40 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     }
   }
 
+  // Populate form if on edit route with editId or query param
+  useEffect(() => {
+    if (editId && testimonials.length > 0) {
+      const found = testimonials.find(t => t.id === editId)
+      if (found) {
+        setEditingTestimonial(found)
+        setTestimonialForm({
+          name: found.name,
+          role: found.role,
+          image: found.image,
+          video: found.video || '',
+          text: found.text,
+          badge: found.badge || '',
+          is_active: found.is_active,
+        })
+      }
+    } else if (isTestimonialsAddRoute) {
+      setEditingTestimonial(null)
+      setTestimonialForm({
+        name: '',
+        role: '',
+        image: '/assets/testimonials/sample-avatar.jpg',
+        video: '',
+        text: '',
+        badge: '',
+        is_active: true,
+      })
+    }
+  }, [editId, isTestimonialsAddRoute, testimonials])
+
   // Testimonials Handlers
   const handleOpenAddTestimonial = () => {
-    setEditingTestimonial(null)
-    setTestimonialForm({
-      name: '',
-      role: '',
-      image: '/assets/testimonials/sample-avatar.jpg',
-      video: '',
-      text: '',
-      badge: '',
-      is_active: true,
-    })
-    setUploadError(null)
-    setUploadSuccessUrl(null)
-    setIsTestimonialModalOpen(true)
+    window.history.pushState(null, '', addTestimonialRoutePath)
+    window.dispatchEvent(new PopStateEvent('popstate'))
   }
 
   const handleOpenEditTestimonial = (item: Testimonial) => {
@@ -2664,9 +2700,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
       badge: item.badge || '',
       is_active: item.is_active,
     })
-    setUploadError(null)
-    setUploadSuccessUrl(null)
-    setIsTestimonialModalOpen(true)
+    window.history.pushState(null, '', `${testimonialsRoutePath}/edit/${item.id}`)
+    window.dispatchEvent(new PopStateEvent('popstate'))
   }
 
   const handleToggleTestimonialActive = async (id: string, current: boolean) => {
@@ -2713,6 +2748,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
         if (res.data) {
           setTestimonials(prev => prev.map(t => (t.id === editingTestimonial.id ? res.data! : t)))
           showToast(`Testimonial for "${res.data.name}" updated!`)
+          window.history.pushState(null, '', testimonialsRoutePath)
+          window.dispatchEvent(new PopStateEvent('popstate'))
         }
       } else {
         const res = await api.testimonials.createTestimonial({
@@ -2727,9 +2764,10 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
         if (res.data) {
           setTestimonials(prev => [res.data!, ...prev])
           showToast(`New testimonial for "${res.data.name}" added to Home!`)
+          window.history.pushState(null, '', testimonialsRoutePath)
+          window.dispatchEvent(new PopStateEvent('popstate'))
         }
       }
-      setIsTestimonialModalOpen(false)
     } catch (err) {
       console.error('Error saving testimonial:', err)
       alert('Failed to save testimonial. Please check console.')
@@ -2760,6 +2798,34 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
       setUploadError(err?.message || 'Error uploading file.')
     } finally {
       setUploadingImage(false)
+    }
+  }
+
+  const handleUploadVideoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingVideo(true)
+    setVideoUploadError(null)
+    setVideoSuccessUrl(null)
+
+    try {
+      saveUploadPreset(customPreset)
+      const result = await uploadVideoToCloudinary(file, totalUsedStorageBytes, customPreset)
+      if (result.url) {
+        setTestimonialForm(prev => ({ ...prev, video: result.url! }))
+        setVideoSuccessUrl(result.url)
+        showToast(`Video uploaded successfully (${((result.bytes || file.size) / (1024 * 1024)).toFixed(1)} MB)!`)
+      } else {
+        setVideoUploadError(result.error || 'Failed to upload video.')
+        if (result.error && result.error.includes('Storage Quota Exceeded')) {
+          setShowUpgradeModal(true)
+        }
+      }
+    } catch (err: any) {
+      setVideoUploadError(err?.message || 'Error uploading video.')
+    } finally {
+      setUploadingVideo(false)
     }
   }
 
@@ -2877,11 +2943,32 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     contacts.filter(c => c.status !== 'unread').length
   const leadActionRate = totalLeads > 0 ? Math.round((contactedLeadsCount / totalLeads) * 100) : 0
 
-  // Calculate Testimonials Metrics
+  // Calculate Testimonials Metrics & Storage Usage
   const totalTestimonials = testimonials.length
   const activeTestimonialsCount = testimonials.filter(t => t.is_active).length
   const hiddenTestimonialsCount = totalTestimonials - activeTestimonialsCount
   const videoTestimonialsCount = testimonials.filter(t => !!t.video).length
+
+  // Calculate used storage bytes across testimonials (images & videos)
+  const totalUsedStorageBytes = testimonials.reduce((acc, t) => {
+    let bytes = 0
+    if (t.video_size_bytes) {
+      bytes += t.video_size_bytes
+    } else if (t.video && t.video.includes('cloudinary.com')) {
+      bytes += 8 * 1024 * 1024 // Estimated 8MB for existing Cloudinary video
+    }
+    if (t.image_size_bytes) {
+      bytes += t.image_size_bytes
+    } else if (t.image && t.image.includes('cloudinary.com')) {
+      bytes += 350 * 1024 // Estimated 350KB for uploaded avatar
+    }
+    return acc + bytes
+  }, 0)
+
+  const usedStorageMB = (totalUsedStorageBytes / (1024 * 1024)).toFixed(1)
+  const maxStorageMB = 100
+  const storageUsagePercent = Math.min(100, Math.round((totalUsedStorageBytes / MAX_STORAGE_BYTES) * 100))
+  const isStorageQuotaExceeded = totalUsedStorageBytes >= MAX_STORAGE_BYTES
 
   // Construct Unified Leads list
   type UnifiedLeadType = 'booking' | 'contact'
@@ -3074,9 +3161,21 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
               <div className="admin-breadcrumbs">
                 <span className="admin-breadcrumb-muted">Admin</span>
                 <span className="admin-breadcrumb-sep">/</span>
-                <span className="admin-breadcrumb-active">
-                  {activeSection === 'leads' ? 'Leads & Inquiries' : 'Home Testimonials'}
-                </span>
+                {isTestimonialsFormRoute ? (
+                  <>
+                    <Link to={testimonialsRoutePath} className="admin-breadcrumb-link">
+                      Home Testimonials
+                    </Link>
+                    <span className="admin-breadcrumb-sep">/</span>
+                    <span className="admin-breadcrumb-active">
+                      {editingTestimonial ? 'Edit Testimonial' : 'Add Testimonial'}
+                    </span>
+                  </>
+                ) : (
+                  <span className="admin-breadcrumb-active">
+                    {activeSection === 'leads' ? 'Leads & Inquiries' : 'Home Testimonials'}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -3413,8 +3512,294 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
       {/* Testimonials Section */}
             {activeSection === 'testimonials' && (
               <>
-                {/* Testimonials KPI Stats */}
-                <section className="admin-stats-grid">
+                {isTestimonialsFormRoute ? (
+                  /* Dedicated Add/Edit Testimonial Form Page */
+                  <div className="admin-page-form-wrapper">
+                    <div className="admin-page-form-header">
+                      <Link to={testimonialsRoutePath} className="admin-back-btn">
+                        <ArrowLeft size={16} />
+                        <span>Back to Testimonials List</span>
+                      </Link>
+                      <h2 className="admin-page-form-title">
+                        {editingTestimonial ? 'Edit Student Testimonial' : 'Add New Home Testimonial'}
+                      </h2>
+                      <p className="admin-page-form-sub">
+                        Create or update the student review shown in the Home page stories carousel. Avatar images will be uploaded to Cloudinary.
+                      </p>
+                    </div>
+
+                    <div className="admin-page-form-card">
+                      <form onSubmit={handleSaveTestimonial} className="admin-modal-form">
+                        <div className="admin-form-grid-2">
+                          <div className="admin-form-group">
+                            <label className="admin-form-label">
+                              Student Full Name <span className="req">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="e.g. Priyanshu Sharma"
+                              value={testimonialForm.name}
+                              onChange={e => setTestimonialForm(prev => ({ ...prev, name: e.target.value }))}
+                              className="admin-input-styled"
+                            />
+                          </div>
+
+                          <div className="admin-form-group">
+                            <label className="admin-form-label">
+                              Role / Course Title <span className="req">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="e.g. Software Engineer, Spoken English"
+                              value={testimonialForm.role}
+                              onChange={e => setTestimonialForm(prev => ({ ...prev, role: e.target.value }))}
+                              className="admin-input-styled"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="admin-form-grid-2">
+                          <div className="admin-form-group">
+                            <label className="admin-form-label">
+                              Badge / Tagline (Optional)
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Fluency Breakthrough, Job Placement"
+                              value={testimonialForm.badge}
+                              onChange={e => setTestimonialForm(prev => ({ ...prev, badge: e.target.value }))}
+                              className="admin-input-styled"
+                            />
+                          </div>
+
+                        {/* Video Upload & Cloudinary Quota Section */}
+                        <div className="admin-avatar-upload-block" style={{ borderColor: 'rgba(168, 85, 247, 0.35)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                            <label className="admin-form-label" style={{ color: '#d8b4fe', margin: 0 }}>
+                              Student Transformation Video (Optional)
+                            </label>
+                            <span style={{ fontSize: 11.5, color: isStorageQuotaExceeded ? '#f87171' : '#94a3b8' }}>
+                              Used: <strong>{usedStorageMB} MB</strong> / {maxStorageMB} MB ({storageUsagePercent}%)
+                            </span>
+                          </div>
+
+                          <div className="admin-avatar-upload-row">
+                            <div className="admin-avatar-preview-box" style={{ borderRadius: 12, width: 80, height: 60, borderColor: '#a855f7' }}>
+                              {testimonialForm.video ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: '#c084fc', fontSize: 10, textAlign: 'center' }}>
+                                  <Video size={20} />
+                                  <span>Video Ready</span>
+                                </div>
+                              ) : (
+                                <div className="admin-avatar-empty">
+                                  <Video size={20} />
+                                  <span>No Video</span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="admin-avatar-upload-controls">
+                              <div className="admin-avatar-file-upload">
+                                <label
+                                  className="admin-file-picker-btn"
+                                  style={{
+                                    background: 'rgba(168, 85, 247, 0.16)',
+                                    borderColor: 'rgba(168, 85, 247, 0.4)',
+                                    color: '#c084fc',
+                                    opacity: isStorageQuotaExceeded ? 0.6 : 1,
+                                    cursor: isStorageQuotaExceeded ? 'not-allowed' : 'pointer'
+                                  }}
+                                  onClick={(e) => {
+                                    if (isStorageQuotaExceeded) {
+                                      e.preventDefault()
+                                      setShowUpgradeModal(true)
+                                    }
+                                  }}
+                                >
+                                  <Upload size={14} className={uploadingVideo ? 'spin' : ''} />
+                                  <span>{uploadingVideo ? 'Uploading Video to Cloudinary...' : 'Upload Video File'}</span>
+                                  <input
+                                    type="file"
+                                    accept="video/*"
+                                    onChange={handleUploadVideoFile}
+                                    disabled={uploadingVideo || isStorageQuotaExceeded}
+                                    style={{ display: 'none' }}
+                                  />
+                                </label>
+
+                                <button
+                                  type="button"
+                                  className="admin-upgrade-pill-btn"
+                                  onClick={() => setShowUpgradeModal(true)}
+                                >
+                                  <Zap size={13} />
+                                  <span>Upgrade 1 GB (₹150/mo)</span>
+                                </button>
+                              </div>
+
+                              <div className="admin-avatar-url-fallback">
+                                <span className="admin-or-divider">or paste direct video URL / YouTube / Cloudinary link</span>
+                                <input
+                                  type="url"
+                                  placeholder="https://res.cloudinary.com/... or https://youtube.com/..."
+                                  value={testimonialForm.video}
+                                  onChange={e => setTestimonialForm(prev => ({ ...prev, video: e.target.value }))}
+                                  className="admin-input-styled admin-input-url"
+                                />
+                              </div>
+
+                              {videoUploadError && (
+                                <div className="admin-upload-alert admin-upload-error">
+                                  <AlertCircle size={14} />
+                                  <span>{videoUploadError}</span>
+                                </div>
+                              )}
+
+                              {videoSuccessUrl && (
+                                <div className="admin-upload-alert admin-upload-success">
+                                  <CheckCircle2 size={14} />
+                                  <span>Video uploaded and connected to testimonial!</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        </div>
+
+                        {/* Cloudinary Avatar Upload Section */}
+                        <div className="admin-avatar-upload-block">
+                          <label className="admin-form-label">
+                            Student Avatar Image <span className="req">*</span>
+                          </label>
+
+                          <div className="admin-avatar-upload-row">
+                            <div className="admin-avatar-preview-box">
+                              {testimonialForm.image ? (
+                                <img
+                                  src={testimonialForm.image}
+                                  alt="Avatar preview"
+                                  className="admin-avatar-preview-img"
+                                  onError={e => {
+                                    ;(e.target as HTMLImageElement).src =
+                                      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80'
+                                  }}
+                                />
+                              ) : (
+                                <div className="admin-avatar-empty">
+                                  <Image size={24} />
+                                  <span>No Avatar</span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="admin-avatar-upload-controls">
+                              <div className="admin-avatar-file-upload">
+                                <label className="admin-file-picker-btn">
+                                  <Upload size={14} className={uploadingImage ? 'spin' : ''} />
+                                  <span>{uploadingImage ? 'Uploading to Cloudinary...' : 'Upload Image to Cloudinary'}</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleUploadImageFile}
+                                    disabled={uploadingImage}
+                                    style={{ display: 'none' }}
+                                  />
+                                </label>
+                                <span className="admin-upload-note">
+                                  Saved directly to Cloudinary cloud <strong>{CLOUDINARY_CLOUD_NAME}</strong>
+                                </span>
+                              </div>
+
+                              <div className="admin-avatar-url-fallback">
+                                <span className="admin-or-divider">or paste direct image URL</span>
+                                <input
+                                  type="url"
+                                  placeholder="https://res.cloudinary.com/... or image link"
+                                  value={testimonialForm.image}
+                                  onChange={e => setTestimonialForm(prev => ({ ...prev, image: e.target.value }))}
+                                  className="admin-input-styled admin-input-url"
+                                />
+                              </div>
+
+                              {uploadError && (
+                                <div className="admin-upload-alert admin-upload-error">
+                                  <AlertCircle size={14} />
+                                  <span>{uploadError}</span>
+                                </div>
+                              )}
+
+                              {uploadSuccessUrl && (
+                                <div className="admin-upload-alert admin-upload-success">
+                                  <CheckCircle2 size={14} />
+                                  <span>Image uploaded to Cloudinary successfully!</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="admin-form-group">
+                          <label className="admin-form-label">
+                            Student Testimonial Quote <span className="req">*</span>
+                          </label>
+                          <textarea
+                            required
+                            rows={4}
+                            placeholder="Share what the student experienced, their journey, transformation, and results with Verbora..."
+                            value={testimonialForm.text}
+                            onChange={e => setTestimonialForm(prev => ({ ...prev, text: e.target.value }))}
+                            className="admin-textarea-styled"
+                          />
+                        </div>
+
+                        <div className="admin-form-checkbox-row">
+                          <label className="admin-checkbox-label">
+                            <input
+                              type="checkbox"
+                              checked={testimonialForm.is_active}
+                              onChange={e => setTestimonialForm(prev => ({ ...prev, is_active: e.target.checked }))}
+                              className="admin-checkbox"
+                            />
+                            <span>Publish actively on Home page</span>
+                          </label>
+                        </div>
+
+                        <div className="admin-modal-footer">
+                          <Link
+                            to={testimonialsRoutePath}
+                            className="admin-btn-secondary"
+                            style={{ textDecoration: 'none' }}
+                          >
+                            Cancel
+                          </Link>
+
+                          <button
+                            type="submit"
+                            className="admin-btn-primary"
+                            disabled={loading || uploadingImage}
+                          >
+                            {loading ? (
+                              <>
+                                <RefreshCw size={14} className="spin" />
+                                <span>Saving...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Check size={14} />
+                                <span>{editingTestimonial ? 'Update Testimonial' : 'Save & Publish'}</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Testimonials KPI Stats */}
+                    <section className="admin-stats-grid">
                   <div className="admin-stat-card">
                     <div className="admin-stat-header">
                       <span className="admin-stat-label">Total Testimonials</span>
@@ -3516,23 +3901,41 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                   </div>
                 </div>
 
-                {/* Cloudinary Info Banner */}
-                <div className="admin-cloud-banner">
-                  <div className="admin-cloud-banner-icon">
-                    <Upload size={18} />
+                {/* Cloudinary Quota Tracker Banner */}
+                <div className={`admin-cloud-banner ${isStorageQuotaExceeded ? 'admin-cloud-banner-danger' : ''}`}>
+                  <div className="admin-cloud-banner-icon" style={{ background: isStorageQuotaExceeded ? 'rgba(239, 68, 68, 0.2)' : undefined, color: isStorageQuotaExceeded ? '#f87171' : undefined }}>
+                    <HardDrive size={18} />
                   </div>
                   <div className="admin-cloud-banner-body">
-                    <strong>Cloudinary Avatar Storage</strong>
-                    <p>
-                      Images uploaded for student testimonials are stored directly on your Cloudinary cloud <code>{CLOUDINARY_CLOUD_NAME}</code> and synced dynamically to the Home page stories carousel.
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                      <strong>
+                        Storage Quota: {usedStorageMB} MB of {maxStorageMB} MB Used ({storageUsagePercent}%)
+                      </strong>
+                      <span style={{ fontSize: 11.5, color: isStorageQuotaExceeded ? '#f87171' : '#34d399', fontWeight: 700 }}>
+                        {isStorageQuotaExceeded ? '⚠️ Storage Full (Upgrade Required)' : `● ${(maxStorageMB - Number(usedStorageMB)).toFixed(1)} MB Free remaining`}
+                      </span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="admin-quota-bar-wrap">
+                      <div
+                        className={`admin-quota-bar-fill ${storageUsagePercent > 85 ? 'fill-danger' : storageUsagePercent > 60 ? 'fill-warning' : ''}`}
+                        style={{ width: `${storageUsagePercent}%` }}
+                      />
+                    </div>
+
+                    <p style={{ marginTop: 6, fontSize: 12 }}>
+                      Free plan limit is capped at <strong>100 MB</strong> for video and photo testimonials. Need more space for high-resolution student success videos?
                     </p>
                   </div>
+
                   <button
                     type="button"
-                    className="admin-cloud-banner-settings-btn"
-                    onClick={() => setShowCloudinarySettings(!showCloudinarySettings)}
+                    className="admin-btn-primary admin-btn-upgrade"
+                    onClick={() => setShowUpgradeModal(true)}
                   >
-                    Preset: <code>{customPreset}</code>
+                    <Zap size={14} />
+                    <span>Upgrade to 1 GB (₹150/mo)</span>
                   </button>
                 </div>
 
@@ -3681,25 +4084,25 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                 )}
               </>
             )}
-          </main>
-        </div>
-      </div>
+          </>
+        )}
+      </main>
+    </div>
+  </div>
 
-      {/* Add / Edit Testimonial Modal */}
-      {isTestimonialModalOpen && (
+      {/* Storage Limit Exceeded / Upgrade Plan Modal */}
+      {showUpgradeModal && (
         <div className="admin-modal-overlay">
-          <div className="admin-modal-dialog">
+          <div className="admin-modal-dialog" style={{ maxWidth: 480 }}>
             <div className="admin-modal-header">
               <div className="admin-modal-title-group">
-                <div className="admin-modal-icon">
-                  <Quote size={18} />
+                <div className="admin-modal-icon" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', borderColor: 'rgba(168, 85, 247, 0.3)' }}>
+                  <Zap size={22} />
                 </div>
                 <div>
-                  <h3 className="admin-modal-title">
-                    {editingTestimonial ? 'Edit Student Testimonial' : 'Add New Home Testimonial'}
-                  </h3>
+                  <h3 className="admin-modal-title">Upgrade Video Storage</h3>
                   <p className="admin-modal-sub">
-                    This testimonial is shown dynamically in the Stories carousel on the Home page.
+                    You have reached the 100 MB free quota limit for testimonials media.
                   </p>
                 </div>
               </div>
@@ -3707,198 +4110,80 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
               <button
                 type="button"
                 className="admin-modal-close-btn"
-                onClick={() => setIsTestimonialModalOpen(false)}
+                onClick={() => setShowUpgradeModal(false)}
               >
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveTestimonial} className="admin-modal-form">
-              <div className="admin-form-grid-2">
-                <div className="admin-form-group">
-                  <label className="admin-form-label">
-                    Student Full Name <span className="req">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Priyanshu Sharma"
-                    value={testimonialForm.name}
-                    onChange={e => setTestimonialForm(prev => ({ ...prev, name: e.target.value }))}
-                    className="admin-input-styled"
-                  />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Current Usage Snapshot */}
+              <div style={{ background: 'rgba(0, 0, 0, 0.3)', padding: 16, borderRadius: 12, border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8 }}>
+                  <span style={{ color: '#94a3b8' }}>Current Plan Limit:</span>
+                  <strong style={{ color: '#f8fafc' }}>100 MB (Free)</strong>
                 </div>
-
-                <div className="admin-form-group">
-                  <label className="admin-form-label">
-                    Role / Course Title <span className="req">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Software Engineer, Spoken English"
-                    value={testimonialForm.role}
-                    onChange={e => setTestimonialForm(prev => ({ ...prev, role: e.target.value }))}
-                    className="admin-input-styled"
-                  />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 10 }}>
+                  <span style={{ color: '#94a3b8' }}>Total Used Media:</span>
+                  <strong style={{ color: isStorageQuotaExceeded ? '#f87171' : '#38bdf8' }}>{usedStorageMB} MB ({storageUsagePercent}%)</strong>
+                </div>
+                <div className="admin-quota-bar-wrap" style={{ height: 8 }}>
+                  <div className="admin-quota-bar-fill fill-danger" style={{ width: `${storageUsagePercent}%` }} />
                 </div>
               </div>
 
-              <div className="admin-form-grid-2">
-                <div className="admin-form-group">
-                  <label className="admin-form-label">
-                    Badge / Tagline (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Fluency Breakthrough, Job Placement"
-                    value={testimonialForm.badge}
-                    onChange={e => setTestimonialForm(prev => ({ ...prev, badge: e.target.value }))}
-                    className="admin-input-styled"
-                  />
-                </div>
-
-                <div className="admin-form-group">
-                  <label className="admin-form-label">
-                    Story Video URL (Optional)
-                  </label>
-                  <input
-                    type="url"
-                    placeholder="https://res.cloudinary.com/... or MP4 video"
-                    value={testimonialForm.video}
-                    onChange={e => setTestimonialForm(prev => ({ ...prev, video: e.target.value }))}
-                    className="admin-input-styled"
-                  />
-                </div>
-              </div>
-
-              {/* Cloudinary Avatar Upload Section */}
-              <div className="admin-avatar-upload-block">
-                <label className="admin-form-label">
-                  Student Avatar Image <span className="req">*</span>
-                </label>
-
-                <div className="admin-avatar-upload-row">
-                  <div className="admin-avatar-preview-box">
-                    {testimonialForm.image ? (
-                      <img
-                        src={testimonialForm.image}
-                        alt="Avatar preview"
-                        className="admin-avatar-preview-img"
-                        onError={e => {
-                          ;(e.target as HTMLImageElement).src =
-                            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80'
-                        }}
-                      />
-                    ) : (
-                      <div className="admin-avatar-empty">
-                        <Image size={24} />
-                        <span>No Avatar</span>
-                      </div>
-                    )}
+              {/* Upgrade Offer Card */}
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.18) 0%, rgba(59, 130, 246, 0.1) 100%)',
+                border: '1.5px solid rgba(168, 85, 247, 0.45)',
+                borderRadius: 16,
+                padding: '20px 22px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ background: '#a855f7', color: '#fff', fontSize: 11, fontWeight: 800, padding: '3px 8px', borderRadius: 6, textTransform: 'uppercase' }}>
+                      Pro Storage
+                    </span>
+                    <strong style={{ color: '#ffffff', fontSize: 17 }}>1 GB Cloud Space</strong>
                   </div>
-
-                  <div className="admin-avatar-upload-controls">
-                    <div className="admin-avatar-file-upload">
-                      <label className="admin-file-picker-btn">
-                        <Upload size={14} className={uploadingImage ? 'spin' : ''} />
-                        <span>{uploadingImage ? 'Uploading to Cloudinary...' : 'Upload Image to Cloudinary'}</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleUploadImageFile}
-                          disabled={uploadingImage}
-                          style={{ display: 'none' }}
-                        />
-                      </label>
-                      <span className="admin-upload-note">
-                        Saved directly to Cloudinary cloud <strong>{CLOUDINARY_CLOUD_NAME}</strong>
-                      </span>
-                    </div>
-
-                    <div className="admin-avatar-url-fallback">
-                      <span className="admin-or-divider">or paste direct image URL</span>
-                      <input
-                        type="url"
-                        placeholder="https://res.cloudinary.com/... or image link"
-                        value={testimonialForm.image}
-                        onChange={e => setTestimonialForm(prev => ({ ...prev, image: e.target.value }))}
-                        className="admin-input-styled admin-input-url"
-                      />
-                    </div>
-
-                    {uploadError && (
-                      <div className="admin-upload-alert admin-upload-error">
-                        <AlertCircle size={14} />
-                        <span>{uploadError}</span>
-                      </div>
-                    )}
-
-                    {uploadSuccessUrl && (
-                      <div className="admin-upload-alert admin-upload-success">
-                        <CheckCircle2 size={14} />
-                        <span>Image uploaded to Cloudinary successfully!</span>
-                      </div>
-                    )}
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: 22, fontWeight: 800, color: '#38bdf8' }}>₹150</span>
+                    <small style={{ color: '#94a3b8', display: 'block', fontSize: 11 }}>/ month</small>
                   </div>
                 </div>
-              </div>
 
-              <div className="admin-form-group">
-                <label className="admin-form-label">
-                  Student Testimonial Quote <span className="req">*</span>
-                </label>
-                <textarea
-                  required
-                  rows={4}
-                  placeholder="Share what the student experienced, their journey, transformation, and results with Verbora..."
-                  value={testimonialForm.text}
-                  onChange={e => setTestimonialForm(prev => ({ ...prev, text: e.target.value }))}
-                  className="admin-textarea-styled"
-                />
-              </div>
+                <ul style={{ margin: 0, paddingLeft: 18, color: '#cbd5e1', fontSize: 12.5, lineHeight: 1.6 }}>
+                  <li>Store 10x more high-definition student video stories (upto 1,024 MB).</li>
+                  <li>Fast global CDN video streaming with instant load on Home page.</li>
+                  <li>Priority video processing & automatic mobile transcoding.</li>
+                  <li>Cancel or adjust anytime with zero lock-in.</li>
+                </ul>
 
-              <div className="admin-form-checkbox-row">
-                <label className="admin-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={testimonialForm.is_active}
-                    onChange={e => setTestimonialForm(prev => ({ ...prev, is_active: e.target.checked }))}
-                    className="admin-checkbox"
-                  />
-                  <span>Publish actively on Home page</span>
-                </label>
-              </div>
-
-              <div className="admin-modal-footer">
-                <button
-                  type="button"
-                  className="admin-btn-secondary"
-                  onClick={() => setIsTestimonialModalOpen(false)}
-                  disabled={loading || uploadingImage}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
+                <a
+                  href={`https://wa.me/919999999999?text=${encodeURIComponent('Hi, I want to upgrade my Verbora testimonial storage plan to 1 GB for ₹150/month.')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="admin-btn-primary"
-                  disabled={loading || uploadingImage}
+                  style={{
+                    background: 'linear-gradient(90deg, #a855f7 0%, #3b82f6 100%)',
+                    justifyContent: 'center',
+                    marginTop: 6,
+                    padding: '12px 20px',
+                    fontSize: 14,
+                    textDecoration: 'none'
+                  }}
+                  onClick={() => {
+                    showToast('Opening billing upgrade inquiry...')
+                  }}
                 >
-                  {loading ? (
-                    <>
-                      <RefreshCw size={14} className="spin" />
-                      <span>Saving...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Check size={14} />
-                      <span>{editingTestimonial ? 'Update Testimonial' : 'Save & Publish'}</span>
-                    </>
-                  )}
-                </button>
+                  <Zap size={16} />
+                  <span>Upgrade to 1 GB (₹150 / mo)</span>
+                </a>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
@@ -3937,20 +4222,38 @@ const successStoriesRoute = createRoute({ getParentRoute: () => rootRoute, path:
 const contactRoute = createRoute({ getParentRoute: () => rootRoute, path: '/contact', component: ContactPage })
 const contactUsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/contact-us', component: ContactPage })
 
-// Admin Routes (Main portal, Leads, Testimonials)
+// Admin Routes (Main portal, Leads, Testimonials, Add & Edit)
 const verboraEduAdminRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
 const verboraEduAdminLeadsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin/leads', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
 const verboraEduAdminTestimonialsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin/testimonials', component: () => <VerboraEduAdminPage defaultRoute="testimonials" /> })
+const verboraEduAdminTestimonialsAddRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin/testimonials/add', component: () => <VerboraEduAdminPage defaultRoute="testimonials-add" /> })
+const verboraEduAdminTestimonialsEditRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/verbora-edu-admin/testimonials/edit/$id',
+  component: () => <VerboraEduAdminPage defaultRoute="testimonials" />,
+})
 
 // Shivam-admin Aliases
 const shivamAdminRoute = createRoute({ getParentRoute: () => rootRoute, path: '/shivam-admin', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
 const shivamAdminLeadsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/shivam-admin/leads', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
 const shivamAdminTestimonialsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/shivam-admin/testimonials', component: () => <VerboraEduAdminPage defaultRoute="testimonials" /> })
+const shivamAdminTestimonialsAddRoute = createRoute({ getParentRoute: () => rootRoute, path: '/shivam-admin/testimonials/add', component: () => <VerboraEduAdminPage defaultRoute="testimonials-add" /> })
+const shivamAdminTestimonialsEditRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/shivam-admin/testimonials/edit/$id',
+  component: () => <VerboraEduAdminPage defaultRoute="testimonials" />,
+})
 
 // General admin Aliases
 const adminRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admin', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
 const adminLeadsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admin/leads', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
 const adminTestimonialsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admin/testimonials', component: () => <VerboraEduAdminPage defaultRoute="testimonials" /> })
+const adminTestimonialsAddRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admin/testimonials/add', component: () => <VerboraEduAdminPage defaultRoute="testimonials-add" /> })
+const adminTestimonialsEditRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/testimonials/edit/$id',
+  component: () => <VerboraEduAdminPage defaultRoute="testimonials" />,
+})
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -3965,12 +4268,18 @@ const routeTree = rootRoute.addChildren([
   verboraEduAdminRoute,
   verboraEduAdminLeadsRoute,
   verboraEduAdminTestimonialsRoute,
+  verboraEduAdminTestimonialsAddRoute,
+  verboraEduAdminTestimonialsEditRoute,
   shivamAdminRoute,
   shivamAdminLeadsRoute,
   shivamAdminTestimonialsRoute,
+  shivamAdminTestimonialsAddRoute,
+  shivamAdminTestimonialsEditRoute,
   adminRoute,
   adminLeadsRoute,
   adminTestimonialsRoute,
+  adminTestimonialsAddRoute,
+  adminTestimonialsEditRoute,
 ])
 const router = createRouter({ routeTree })
 
