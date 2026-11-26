@@ -3,12 +3,14 @@ import * as contact from './contact'
 import * as subscribers from './subscribers'
 import * as testimonials from './testimonials'
 import * as courses from './courses'
+import * as home from './home'
 
 export * from './bookings'
 export * from './contact'
 export * from './subscribers'
 export * from './testimonials'
 export * from './courses'
+export * from './home'
 export * from './client'
 
 export const api = {
@@ -17,6 +19,7 @@ export const api = {
   subscribers,
   testimonials,
   courses,
+  home,
 }
 
 export default api

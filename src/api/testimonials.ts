@@ -56,6 +56,35 @@ export const DEFAULT_INITIAL_TESTIMONIALS: Testimonial[] = [
 // In-memory runtime store (zero localStorage pollution, synced with TanStack Query)
 let inMemoryTestimonials: Testimonial[] = [...DEFAULT_INITIAL_TESTIMONIALS]
 
+const PUBLIC_TESTIMONIAL_COLUMNS =
+  'id,name,role,image,video,text,badge,is_active,is_spotlight,display_order,created_at'
+
+/**
+ * Fetch only active testimonials with public-facing columns for Home & /stories
+ */
+export async function getActiveTestimonials(): Promise<ApiResponse<Testimonial[]>> {
+  const defaultActive = inMemoryTestimonials.filter(t => t.is_active)
+
+  return executeQuery(async () => {
+    const { data, error } = await supabase
+      .from('testimonials')
+      .select(PUBLIC_TESTIMONIAL_COLUMNS)
+      .eq('is_active', true)
+      .order('display_order', { ascending: true })
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      return { data: defaultActive, error: null }
+    }
+
+    if (data && data.length > 0) {
+      return { data: data as Testimonial[], error: null }
+    }
+
+    return { data: defaultActive, error: null }
+  }, defaultActive)
+}
+
 /**
  * Fetch all testimonials (ordered by display_order then created_at)
  * Fully dynamic via Supabase with fallback to inMemoryTestimonials

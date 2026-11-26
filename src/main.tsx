@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { Suspense, lazy, useEffect, useState, useMemo } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
   QueryClient,
@@ -30,7 +30,16 @@ import './styles.css'
 import './adjustments.css'
 import { api } from './api'
 import { DemoBooking, ContactMessage, Testimonial, Course, CourseId } from './types/database'
-import { RichTextEditor, sanitizeRichHtml, stripHtmlToText } from './components/RichTextEditor'
+import { sanitizeRichHtml, stripHtmlToText } from './lib/richText'
+import {
+  readCachedCourses,
+  readCachedTestimonials,
+  clearHomeCache,
+} from './lib/homeCache'
+
+const LazyRichTextEditor = lazy(() =>
+  import('./components/RichTextEditor').then(m => ({ default: m.RichTextEditor }))
+)
 import {
   uploadImageToCloudinary,
   deleteMediaFromCloudinary,
@@ -497,7 +506,7 @@ function Hero() {
           muted
           loop
           playsInline
-          preload="auto"
+          preload="metadata"
         >
           <source
             src="https://res.cloudinary.com/mtjv4nu9/video/upload/v1795687985/VIDEO-2026-11-25-15-59-08_2.mp4"
@@ -704,9 +713,11 @@ const queryClient = new QueryClient({
 export function useTestimonialsQuery() {
   return useQuery({
     queryKey: ['testimonials'],
+    initialData: () => readCachedTestimonials(),
+    initialDataUpdatedAt: 0,
     queryFn: async () => {
-      const res = await api.testimonials.getTestimonials()
-      return res.data || []
+      const data = await api.home.getPublicHomeData()
+      return data.testimonials
     },
   })
 }
@@ -714,9 +725,11 @@ export function useTestimonialsQuery() {
 export function useCoursesQuery() {
   return useQuery({
     queryKey: ['courses'],
+    initialData: () => readCachedCourses(),
+    initialDataUpdatedAt: 0,
     queryFn: async () => {
-      const res = await api.courses.getCourses()
-      return res.data || []
+      const data = await api.home.getPublicHomeData()
+      return data.courses
     },
   })
 }
@@ -2903,6 +2916,14 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     }
   }
 
+  const syncPublicHomeCache = () => {
+    clearHomeCache()
+    void api.home.getPublicHomeData(true).then(fresh => {
+      if (fresh.courses.length > 0) queryClient.setQueryData(['courses'], fresh.courses)
+      queryClient.setQueryData(['testimonials'], fresh.testimonials)
+    })
+  }
+
   const handleEditCourse = (course: Course) => {
     setEditingCourse(course)
     setCourseForm({
@@ -2941,8 +2962,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
         setAdminCourses(prev =>
           prev.map(c => (c.id === editingCourse.id ? res.data! : c))
         )
-        // Invalidate react query cache so website immediately sees changes
-        queryClient.invalidateQueries({ queryKey: ['courses'] })
+        syncPublicHomeCache()
         const updatedTitle = res.data.title
         setEditingCourse(null)
         showToast(`Course "${updatedTitle}" updated successfully!`)
@@ -3051,7 +3071,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
         const target = testimonials.find(t => t.id === selectedSpotlightId)
         showToast(`"${target?.name || 'Selected student'}" set as Spotlight on /stories!`)
       }
-      queryClient.invalidateQueries({ queryKey: ['testimonials'] })
+      syncPublicHomeCache()
       setShowSpotlightModal(false)
     } catch (err) {
       console.error('Failed to update spotlight:', err)
@@ -3068,7 +3088,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     const res = await api.testimonials.updateTestimonial(id, { is_active: next })
     if (res.success) {
       showToast(`Testimonial is now ${next ? 'Published on Home' : 'Hidden from Website'}`)
-      queryClient.invalidateQueries({ queryKey: ['testimonials'] })
+      syncPublicHomeCache()
     }
     setUpdatingId(null)
   }
@@ -3087,7 +3107,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     if (res.success) {
       setTestimonials(prev => prev.filter(t => t.id !== id))
       showToast(`Testimonial by "${name}" deleted.`)
-      queryClient.invalidateQueries({ queryKey: ['testimonials'] })
+      syncPublicHomeCache()
     }
     setUpdatingId(null)
   }
@@ -3108,7 +3128,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     if (res.success) {
       setTestimonials(prev => prev.map(t => (t.id === id ? { ...t, video: null, video_size_bytes: 0 } : t)))
       showToast(`Video removed from "${target.name}"!`)
-      queryClient.invalidateQueries({ queryKey: ['testimonials'] })
+      syncPublicHomeCache()
     }
     setUpdatingId(null)
   }
@@ -3160,7 +3180,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
             setTestimonials(prev => prev.map(t => (t.id === editingTestimonial.id ? res.data! : t)))
           }
           showToast(`Testimonial for "${res.data.name}" updated!`)
-          queryClient.invalidateQueries({ queryKey: ['testimonials'] })
+          syncPublicHomeCache()
           setEditingTestimonial(null)
           navigate({ to: testimonialsRoutePath as any })
         }
@@ -3184,7 +3204,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
             setTestimonials(prev => [res.data!, ...prev])
           }
           showToast(`New testimonial for "${res.data.name}" added to Home!`)
-          queryClient.invalidateQueries({ queryKey: ['testimonials'] })
+          syncPublicHomeCache()
           setEditingTestimonial(null)
           navigate({ to: testimonialsRoutePath as any })
         }
@@ -4778,11 +4798,21 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                 <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
                   Course Description / Summary <span style={{ color: '#ef4444' }}>*</span>
                 </label>
-                <RichTextEditor
-                  key={editingCourse.id}
-                  value={courseForm.summary}
-                  onChange={html => setCourseForm(prev => ({ ...prev, summary: html }))}
-                />
+                <Suspense
+                  fallback={
+                    <div className="tiptap-editor-wrap">
+                      <div className="tiptap-editor-content" style={{ minHeight: 165, color: '#94a3b8', fontSize: 13 }}>
+                        Loading rich text editor...
+                      </div>
+                    </div>
+                  }
+                >
+                  <LazyRichTextEditor
+                    key={editingCourse.id}
+                    value={courseForm.summary}
+                    onChange={html => setCourseForm(prev => ({ ...prev, summary: html }))}
+                  />
+                </Suspense>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -5385,6 +5415,30 @@ const routeTree = rootRoute.addChildren([
 const router = createRouter({ routeTree })
 
 declare module '@tanstack/react-router' { interface Register { router: typeof router } }
+
+// Start fetching home courses & active testimonials in parallel before React finishes mounting
+const isInitialAdminPath =
+  typeof window !== 'undefined' &&
+  (window.location.pathname.startsWith('/admin') ||
+    window.location.pathname.startsWith('/shivam-admin') ||
+    window.location.pathname.startsWith('/verbora-edu-admin'))
+
+if (!isInitialAdminPath) {
+  void queryClient.prefetchQuery({
+    queryKey: ['courses'],
+    queryFn: async () => {
+      const data = await api.home.getPublicHomeData()
+      return data.courses
+    },
+  })
+  void queryClient.prefetchQuery({
+    queryKey: ['testimonials'],
+    queryFn: async () => {
+      const data = await api.home.getPublicHomeData()
+      return data.testimonials
+    },
+  })
+}
 
 createRoot(document.getElementById('root')!).render(
   <QueryClientProvider client={queryClient}>

@@ -78,7 +78,7 @@ export function getCoursesDbError(): string | null {
   return lastCoursesDbError
 }
 
-function mergeCourseRows(rows: any[]): Course[] {
+export function mergeCourseRows(rows: any[]): Course[] {
   return DEFAULT_INITIAL_COURSES.map(def => {
     const row = rows.find((d: any) => d.id === def.id)
     if (!row) return def
@@ -97,6 +97,9 @@ function mergeCourseRows(rows: any[]): Course[] {
   })
 }
 
+const COURSE_COLUMNS =
+  'id,title,tagline,short,summary,fee_amount,discount_percent,display_order,created_at,updated_at'
+
 /**
  * Fetch all 5 official courses (ordered by display_order)
  * Dynamic via Supabase with auto-seed if table is empty, and graceful fallback if table is missing
@@ -105,7 +108,7 @@ export async function getCourses(): Promise<ApiResponse<Course[]>> {
   return executeQuery(async () => {
     const { data, error } = await supabase
       .from('courses')
-      .select('*')
+      .select(COURSE_COLUMNS)
       .order('display_order', { ascending: true })
 
     if (error) {

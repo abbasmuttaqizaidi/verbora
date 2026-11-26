@@ -6,8 +6,62 @@ export default defineConfig({
   plugins: [
     react(),
     {
-      name: 'local-api-delete-media',
+      name: 'local-api-middlewares',
       configureServer(server) {
+        server.middlewares.use('/api/home-data', async (req, res) => {
+          if (req.method !== 'GET') {
+            res.statusCode = 405
+            res.end(JSON.stringify({ error: 'Method Not Allowed' }))
+            return
+          }
+
+          try {
+            const supabaseUrl =
+              process.env.VITE_SUPABASE_URL || 'https://akutnisipdhjrrwnupeb.supabase.co'
+            const supabaseAnonKey =
+              process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_nIVc7DMCydkRh3jDWP0OPA_tMfbK1Zj'
+
+            const courseCols =
+              'id,title,tagline,short,summary,fee_amount,discount_percent,display_order,created_at,updated_at'
+            const testiCols =
+              'id,name,role,image,video,text,badge,is_active,is_spotlight,display_order,created_at'
+            const headers = {
+              apikey: supabaseAnonKey,
+              Authorization: `Bearer ${supabaseAnonKey}`,
+              Accept: 'application/json',
+            }
+
+            const [coursesRes, testimonialsRes] = await Promise.all([
+              fetch(`${supabaseUrl}/rest/v1/courses?select=${courseCols}&order=display_order.asc`, { headers }),
+              fetch(
+                `${supabaseUrl}/rest/v1/testimonials?select=${testiCols}&is_active=eq.true&order=display_order.asc,created_at.desc`,
+                { headers }
+              ),
+            ])
+
+            if (!coursesRes.ok || !testimonialsRes.ok) {
+              res.statusCode = !coursesRes.ok ? coursesRes.status : testimonialsRes.status
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify({ error: 'Upstream Supabase query failed' }))
+              return
+            }
+
+            const [courses, testimonials] = await Promise.all([
+              coursesRes.json(),
+              testimonialsRes.json(),
+            ])
+
+            res.statusCode = 200
+            res.setHeader('Content-Type', 'application/json')
+            res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=120')
+            res.end(JSON.stringify({ courses, testimonials }))
+          } catch (err: any) {
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: err?.message || 'Server error' }))
+          }
+        })
+
         server.middlewares.use('/api/delete-media', async (req, res) => {
           if (req.method !== 'POST') {
             res.statusCode = 405
