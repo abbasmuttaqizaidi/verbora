@@ -12,6 +12,7 @@ import {
   Link,
   Outlet,
   RouterProvider,
+  useNavigate,
   useRouterState,
 } from '@tanstack/react-router'
 import {
@@ -2508,6 +2509,7 @@ function downloadCSV(filename: string, rows: (string | number)[][]) {
 }
 
 function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testimonials' | 'testimonials-add' }) {
+  const navigate = useNavigate()
   const pathname = useRouterState({ select: state => state.location.pathname })
   const editIdMatch = pathname.match(/\/testimonials\/edit\/([^/?#]+)/)
   const editId = editIdMatch ? editIdMatch[1] : undefined
@@ -2692,8 +2694,19 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
 
   // Testimonials Handlers
   const handleOpenAddTestimonial = () => {
-    window.history.pushState(null, '', addTestimonialRoutePath)
-    window.dispatchEvent(new PopStateEvent('popstate'))
+    setEditingTestimonial(null)
+    setTestimonialForm({
+      name: '',
+      role: '',
+      image: '',
+      video: '',
+      video_size_bytes: 0,
+      image_size_bytes: 0,
+      text: '',
+      badge: '',
+      is_active: true,
+    })
+    navigate({ to: addTestimonialRoutePath as any })
   }
 
   const handleOpenEditTestimonial = (item: Testimonial) => {
@@ -2709,8 +2722,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
       badge: item.badge || '',
       is_active: item.is_active,
     })
-    window.history.pushState(null, '', `${testimonialsRoutePath}/edit/${item.id}`)
-    window.dispatchEvent(new PopStateEvent('popstate'))
+    navigate({ to: `${testimonialsRoutePath}/edit/${item.id}` as any })
   }
 
   const handleToggleTestimonialActive = async (id: string, current: boolean) => {
@@ -2720,6 +2732,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     const res = await api.testimonials.updateTestimonial(id, { is_active: next })
     if (res.success) {
       showToast(`Testimonial is now ${next ? 'Published on Home' : 'Hidden from Website'}`)
+      queryClient.invalidateQueries({ queryKey: ['testimonials'] })
     }
     setUpdatingId(null)
   }
@@ -2738,6 +2751,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     if (res.success) {
       setTestimonials(prev => prev.filter(t => t.id !== id))
       showToast(`Testimonial by "${name}" deleted.`)
+      queryClient.invalidateQueries({ queryKey: ['testimonials'] })
     }
     setUpdatingId(null)
   }
@@ -2773,8 +2787,9 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
         if (res.data) {
           setTestimonials(prev => prev.map(t => (t.id === editingTestimonial.id ? res.data! : t)))
           showToast(`Testimonial for "${res.data.name}" updated!`)
-          window.history.pushState(null, '', testimonialsRoutePath)
-          window.dispatchEvent(new PopStateEvent('popstate'))
+          queryClient.invalidateQueries({ queryKey: ['testimonials'] })
+          setEditingTestimonial(null)
+          navigate({ to: testimonialsRoutePath as any })
         }
       } else {
         const res = await api.testimonials.createTestimonial({
@@ -2789,8 +2804,9 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
         if (res.data) {
           setTestimonials(prev => [res.data!, ...prev])
           showToast(`New testimonial for "${res.data.name}" added to Home!`)
-          window.history.pushState(null, '', testimonialsRoutePath)
-          window.dispatchEvent(new PopStateEvent('popstate'))
+          queryClient.invalidateQueries({ queryKey: ['testimonials'] })
+          setEditingTestimonial(null)
+          navigate({ to: testimonialsRoutePath as any })
         }
       }
     } catch (err) {
@@ -3530,7 +3546,11 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                   /* Dedicated Add/Edit Testimonial Form Page */
                   <div className="admin-page-form-wrapper">
                     <div className="admin-page-form-header">
-                      <Link to={testimonialsRoutePath} className="admin-back-btn">
+                      <Link
+                        to={testimonialsRoutePath}
+                        onClick={() => setEditingTestimonial(null)}
+                        className="admin-back-btn"
+                      >
                         <ArrowLeft size={16} />
                         <span>Back to Testimonials List</span>
                       </Link>
@@ -3784,6 +3804,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                         <div className="admin-modal-footer">
                           <Link
                             to={testimonialsRoutePath}
+                            onClick={() => setEditingTestimonial(null)}
                             className="admin-btn-secondary"
                             style={{ textDecoration: 'none' }}
                           >

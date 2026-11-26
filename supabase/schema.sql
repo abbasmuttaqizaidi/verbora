@@ -106,9 +106,49 @@ CREATE POLICY "Allow authenticated read and manage newsletter_subscribers"
   WITH CHECK (true);
 
 
--- 4. Schema-level grants for anon and authenticated roles
+-- 4. Create Testimonials Table
+CREATE TABLE IF NOT EXISTS public.testimonials (
+  id TEXT PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  name TEXT NOT NULL,
+  role TEXT NOT NULL,
+  image TEXT NOT NULL,
+  video TEXT,
+  video_size_bytes BIGINT DEFAULT 0,
+  image_size_bytes BIGINT DEFAULT 0,
+  text TEXT NOT NULL,
+  badge TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  display_order INT DEFAULT 0
+);
+
+-- Indexing
+CREATE INDEX IF NOT EXISTS idx_testimonials_display_order ON public.testimonials(display_order);
+CREATE INDEX IF NOT EXISTS idx_testimonials_is_active ON public.testimonials(is_active);
+
+-- Enable RLS
+ALTER TABLE public.testimonials ENABLE ROW LEVEL SECURITY;
+
+-- Allow public anonymous read
+CREATE POLICY "Allow public read testimonials"
+  ON public.testimonials
+  FOR SELECT
+  TO anon, authenticated
+  USING (true);
+
+-- Allow anonymous & authenticated insert/update/delete for admin operations
+CREATE POLICY "Allow anon and auth manage testimonials"
+  ON public.testimonials
+  FOR ALL
+  TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
+
+
+-- 5. Schema-level grants for anon and authenticated roles
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT ALL ON TABLE public.demo_bookings TO anon, authenticated;
 GRANT ALL ON TABLE public.contact_messages TO anon, authenticated;
 GRANT ALL ON TABLE public.newsletter_subscribers TO anon, authenticated;
+GRANT ALL ON TABLE public.testimonials TO anon, authenticated;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;

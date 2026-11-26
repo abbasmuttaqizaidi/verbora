@@ -53,9 +53,12 @@ export const DEFAULT_INITIAL_TESTIMONIALS: Testimonial[] = [
   },
 ]
 
+// In-memory runtime store (zero localStorage pollution, synced with TanStack Query)
+let inMemoryTestimonials: Testimonial[] = [...DEFAULT_INITIAL_TESTIMONIALS]
+
 /**
  * Fetch all testimonials (ordered by display_order then created_at)
- * Fully dynamic via Supabase with fallback to DEFAULT_INITIAL_TESTIMONIALS (No localStorage)
+ * Fully dynamic via Supabase with fallback to inMemoryTestimonials
  */
 export async function getTestimonials(): Promise<ApiResponse<Testimonial[]>> {
   return executeQuery(async () => {
@@ -66,15 +69,16 @@ export async function getTestimonials(): Promise<ApiResponse<Testimonial[]>> {
       .order('created_at', { ascending: false })
 
     if (error) {
-      return { data: DEFAULT_INITIAL_TESTIMONIALS, error: null }
+      return { data: inMemoryTestimonials, error: null }
     }
 
     if (data && data.length > 0) {
+      inMemoryTestimonials = data
       return { data, error: null }
     }
 
-    return { data: DEFAULT_INITIAL_TESTIMONIALS, error: null }
-  }, DEFAULT_INITIAL_TESTIMONIALS)
+    return { data: inMemoryTestimonials, error: null }
+  }, inMemoryTestimonials)
 }
 
 /**
@@ -96,10 +100,14 @@ export async function createTestimonial(input: CreateTestimonialInput): Promise<
     display_order: input.display_order ?? 0,
   }
 
+  // Prepend to in-memory store immediately so changes are active at once
+  inMemoryTestimonials = [newRecord, ...inMemoryTestimonials]
+
   return executeQuery(async () => {
     const { data, error } = await supabase
       .from('testimonials')
       .insert({
+        id: newRecord.id,
         name: newRecord.name,
         role: newRecord.role,
         image: newRecord.image,
@@ -115,11 +123,16 @@ export async function createTestimonial(input: CreateTestimonialInput): Promise<
       .single()
 
     if (error) {
-      console.warn('[Supabase Testimonials Insert] Error:', error.message)
+      console.warn('[Supabase Testimonials Insert] Warning:', error.message)
       return { data: newRecord, error: null }
     }
 
-    return { data, error: null }
+    if (data) {
+      inMemoryTestimonials = inMemoryTestimonials.map(t => (t.id === newRecord.id ? data : t))
+      return { data, error: null }
+    }
+
+    return { data: newRecord, error: null }
   }, newRecord)
 }
 
@@ -130,39 +143,65 @@ export async function updateTestimonial(
   id: string,
   updates: UpdateTestimonialInput
 ): Promise<ApiResponse<Testimonial>> {
+  // Update in-memory store immediately
+  const existing = inMemoryTestimonials.find(t => t.id === id)
+  const updatedRecord: Testimonial = {
+    id,
+    created_at: existing?.created_at || new Date().toISOString(),
+    name: updates.name !== undefined ? updates.name : (existing?.name || ''),
+    role: updates.role !== undefined ? updates.role : (existing?.role || ''),
+    image: updates.image !== undefined ? updates.image : (existing?.image || ''),
+    video: updates.video !== undefined ? updates.video : (existing?.video || null),
+    video_size_bytes: updates.video_size_bytes !== undefined ? updates.video_size_bytes : (existing?.video_size_bytes || 0),
+    image_size_bytes: updates.image_size_bytes !== undefined ? updates.image_size_bytes : (existing?.image_size_bytes || 0),
+    text: updates.text !== undefined ? updates.text : (existing?.text || ''),
+    badge: updates.badge !== undefined ? updates.badge : (existing?.badge || null),
+    is_active: updates.is_active !== undefined ? updates.is_active : (existing?.is_active ?? true),
+    display_order: updates.display_order !== undefined ? updates.display_order : (existing?.display_order || 0),
+  }
+
+  inMemoryTestimonials = inMemoryTestimonials.map(t => (t.id === id ? updatedRecord : t))
+
   return executeQuery(async () => {
+    // Use upsert so that even mock/initial records get saved into Supabase seamlessly
     const { data, error } = await supabase
       .from('testimonials')
-      .update(updates)
-      .eq('id', id)
+      .upsert({
+        id,
+        name: updatedRecord.name,
+        role: updatedRecord.role,
+        image: updatedRecord.image,
+        video: updatedRecord.video,
+        video_size_bytes: updatedRecord.video_size_bytes,
+        image_size_bytes: updatedRecord.image_size_bytes,
+        text: updatedRecord.text,
+        badge: updatedRecord.badge,
+        is_active: updatedRecord.is_active,
+        display_order: updatedRecord.display_order,
+      })
       .select()
       .single()
 
     if (error) {
-      console.warn('[Supabase Testimonials Update] Error:', error.message)
-      return {
-        data: {
-          id,
-          created_at: new Date().toISOString(),
-          name: '',
-          role: '',
-          image: '',
-          text: '',
-          is_active: true,
-          ...updates,
-        } as Testimonial,
-        error: null,
-      }
+      console.warn('[Supabase Testimonials Update/Upsert] Warning:', error.message)
+      return { data: updatedRecord, error: null }
     }
 
-    return { data, error: null }
-  }, { id } as any)
+    if (data) {
+      inMemoryTestimonials = inMemoryTestimonials.map(t => (t.id === id ? data : t))
+      return { data, error: null }
+    }
+
+    return { data: updatedRecord, error: null }
+  }, updatedRecord)
 }
 
 /**
  * Delete a testimonial
  */
 export async function deleteTestimonial(id: string): Promise<ApiResponse<boolean>> {
+  inMemoryTestimonials = inMemoryTestimonials.filter(t => t.id !== id)
+
   return executeQuery(async () => {
     const { error } = await supabase
       .from('testimonials')
@@ -170,7 +209,7 @@ export async function deleteTestimonial(id: string): Promise<ApiResponse<boolean
       .eq('id', id)
 
     if (error) {
-      console.warn('[Supabase Testimonials Delete] Error:', error.message)
+      console.warn('[Supabase Testimonials Delete] Warning:', error.message)
     }
 
     return { data: true, error: null }
