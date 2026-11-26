@@ -159,11 +159,11 @@ function Brand({ light = false, compact = false, dark = false }: { light?: boole
   return (
     <Link to="/" className={`brand ${light ? 'brand-light' : ''} ${compact ? 'brand-compact' : ''} ${dark ? 'brand-dark' : ''}`} aria-label="VERBORA home">
       <img
-        src="/assets/verbora-symbol-transparent.png"
+        src="/assets/verbora-symbol-nav.png"
         alt="VERBORA Logo"
         className="brand-symbol"
-        width={compact ? 42 : 54}
-        height={compact ? 42 : 54}
+        width={compact ? 44 : 52}
+        height={compact ? 44 : 52}
         loading="eager"
       />
       <span className="brand-copy">
@@ -5311,10 +5311,87 @@ function NotFoundPage() {
   )
 }
 
+const SITE_ORIGIN = 'https://verbora.in'
+
+const STATIC_ROUTE_SEO: Record<string, { title: string; description: string }> = {
+  '/': {
+    title: 'VERBORA — Spoken English, Public Speaking & Communication Coaching',
+    description: 'VERBORA (verbora.in) — Spoken English, Business English, Public Speaking, Interview Preparation & Executive Communication Coaching.',
+  },
+  '/courses': {
+    title: 'Courses | VERBORA — Spoken English & Communication Programs',
+    description: 'Explore VERBORA structured communication programs: Spoken English, Business English, Public Speaking, Interview Preparation, and Personality Development.',
+  },
+  '/about': {
+    title: 'About VERBORA | Speak · Express · Grow',
+    description: 'Learn how VERBORA builds confident, fluent communicators through 80% active speaking practice and personalized coaching.',
+  },
+  '/trainer': {
+    title: 'Meet Our Master Trainer | VERBORA',
+    description: 'Meet Bijay Adhikari and the certified speech & voice coaching desk at VERBORA.',
+  },
+  '/trainers': {
+    title: 'Meet Our Master Trainer | VERBORA',
+    description: 'Meet Bijay Adhikari and the certified speech & voice coaching desk at VERBORA.',
+  },
+  '/stories': {
+    title: 'Student Success Stories | VERBORA',
+    description: 'Read verified transformations from VERBORA learners who mastered fluent English, presentations, and interviews.',
+  },
+  '/success-stories': {
+    title: 'Student Success Stories | VERBORA',
+    description: 'Read verified transformations from VERBORA learners who mastered fluent English, presentations, and interviews.',
+  },
+  '/contact': {
+    title: 'Contact & Book Free Demo | VERBORA',
+    description: 'Book a free 1-on-1 diagnostic call or reach out to VERBORA admissions for batch schedules and coaching details.',
+  },
+  '/contact-us': {
+    title: 'Contact & Book Free Demo | VERBORA',
+    description: 'Book a free 1-on-1 diagnostic call or reach out to VERBORA admissions for batch schedules and coaching details.',
+  },
+}
+
 function RootLayout() {
   const pathname = useRouterState({ select: state => state.location.pathname })
-  useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }) }, [pathname])
+  const { courses: mergedCourses } = useMergedCourses()
   const isAdmin = pathname.startsWith('/verbora-edu-admin') || pathname.startsWith('/shivam-admin') || pathname.startsWith('/admin')
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [pathname])
+
+  useEffect(() => {
+    let pageTitle = 'VERBORA | Speak · Express · Grow'
+    let pageDesc = 'VERBORA (verbora.in) — Spoken English, Business English, Public Speaking, Interview Preparation & Executive Communication Coaching.'
+
+    if (isAdmin) {
+      pageTitle = 'Admin Portal | VERBORA'
+    } else if (pathname.startsWith('/courses/')) {
+      const slug = pathname.replace('/courses/', '').split('/')[0]
+      const matched = mergedCourses.find(c => c.id === slug)
+      if (matched) {
+        pageTitle = `${matched.title} Course | VERBORA`
+        pageDesc = `${matched.title} at VERBORA — ${matched.tagline} ${stripHtmlToText(matched.summary)}`.slice(0, 160)
+      }
+    } else if (STATIC_ROUTE_SEO[pathname]) {
+      pageTitle = STATIC_ROUTE_SEO[pathname].title
+      pageDesc = STATIC_ROUTE_SEO[pathname].description
+    }
+
+    document.title = pageTitle
+
+    const canonicalHref = `${SITE_ORIGIN}${pathname === '/' ? '/' : pathname}`
+    const canonicalEl = document.querySelector('link[rel="canonical"]')
+    if (canonicalEl) canonicalEl.setAttribute('href', canonicalHref)
+
+    const robotsEl = document.querySelector('meta[name="robots"]')
+    if (robotsEl) robotsEl.setAttribute('content', isAdmin ? 'noindex, nofollow' : 'index, follow')
+
+    const descEl = document.querySelector('meta[name="description"]')
+    if (descEl) descEl.setAttribute('content', pageDesc)
+  }, [pathname, isAdmin, mergedCourses])
+
   return (
     <>
       <Outlet />

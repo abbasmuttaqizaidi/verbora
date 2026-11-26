@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /shivam-admin
+Disallow: /verbora-edu-admin
+
+Sitemap: https://verbora.in/sitemap.xml

@@ -4,22 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#061d48" />
-    <meta name="description" content="VERBORA communication programs — spoken English, professional communication, public speaking, and interview readiness." />
-    <title>VERBORA | Speak · Express · Grow</title>
+    <meta name="robots" content="index, follow" />
+    <meta name="description" content="VERBORA (verbora.in) — Spoken English, Business English, Public Speaking, Interview Preparation & Executive Communication Coaching." />
+    <title>VERBORA — Spoken English, Public Speaking &amp; Communication Coaching</title>
+    <link rel="canonical" href="https://verbora.in/" />
 
-    <!-- Favicons -->
+    <!-- Favicons & App Manifest -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/assets/verbora-icon-192.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
 
     <!-- Open Graph / Facebook / WhatsApp / LinkedIn / iMessage Link Previews -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="VERBORA" />
+    <meta property="og:url" content="https://verbora.in/" />
     <meta property="og:title" content="VERBORA | Speak · Express · Grow" />
     <meta property="og:description" content="Speaking & Executive Communication — Spoken English, Professional Communication, Public Speaking, and Interview Preparation." />
-    <meta property="og:image" content="/og-image.jpg" />
-    <meta property="og:image:secure_url" content="/og-image.jpg" />
+    <meta property="og:image" content="https://verbora.in/og-image.jpg" />
+    <meta property="og:image:secure_url" content="https://verbora.in/og-image.jpg" />
     <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -27,10 +31,40 @@
 
     <!-- Twitter Card Link Previews -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://verbora.in/" />
     <meta name="twitter:title" content="VERBORA | Speak · Express · Grow" />
     <meta name="twitter:description" content="Speaking & Executive Communication — Spoken English, Professional Communication, Public Speaking, and Interview Preparation." />
-    <meta name="twitter:image" content="/og-image.jpg" />
+    <meta name="twitter:image" content="https://verbora.in/og-image.jpg" />
     <meta name="twitter:image:alt" content="VERBORA - Speaking & Executive Communication" />
+
+    <!-- Structured Data for Google Brand & Course Discovery -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "EducationalOrganization",
+            "@id": "https://verbora.in/#organization",
+            "name": "VERBORA",
+            "alternateName": ["Verbora Edu", "Verbora India"],
+            "url": "https://verbora.in/",
+            "logo": "https://verbora.in/assets/verbora-symbol.png",
+            "image": "https://verbora.in/og-image.jpg",
+            "description": "VERBORA helps learners master Spoken English, Business English, Public Speaking, Interview Preparation, and Personality Development through practical 1-on-1 coaching."
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://verbora.in/#website",
+            "url": "https://verbora.in/",
+            "name": "VERBORA",
+            "publisher": {
+              "@id": "https://verbora.in/#organization"
+            }
+          }
+        ]
+      }
+    </script>
+
     <!-- Preconnect & DNS Prefetch to Supabase API and Cloudinary CDN for lower connection latency -->
     <link rel="preconnect" href="https://akutnisipdhjrrwnupeb.supabase.co" crossorigin />
     <link rel="dns-prefetch" href="https://akutnisipdhjrrwnupeb.supabase.co" />

@@ -1,0 +1,23 @@
+{
+  "name": "VERBORA — Spoken English & Executive Communication",
+  "short_name": "VERBORA",
+  "description": "VERBORA communication programs — spoken English, business English, public speaking, interview preparation, and personality development.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafdff",
+  "theme_color": "#061d48",
+  "icons": [
+    {
+      "src": "/assets/verbora-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/verbora-symbol.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
