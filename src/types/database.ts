@@ -89,3 +89,39 @@ export type CreateTestimonialInput = {
 
 export type UpdateTestimonialInput = Partial<CreateTestimonialInput>
 
+// -------------------------------------------------------------------------
+// Courses
+// -------------------------------------------------------------------------
+
+export type CourseId =
+  | 'spoken-english'
+  | 'business-english'
+  | 'public-speaking'
+  | 'interview-preparation'
+  | 'personality-development'
+
+export interface Course {
+  id: CourseId
+  created_at?: string
+  updated_at?: string
+  title: string
+  tagline: string
+  short: string
+  summary: string
+  topics?: string[]
+  iconClass: string
+  cover: string
+  fee_amount: number // e.g. 4999 (original base price in INR)
+  discount_percent: number // e.g. 20 (20% OFF)
+  display_order?: number
+}
+
+export type UpdateCourseInput = {
+  title?: string
+  summary?: string
+  tagline?: string
+  short?: string
+  fee_amount?: number
+  discount_percent?: number
+}
+

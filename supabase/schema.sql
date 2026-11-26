@@ -25,6 +25,7 @@ CREATE INDEX IF NOT EXISTS idx_demo_bookings_status ON public.demo_bookings(stat
 ALTER TABLE public.demo_bookings ENABLE ROW LEVEL SECURITY;
 
 -- Allow anonymous visitors on website to insert new demo booking requests
+DROP POLICY IF EXISTS "Allow public anon insert to demo_bookings" ON public.demo_bookings;
 CREATE POLICY "Allow public anon insert to demo_bookings"
   ON public.demo_bookings
   FOR INSERT
@@ -32,6 +33,7 @@ CREATE POLICY "Allow public anon insert to demo_bookings"
   WITH CHECK (true);
 
 -- Allow authenticated users (Admins / Staff) to view and manage demo bookings
+DROP POLICY IF EXISTS "Allow authenticated read and manage demo_bookings" ON public.demo_bookings;
 CREATE POLICY "Allow authenticated read and manage demo_bookings"
   ON public.demo_bookings
   FOR ALL
@@ -61,6 +63,7 @@ CREATE INDEX IF NOT EXISTS idx_contact_messages_status ON public.contact_message
 ALTER TABLE public.contact_messages ENABLE ROW LEVEL SECURITY;
 
 -- Allow anonymous visitors to submit contact messages
+DROP POLICY IF EXISTS "Allow public anon insert to contact_messages" ON public.contact_messages;
 CREATE POLICY "Allow public anon insert to contact_messages"
   ON public.contact_messages
   FOR INSERT
@@ -68,6 +71,7 @@ CREATE POLICY "Allow public anon insert to contact_messages"
   WITH CHECK (true);
 
 -- Allow authenticated users to view and update contact messages
+DROP POLICY IF EXISTS "Allow authenticated read and manage contact_messages" ON public.contact_messages;
 CREATE POLICY "Allow authenticated read and manage contact_messages"
   ON public.contact_messages
   FOR ALL
@@ -91,6 +95,7 @@ CREATE INDEX IF NOT EXISTS idx_newsletter_subscribers_email ON public.newsletter
 ALTER TABLE public.newsletter_subscribers ENABLE ROW LEVEL SECURITY;
 
 -- Allow public insertion
+DROP POLICY IF EXISTS "Allow public anon insert to newsletter_subscribers" ON public.newsletter_subscribers;
 CREATE POLICY "Allow public anon insert to newsletter_subscribers"
   ON public.newsletter_subscribers
   FOR INSERT
@@ -98,6 +103,7 @@ CREATE POLICY "Allow public anon insert to newsletter_subscribers"
   WITH CHECK (true);
 
 -- Allow authenticated management
+DROP POLICY IF EXISTS "Allow authenticated read and manage newsletter_subscribers" ON public.newsletter_subscribers;
 CREATE POLICY "Allow authenticated read and manage newsletter_subscribers"
   ON public.newsletter_subscribers
   FOR ALL
@@ -130,6 +136,7 @@ CREATE INDEX IF NOT EXISTS idx_testimonials_is_active ON public.testimonials(is_
 ALTER TABLE public.testimonials ENABLE ROW LEVEL SECURITY;
 
 -- Allow public anonymous read
+DROP POLICY IF EXISTS "Allow public read testimonials" ON public.testimonials;
 CREATE POLICY "Allow public read testimonials"
   ON public.testimonials
   FOR SELECT
@@ -137,6 +144,7 @@ CREATE POLICY "Allow public read testimonials"
   USING (true);
 
 -- Allow anonymous & authenticated insert/update/delete for admin operations
+DROP POLICY IF EXISTS "Allow anon and auth manage testimonials" ON public.testimonials;
 CREATE POLICY "Allow anon and auth manage testimonials"
   ON public.testimonials
   FOR ALL
@@ -145,10 +153,107 @@ CREATE POLICY "Allow anon and auth manage testimonials"
   WITH CHECK (true);
 
 
--- 5. Schema-level grants for anon and authenticated roles
+-- 5. Create Courses Table
+CREATE TABLE IF NOT EXISTS public.courses (
+  id TEXT PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  title TEXT NOT NULL,
+  tagline TEXT NOT NULL,
+  short TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  fee_amount NUMERIC NOT NULL DEFAULT 4999,
+  discount_percent NUMERIC NOT NULL DEFAULT 0,
+  display_order INT DEFAULT 0
+);
+
+-- Indexing
+CREATE INDEX IF NOT EXISTS idx_courses_display_order ON public.courses(display_order);
+
+-- Enable RLS
+ALTER TABLE public.courses ENABLE ROW LEVEL SECURITY;
+
+-- Allow public anonymous read
+DROP POLICY IF EXISTS "Allow public read courses" ON public.courses;
+CREATE POLICY "Allow public read courses"
+  ON public.courses
+  FOR SELECT
+  TO anon, authenticated
+  USING (true);
+
+-- Allow anonymous & authenticated insert/update/delete for admin operations
+DROP POLICY IF EXISTS "Allow anon and auth manage courses" ON public.courses;
+CREATE POLICY "Allow anon and auth manage courses"
+  ON public.courses
+  FOR ALL
+  TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
+
+-- Seed the 5 official VERBORA courses (idempotent)
+INSERT INTO public.courses (id, title, tagline, short, summary, fee_amount, discount_percent, display_order)
+VALUES
+  (
+    'spoken-english',
+    'Spoken English',
+    'Speak fluently. Connect naturally.',
+    'Speak fluently. Be confident.',
+    'Build the confidence to express yourself clearly in everyday conversations, discussions, and new situations.',
+    4999,
+    20,
+    1
+  ),
+  (
+    'business-english',
+    'Business English',
+    'Sound clear. Work confidently.',
+    'Excel professionally.',
+    'Communicate with clarity at work, from professional emails and meetings to presenting your ideas with confidence.',
+    6999,
+    25,
+    2
+  ),
+  (
+    'public-speaking',
+    'Public Speaking',
+    'Find your voice. Own the room.',
+    'Speak with impact.',
+    'Learn to organize your thoughts, speak with presence, and deliver a message that people remember.',
+    5999,
+    15,
+    3
+  ),
+  (
+    'interview-preparation',
+    'Interview Preparation',
+    'Show your strengths. Get ready.',
+    'Get Hired.',
+    'Practice answering questions, communicating your strengths, and approaching important interviews with greater confidence.',
+    4499,
+    20,
+    4
+  ),
+  (
+    'personality-development',
+    'Personality Development',
+    'Unlock your potential. Be your best.',
+    'Be Your Best.',
+    'Develop personal presence, emotional intelligence, body language, and the mindset to succeed in personal and professional life.',
+    5499,
+    30,
+    5
+  )
+ON CONFLICT (id) DO NOTHING;
+
+
+-- 6. Schema-level grants for anon and authenticated roles
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT ALL ON TABLE public.demo_bookings TO anon, authenticated;
 GRANT ALL ON TABLE public.contact_messages TO anon, authenticated;
 GRANT ALL ON TABLE public.newsletter_subscribers TO anon, authenticated;
 GRANT ALL ON TABLE public.testimonials TO anon, authenticated;
+GRANT ALL ON TABLE public.courses TO anon, authenticated, service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+
+-- 7. Reload PostgREST schema cache so /rest/v1/courses is immediately available
+NOTIFY pgrst, 'reload schema';

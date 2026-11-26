@@ -24,12 +24,13 @@ import {
   Quote, HeartHandshake, Target, Award, BadgeCheck, ShieldCheck,
   MapPin, Send, Lock, KeyRound, RefreshCw, Trash2, Download, LogOut,
   Eye, EyeOff, Database, Inbox, Calendar, AlertCircle,
-  Plus, Edit3, Image, Upload, Video, ExternalLink, ArrowLeft, HardDrive,
+  Plus, Edit3, Image, Upload, Video, ExternalLink, ArrowLeft, HardDrive, BookOpen,
 } from 'lucide-react'
 import './styles.css'
 import './adjustments.css'
 import { api } from './api'
-import { DemoBooking, ContactMessage, Testimonial } from './types/database'
+import { DemoBooking, ContactMessage, Testimonial, Course, CourseId } from './types/database'
+import { RichTextEditor, sanitizeRichHtml, stripHtmlToText } from './components/RichTextEditor'
 import {
   uploadImageToCloudinary,
   deleteMediaFromCloudinary,
@@ -45,7 +46,14 @@ import {
   VideoUploadTask,
 } from './lib/videoUploadManager'
 
-type CourseId = 'spoken-english' | 'business-english' | 'public-speaking' | 'interview-preparation' | 'personality-development'
+// Course item static definition mapping
+export const courseIconMap: Record<CourseId, any> = {
+  'spoken-english': MessageCircle,
+  'business-english': BriefcaseBusiness,
+  'public-speaking': Mic2,
+  'interview-preparation': UsersRound,
+  'personality-development': Sparkles,
+}
 
 const courses = [
   {
@@ -158,6 +166,7 @@ function Brand({ light = false, compact = false, dark = false }: { light?: boole
 }
 
 function DemoForm({ inModal = false, defaultCourse }: { inModal?: boolean; defaultCourse?: CourseId }) {
+  const { courses: dynamicCourses } = useMergedCourses()
   const [values, setValues] = useState<DemoValues>(() => ({
     name: '',
     email: '',
@@ -189,7 +198,7 @@ function DemoForm({ inModal = false, defaultCourse }: { inModal?: boolean; defau
       return setError('Please enter a valid 10-digit phone number.')
     }
 
-    const selectedCourse = courses.find(c => c.id === values.course)?.title || values.course
+    const selectedCourse = dynamicCourses.find(c => c.id === values.course)?.title || values.course
     const messageLines = [
       `*New Free Demo Booking — VERBORA*`,
       ``,
@@ -285,7 +294,7 @@ function DemoForm({ inModal = false, defaultCourse }: { inModal?: boolean; defau
                   required
                 >
                   <option value="">Choose a course...</option>
-                  {courses.map(course => (
+                  {dynamicCourses.map(course => (
                     <option key={course.id} value={course.id}>
                       {course.title}
                     </option>
@@ -346,6 +355,7 @@ function SiteHeader({ onDemo }: { onDemo: () => void }) {
   const [coursesOpen, setCoursesOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const { courses: dynamicCourses } = useMergedCourses()
   const location = useRouterState({ select: state => state.location.pathname })
 
   useEffect(() => { setMenuOpen(false); setCoursesOpen(false); setSearchOpen(false) }, [location])
@@ -378,7 +388,11 @@ function SiteHeader({ onDemo }: { onDemo: () => void }) {
     })
   }
 
-  const filtered = courses.filter(course => `${course.title} ${course.summary}`.toLowerCase().includes(search.toLowerCase()))
+  const filtered = dynamicCourses.filter(course =>
+    `${course.title} ${course.short} ${course.tagline} ${stripHtmlToText(course.summary)}`
+      .toLowerCase()
+      .includes(search.toLowerCase())
+  )
   const isHome = location === '/'
   const isAbout = location === '/about'
   const isTrainer = location === '/trainer' || location === '/trainers'
@@ -414,7 +428,7 @@ function SiteHeader({ onDemo }: { onDemo: () => void }) {
             </button>
             {coursesOpen && (
               <div className="course-dropdown">
-                {courses.map(course => (
+                {dynamicCourses.map(course => (
                   <Link
                     key={course.id}
                     to="/courses/$courseSlug"
@@ -509,6 +523,8 @@ function Hero() {
 }
 
 function CoursesSection() {
+  const { courses: displayCourses, isLoading } = useMergedCourses()
+
   return (
     <section className="courses-section" id="courses">
       <div className="home-row-header">
@@ -517,23 +533,33 @@ function CoursesSection() {
       </div>
 
       <div className="course-grid">
-        {courses.map(course => (
-          <Link
-            to="/courses/$courseSlug"
-            params={{ courseSlug: course.id }}
-            key={course.id}
-            className="course-card"
-          >
-            <img src={course.cover} alt={course.title} className="course-card-img" />
-            <div className="course-card-overlay">
-              <span className="course-card-icon-wrap">
-                <course.icon size={19} strokeWidth={2.4} />
-              </span>
-              <strong className="course-card-heading">{course.title}</strong>
-              <span className="course-card-subheading">{course.short}</span>
-            </div>
-          </Link>
-        ))}
+        {isLoading
+          ? Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="course-card course-card-skeleton skeleton-shimmer-dark">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+                  <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'rgba(255,255,255,0.16)' }} />
+                  <div style={{ height: 16, width: '70%', borderRadius: 4, background: 'rgba(255,255,255,0.22)' }} />
+                  <div style={{ height: 12, width: '48%', borderRadius: 4, background: 'rgba(255,255,255,0.15)' }} />
+                </div>
+              </div>
+            ))
+          : displayCourses.map(course => (
+              <Link
+                to="/courses/$courseSlug"
+                params={{ courseSlug: course.id }}
+                key={course.id}
+                className="course-card"
+              >
+                <img src={course.cover} alt={course.title} className="course-card-img" />
+                <div className="course-card-overlay">
+                  <span className="course-card-icon-wrap">
+                    <course.icon size={19} strokeWidth={2.4} />
+                  </span>
+                  <strong className="course-card-heading">{course.title}</strong>
+                  <span className="course-card-subheading">{course.short}</span>
+                </div>
+              </Link>
+            ))}
       </div>
     </section>
   )
@@ -685,6 +711,38 @@ export function useTestimonialsQuery() {
   })
 }
 
+export function useCoursesQuery() {
+  return useQuery({
+    queryKey: ['courses'],
+    queryFn: async () => {
+      const res = await api.courses.getCourses()
+      return res.data || []
+    },
+  })
+}
+
+export function useMergedCourses() {
+  const query = useCoursesQuery()
+  const merged = useMemo(() => {
+    const dbList = query.data || []
+    return courses.map(staticCourse => {
+      const dynamic = dbList.find(c => c.id === staticCourse.id)
+      return {
+        ...staticCourse,
+        title: dynamic?.title || staticCourse.title,
+        summary: dynamic?.summary || staticCourse.summary,
+        tagline: dynamic?.tagline || staticCourse.tagline,
+        short: dynamic?.short || staticCourse.short,
+        fee_amount: dynamic?.fee_amount ?? 4999,
+        discount_percent: dynamic?.discount_percent ?? 0,
+        display_order: dynamic?.display_order ?? 0,
+      }
+    })
+  }, [query.data])
+
+  return { ...query, courses: merged }
+}
+
 function StoriesSection() {
   const [videoStory, setVideoStory] = useState<StoryItem | null>(null)
   
@@ -757,6 +815,7 @@ function StoriesSection() {
 }
 
 function SiteFooter({ onDemo }: { onDemo: () => void }) {
+  const { courses: dynamicCourses } = useMergedCourses()
   return (
     <footer id="contact" className="site-footer">
       <div className="footer-container">
@@ -825,7 +884,7 @@ function SiteFooter({ onDemo }: { onDemo: () => void }) {
           <div className="footer-col">
             <h4 className="footer-col-title">Our Programs</h4>
             <ul className="footer-links-list">
-              {courses.map(course => (
+              {dynamicCourses.map(course => (
                 <li key={course.id}>
                   <Link to="/courses/$courseSlug" params={{ courseSlug: course.id }}>
                     {course.title}
@@ -1931,6 +1990,7 @@ function StoriesPage() {
 }
 
 function ContactPage() {
+  const { courses: dynamicCourses } = useMergedCourses()
   const [modalOpen, setModalOpen] = useState(false)
   const [showEnergyModal, setShowEnergyModal] = useState(false)
   const [form, setForm] = useState({
@@ -1949,14 +2009,15 @@ function ContactPage() {
 
   const [lastWaUrl, setLastWaUrl] = useState('')
 
-  const courseTitles: Record<string, string> = {
-    'spoken-english': 'Spoken English & Fluency',
-    'business-english': 'Business & Workplace English',
-    'public-speaking': 'Public Speaking & Stage Presence',
-    'interview-prep': 'Interview Preparation & Mock Drills',
-    'personality-development': 'Personality Transformation',
-    '1-on-1-mentorship': '1-on-1 Master Mentorship',
-  }
+  const courseTitles: Record<string, string> = useMemo(() => {
+    const map: Record<string, string> = {
+      '1-on-1-mentorship': '1-on-1 Master Mentorship',
+    }
+    for (const c of dynamicCourses) {
+      map[c.id] = c.title
+    }
+    return map
+  }, [dynamicCourses])
 
   const goalTitles: Record<string, string> = {
     'hesitation': 'Hesitation & Overthinking',
@@ -2268,11 +2329,9 @@ function ContactPage() {
                             value={form.course}
                             onChange={e => setForm({ ...form, course: e.target.value })}
                           >
-                            <option value="spoken-english">Spoken English & Fluency</option>
-                            <option value="business-english">Business & Workplace English</option>
-                            <option value="public-speaking">Public Speaking & Stage Presence</option>
-                            <option value="interview-prep">Interview Preparation & Mock Drills</option>
-                            <option value="personality-development">Personality Transformation</option>
+                            {dynamicCourses.map(c => (
+                              <option key={c.id} value={c.id}>{c.title}</option>
+                            ))}
                             <option value="1-on-1-mentorship">1-on-1 Master Mentorship</option>
                           </select>
                         </div>
@@ -2455,10 +2514,164 @@ function ContactPage() {
 
 function CourseDetail() {
   const { courseSlug } = courseRoute.useParams()
-  const course = courses.find(entry => entry.id === courseSlug)
+  const { courses: mergedCourses, isLoading } = useMergedCourses()
   const [modalOpen, setModalOpen] = useState(false)
-  if (!course) return <><SiteHeader onDemo={() => setModalOpen(true)} /><main className="not-found"><h1>Course not found</h1><p>We couldn't find that program.</p><Link to="/" className="primary-button">Back to Home</Link></main><SiteFooter onDemo={() => setModalOpen(true)} /><DemoModal open={modalOpen} onClose={() => setModalOpen(false)} /></>
-  return <><SiteHeader onDemo={() => setModalOpen(true)} /><main className="course-detail-page"><div className="course-detail-banner"><div className="detail-crumb"><Link to="/">Home</Link><span>/</span><a href="/#courses">Courses</a><span>/</span><strong>{course.title}</strong></div><span className={`course-icon ${course.iconClass}`}><course.icon size={38} /></span><h1>{course.title}</h1><p>{course.tagline}</p><button className="primary-button" onClick={() => setModalOpen(true)}>Book a Free Demo</button></div><div className="course-detail-body"><div><span className="section-kicker">The Program</span><h2>Find your voice. <span>Grow your confidence.</span></h2><p>{course.summary}</p><p>Sessions are designed around communication practice and practical feedback. Contact VERBORA to confirm the batch schedule, course format, fees, and trainer details.</p></div><div className="topic-card"><h3>What you'll work on</h3>{course.topics.map(topic => <div key={topic}><Check size={18} /><span>{topic}</span></div>)}</div></div><div className="detail-other"><h2>Explore more programs</h2><div className="course-grid">{courses.filter(entry => entry.id !== course.id).map(entry => <Link key={entry.id} to="/courses/$courseSlug" params={{ courseSlug: entry.id }} className="course-card"><img src={entry.cover} alt={entry.title} className="course-card-img" /><div className="course-card-overlay"><span className="course-card-icon-wrap"><entry.icon size={19} strokeWidth={2.4} /></span><strong className="course-card-heading">{entry.title}</strong><span className="course-card-subheading">{entry.short}</span></div></Link>)}</div></div></main><SiteFooter onDemo={() => setModalOpen(true)} /><DemoModal open={modalOpen} onClose={() => setModalOpen(false)} defaultCourse={course.id} /></>
+
+  const course = useMemo(
+    () => mergedCourses.find(entry => entry.id === courseSlug) || null,
+    [mergedCourses, courseSlug]
+  )
+
+  if (isLoading) {
+    return (
+      <>
+        <SiteHeader onDemo={() => setModalOpen(true)} />
+        <main className="course-detail-page">
+          <div className="course-detail-banner course-detail-banner-skeleton skeleton-shimmer">
+            <div style={{ height: 20, width: 200, borderRadius: 4, background: '#cbd5e1' }} />
+            <div style={{ width: 62, height: 62, borderRadius: '50%', background: '#cbd5e1' }} />
+            <div style={{ height: 36, width: 280, borderRadius: 6, background: '#cbd5e1' }} />
+            <div style={{ height: 18, width: 340, borderRadius: 4, background: '#cbd5e1' }} />
+            <div style={{ height: 84, width: 'min(560px, 100%)', borderRadius: 20, background: '#cbd5e1', marginTop: 8 }} />
+          </div>
+          <div className="course-detail-body-skeleton">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ height: 28, width: '60%', borderRadius: 6, background: '#e2e8f0' }} className="skeleton-shimmer" />
+              <div style={{ height: 16, width: '100%', borderRadius: 4, background: '#e2e8f0' }} className="skeleton-shimmer" />
+              <div style={{ height: 16, width: '90%', borderRadius: 4, background: '#e2e8f0' }} className="skeleton-shimmer" />
+              <div style={{ height: 16, width: '80%', borderRadius: 4, background: '#e2e8f0' }} className="skeleton-shimmer" />
+            </div>
+            <div style={{ height: 200, borderRadius: 16, background: '#e2e8f0' }} className="skeleton-shimmer" />
+          </div>
+        </main>
+        <SiteFooter onDemo={() => setModalOpen(true)} />
+      </>
+    )
+  }
+
+  if (!course) {
+    return (
+      <>
+        <SiteHeader onDemo={() => setModalOpen(true)} />
+        <main className="not-found">
+          <h1>Course not found</h1>
+          <p>We couldn't find that program.</p>
+          <Link to="/" className="primary-button">Back to Home</Link>
+        </main>
+        <SiteFooter onDemo={() => setModalOpen(true)} />
+        <DemoModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      </>
+    )
+  }
+
+  const discountedPrice = Math.round(course.fee_amount * (1 - course.discount_percent / 100))
+
+  return (
+    <>
+      <SiteHeader onDemo={() => setModalOpen(true)} />
+      <main className="course-detail-page">
+        <div className="course-detail-banner">
+          <div className="detail-crumb">
+            <Link to="/">Home</Link>
+            <span>/</span>
+            <a href="/#courses">Courses</a>
+            <span>/</span>
+            <strong>{course.title}</strong>
+          </div>
+          <span className={`course-icon ${course.iconClass}`}>
+            <course.icon size={38} />
+          </span>
+          <h1>{course.title}</h1>
+          <p>{course.tagline}</p>
+
+          {/* Dynamic Fees & Discount Card + CTA */}
+          <div className="course-detail-price-box">
+            <div className="course-detail-price-info">
+              <div className="course-detail-price-meta">
+                <span className="course-detail-price-label">Course Fee</span>
+                {course.discount_percent > 0 && (
+                  <span className="course-detail-discount-tag">
+                    {course.discount_percent}% OFF
+                  </span>
+                )}
+              </div>
+              <div className="course-detail-price-row">
+                <span className="course-detail-price-current">
+                  ₹{discountedPrice.toLocaleString('en-IN')}
+                </span>
+                {course.discount_percent > 0 && (
+                  <span className="course-detail-price-original">
+                    ₹{course.fee_amount.toLocaleString('en-IN')}
+                  </span>
+                )}
+              </div>
+              {course.discount_percent > 0 && (
+                <span className="course-detail-price-savings">
+                  You save ₹{(course.fee_amount - discountedPrice).toLocaleString('en-IN')}
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="primary-button course-detail-cta-btn"
+              onClick={() => setModalOpen(true)}
+            >
+              <span>Book a Free Demo</span>
+              <MoveRight size={16} />
+            </button>
+          </div>
+        </div>
+
+        <div className="course-detail-body">
+          <div>
+            <span className="section-kicker">The Program</span>
+            <h2>Find your voice. <span>Grow your confidence.</span></h2>
+            <div
+              className="course-detail-rich-text"
+              dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(course.summary) }}
+            />
+          </div>
+          <div className="topic-card">
+            <h3>What you'll work on</h3>
+            {course.topics.map(topic => (
+              <div key={topic}>
+                <Check size={18} />
+                <span>{topic}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="detail-other">
+          <h2>Explore more programs</h2>
+          <div className="course-grid">
+            {mergedCourses
+              .filter(entry => entry.id !== course.id)
+              .map(entry => (
+                <Link
+                  key={entry.id}
+                  to="/courses/$courseSlug"
+                  params={{ courseSlug: entry.id }}
+                  className="course-card"
+                >
+                  <img src={entry.cover} alt={entry.title} className="course-card-img" />
+                  <div className="course-card-overlay">
+                    <span className="course-card-icon-wrap">
+                      <entry.icon size={19} strokeWidth={2.4} />
+                    </span>
+                    <strong className="course-card-heading">{entry.title}</strong>
+                    <span className="course-card-subheading">{entry.short}</span>
+                  </div>
+                </Link>
+              ))}
+          </div>
+        </div>
+      </main>
+      <SiteFooter onDemo={() => setModalOpen(true)} />
+      <DemoModal open={modalOpen} onClose={() => setModalOpen(false)} defaultCourse={course.id} />
+    </>
+  )
 }
 
 function WhatsAppIcon({ size = 28 }: { size?: number }) {
@@ -2509,7 +2722,7 @@ function downloadCSV(filename: string, rows: (string | number)[][]) {
   document.body.removeChild(link)
 }
 
-function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testimonials' | 'testimonials-add' }) {
+function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testimonials' | 'testimonials-add' | 'courses' }) {
   const navigate = useNavigate()
   const pathname = useRouterState({ select: state => state.location.pathname })
   const editIdMatch = pathname.match(/\/testimonials\/edit\/([^/?#]+)/)
@@ -2530,8 +2743,9 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const isTestimonialsEditRoute = (pathname.includes('/testimonials/edit/') || (pathname.includes('/testimonials') && !!editId))
   const isTestimonialsFormRoute = isTestimonialsAddRoute || isTestimonialsEditRoute
 
+  const isCoursesRoute = pathname.includes('/courses') || defaultRoute === 'courses'
   const isTestimonialsRoute = isTestimonialsFormRoute || pathname.includes('/testimonials') || defaultRoute === 'testimonials'
-  const activeSection: 'leads' | 'testimonials' = isTestimonialsRoute ? 'testimonials' : 'leads'
+  const activeSection: 'leads' | 'testimonials' | 'courses' = isCoursesRoute ? 'courses' : (isTestimonialsRoute ? 'testimonials' : 'leads')
 
   // Determine base admin path (/verbora-edu-admin, /shivam-admin, /admin)
   const baseAdminPath = pathname.startsWith('/shivam-admin')
@@ -2543,6 +2757,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const leadsRoutePath = `${baseAdminPath}/leads`
   const testimonialsRoutePath = `${baseAdminPath}/testimonials`
   const addTestimonialRoutePath = `${baseAdminPath}/testimonials/add`
+  const coursesRoutePath = `${baseAdminPath}/courses`
 
   // Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -2551,6 +2766,25 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const [bookings, setBookings] = useState<DemoBooking[]>([])
   const [contacts, setContacts] = useState<ContactMessage[]>([])
   const [testimonials, setTestimonials] = useState<Testimonial[]>([])
+  const [adminCourses, setAdminCourses] = useState<Course[]>([])
+  const [coursesDbError, setCoursesDbError] = useState<string | null>(null)
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null)
+  const [courseForm, setCourseForm] = useState<{
+    title: string
+    summary: string
+    tagline: string
+    short: string
+    fee_amount: number
+    discount_percent: number
+  }>({
+    title: '',
+    summary: '',
+    tagline: '',
+    short: '',
+    fee_amount: 4999,
+    discount_percent: 0,
+  })
+  const [savingCourse, setSavingCourse] = useState(false)
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -2651,18 +2885,74 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const loadData = async () => {
     setLoading(true)
     try {
-      const [bRes, cRes, tRes] = await Promise.all([
+      const [bRes, cRes, tRes, crRes] = await Promise.all([
         api.bookings.getDemoBookings(),
         api.contact.getContactMessages(),
         api.testimonials.getTestimonials(),
+        api.courses.getCourses(),
       ])
       if (bRes.data) setBookings(bRes.data)
       if (cRes.data) setContacts(cRes.data)
       if (tRes.data) setTestimonials(tRes.data)
+      if (crRes.data) setAdminCourses(crRes.data)
+      setCoursesDbError(api.courses.getCoursesDbError())
     } catch (err) {
       console.error('Error fetching admin data:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleEditCourse = (course: Course) => {
+    setEditingCourse(course)
+    setCourseForm({
+      title: course.title,
+      summary: course.summary,
+      tagline: course.tagline,
+      short: course.short,
+      fee_amount: course.fee_amount,
+      discount_percent: course.discount_percent,
+    })
+  }
+
+  const handleSaveCourse = async () => {
+    if (!editingCourse) return
+    if (!courseForm.title.trim()) {
+      alert('Course name cannot be empty.')
+      return
+    }
+    if (!stripHtmlToText(courseForm.summary).trim()) {
+      alert('Course description cannot be empty.')
+      return
+    }
+    setSavingCourse(true)
+    try {
+      const res = await api.courses.updateCourse(editingCourse.id, {
+        title: courseForm.title,
+        summary: courseForm.summary,
+        tagline: courseForm.tagline,
+        short: courseForm.short,
+        fee_amount: courseForm.fee_amount,
+        discount_percent: courseForm.discount_percent,
+      })
+      setCoursesDbError(api.courses.getCoursesDbError())
+
+      if (res.success && res.data) {
+        setAdminCourses(prev =>
+          prev.map(c => (c.id === editingCourse.id ? res.data! : c))
+        )
+        // Invalidate react query cache so website immediately sees changes
+        queryClient.invalidateQueries({ queryKey: ['courses'] })
+        const updatedTitle = res.data.title
+        setEditingCourse(null)
+        showToast(`Course "${updatedTitle}" updated successfully!`)
+      } else {
+        alert(`Error saving course: ${res.error || 'Could not save changes to Supabase.'}`)
+      }
+    } catch (err: any) {
+      alert(`Error saving course: ${err.message || 'Unknown error'}`)
+    } finally {
+      setSavingCourse(false)
     }
   }
 
@@ -3245,6 +3535,18 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                 {totalTestimonials}
               </span>
             </Link>
+
+            <Link
+              to={coursesRoutePath}
+              className={`admin-sidebar-link ${activeSection === 'courses' ? 'active' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            >
+              <BookOpen size={18} />
+              <span className="admin-sidebar-link-text">Courses (5)</span>
+              <span className="admin-sidebar-pill admin-sidebar-pill-secondary">
+                5
+              </span>
+            </Link>
           </nav>
 
           <div className="admin-sidebar-footer">
@@ -3294,7 +3596,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                   </>
                 ) : (
                   <span className="admin-breadcrumb-active">
-                    {activeSection === 'leads' ? 'Leads & Inquiries' : 'Home Testimonials'}
+                    {activeSection === 'leads' ? 'Leads & Inquiries' : activeSection === 'courses' ? 'Courses Management' : 'Home Testimonials'}
                   </span>
                 )}
               </div>
@@ -4266,11 +4568,379 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                 )}
               </>
             )}
-          </>
-        )}
+              </>
+            )}
+
+            {/* Courses Management Section */}
+            {activeSection === 'courses' && (
+              <>
+                {coursesDbError && (
+                  <div className="admin-db-warning-banner">
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: 1 }}>
+                      <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 2, color: '#d97706' }} />
+                      <div>
+                        <strong style={{ display: 'block', marginBottom: 2 }}>
+                          Supabase <code>public.courses</code> table not ready ({coursesDbError})
+                        </strong>
+                        <span>
+                          Run <code>supabase/schema.sql</code> in your Supabase Dashboard SQL Editor to create and seed the <code>courses</code> table so edits persist to the database.
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="admin-icon-btn"
+                      onClick={loadData}
+                      disabled={loading}
+                    >
+                      <RefreshCw size={13} className={loading ? 'spin' : ''} />
+                      <span>Retry Connection</span>
+                    </button>
+                  </div>
+                )}
+
+                {loading && adminCourses.length === 0 ? (
+                  <div className="admin-courses-grid">
+                    {Array.from({ length: 5 }).map((_, idx) => (
+                      <div key={idx} className="admin-course-skeleton">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flex: 1 }}>
+                            <div className="skeleton-shimmer" style={{ width: 44, height: 44, borderRadius: 12 }} />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+                              <div className="skeleton-shimmer" style={{ height: 16, width: '65%', borderRadius: 4 }} />
+                              <div className="skeleton-shimmer" style={{ height: 12, width: '80%', borderRadius: 4 }} />
+                            </div>
+                          </div>
+                          <div className="skeleton-shimmer" style={{ height: 22, width: 84, borderRadius: 6 }} />
+                        </div>
+                        <div className="skeleton-shimmer" style={{ height: 68, width: '100%', borderRadius: 8 }} />
+                        <div className="skeleton-shimmer" style={{ height: 54, width: '100%', borderRadius: 8 }} />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8 }}>
+                          <div className="skeleton-shimmer" style={{ height: 14, width: 120, borderRadius: 4 }} />
+                          <div className="skeleton-shimmer" style={{ height: 32, width: 108, borderRadius: 6 }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="admin-courses-grid">
+                    {(adminCourses.length > 0 ? adminCourses : api.courses.DEFAULT_INITIAL_COURSES).map(c => {
+                      const CourseIcon = courseIconMap[c.id] || BookOpen
+                      const discountedPrice = Math.round((c.fee_amount || 0) * (1 - (c.discount_percent || 0) / 100))
+
+                      return (
+                        <div key={c.id} className="admin-course-card">
+                          <div className="admin-course-card-header">
+                            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                              <div className={`admin-course-icon-badge ${c.iconClass || 'aqua'}`}>
+                                <CourseIcon size={22} />
+                              </div>
+                              <div>
+                                <h3 className="admin-course-title">{c.title}</h3>
+                                <p className="admin-course-tagline">{c.tagline}</p>
+                              </div>
+                            </div>
+                            <span
+                              style={{
+                                fontSize: 10.5,
+                                fontWeight: 700,
+                                background: '#f1f5f9',
+                                color: '#475569',
+                                padding: '3px 8px',
+                                borderRadius: 6,
+                                border: '1px solid #e2e8f0',
+                              }}
+                            >
+                              {c.short}
+                            </span>
+                          </div>
+
+                          <div>
+                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>
+                              Course Description (Summary)
+                            </label>
+                            <div className="admin-course-description-box" title={stripHtmlToText(c.summary)}>
+                              {stripHtmlToText(c.summary)}
+                            </div>
+                          </div>
+
+                          <div className="admin-course-pricing-strip">
+                            <div className="admin-course-price-col">
+                              <span className="admin-course-price-label">Live Pricing</span>
+                              <div className="admin-course-effective-price">
+                                <span>₹{discountedPrice.toLocaleString('en-IN')}</span>
+                                {(c.discount_percent || 0) > 0 && (
+                                  <span className="admin-course-original-price">
+                                    ₹{(c.fee_amount || 0).toLocaleString('en-IN')}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {(c.discount_percent || 0) > 0 ? (
+                              <span className="admin-course-discount-badge">
+                                {c.discount_percent}% OFF
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: 11.5, fontWeight: 600, color: '#64748b' }}>
+                                Regular Price
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="admin-course-actions">
+                            <span style={{ fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <ShieldCheck size={14} color="#16a34a" /> Official 1-of-5 Course
+                            </span>
+
+                            <button
+                              type="button"
+                              className="admin-action-btn admin-btn-edit"
+                              style={{ padding: '6px 14px', borderRadius: 6, gap: 6 }}
+                              onClick={() => handleEditCourse(c)}
+                            >
+                              <Edit3 size={13} />
+                              <span>Edit Course</span>
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </>
+            )}
       </main>
     </div>
   </div>
+
+      {/* Edit Course Modal */}
+      {editingCourse && (
+        <div className="admin-modal-overlay">
+          <div className="admin-modal-dialog" style={{ maxWidth: 640, padding: 24, borderRadius: 12 }}>
+            <div className="admin-modal-header" style={{ marginBottom: 16, paddingBottom: 12 }}>
+              <div className="admin-modal-title-group">
+                <div className={`admin-course-icon-badge ${editingCourse.iconClass || 'aqua'}`} style={{ width: 38, height: 38 }}>
+                  <BookOpen size={18} />
+                </div>
+                <div>
+                  <h3 className="admin-modal-title" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
+                    Edit {editingCourse.title}
+                  </h3>
+                  <p className="admin-modal-sub" style={{ margin: '3px 0 0 0', fontSize: 12, color: '#64748b' }}>
+                    Update course name, description, fee amount, and discount %.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="admin-modal-close-btn"
+                onClick={() => setEditingCourse(null)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={e => {
+                e.preventDefault()
+                handleSaveCourse()
+              }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+            >
+              <div>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                  Course Name <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={courseForm.title}
+                  onChange={e => setCourseForm(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="e.g. Spoken English"
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: 8,
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#0f172a',
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                  Course Description / Summary <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <RichTextEditor
+                  key={editingCourse.id}
+                  value={courseForm.summary}
+                  onChange={html => setCourseForm(prev => ({ ...prev, summary: html }))}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                    Tagline (Banner)
+                  </label>
+                  <input
+                    type="text"
+                    value={courseForm.tagline}
+                    onChange={e => setCourseForm(prev => ({ ...prev, tagline: e.target.value }))}
+                    placeholder="e.g. Speak fluently. Connect naturally."
+                    style={{
+                      width: '100%',
+                      padding: '9px 12px',
+                      borderRadius: 8,
+                      border: '1px solid #cbd5e1',
+                      fontSize: 13,
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                    Short Subtitle (Card)
+                  </label>
+                  <input
+                    type="text"
+                    value={courseForm.short}
+                    onChange={e => setCourseForm(prev => ({ ...prev, short: e.target.value }))}
+                    placeholder="e.g. Speak fluently. Be confident."
+                    style={{
+                      width: '100%',
+                      padding: '9px 12px',
+                      borderRadius: 8,
+                      border: '1px solid #cbd5e1',
+                      fontSize: 13,
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                    Fee Amount (₹) <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    required
+                    value={courseForm.fee_amount}
+                    onChange={e => setCourseForm(prev => ({ ...prev, fee_amount: Math.max(0, Number(e.target.value) || 0) }))}
+                    placeholder="4999"
+                    style={{
+                      width: '100%',
+                      padding: '9px 12px',
+                      borderRadius: 8,
+                      border: '1px solid #cbd5e1',
+                      fontSize: 13.5,
+                      fontWeight: 600,
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                    Discount Percentage (%)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={courseForm.discount_percent}
+                    onChange={e => setCourseForm(prev => ({ ...prev, discount_percent: Math.min(100, Math.max(0, Number(e.target.value) || 0)) }))}
+                    placeholder="0"
+                    style={{
+                      width: '100%',
+                      padding: '9px 12px',
+                      borderRadius: 8,
+                      border: '1px solid #cbd5e1',
+                      fontSize: 13.5,
+                      fontWeight: 600,
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Live Preview Box */}
+              <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Live Price Preview:
+                </span>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 20, fontWeight: 800, color: '#15803d' }}>
+                    ₹{Math.round(courseForm.fee_amount * (1 - courseForm.discount_percent / 100)).toLocaleString('en-IN')}
+                  </span>
+                  {courseForm.discount_percent > 0 && (
+                    <>
+                      <span style={{ fontSize: 13, color: '#94a3b8', textDecoration: 'line-through' }}>
+                        ₹{courseForm.fee_amount.toLocaleString('en-IN')}
+                      </span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#16a34a' }}>
+                        ({courseForm.discount_percent}% OFF • Save ₹{(courseForm.fee_amount - Math.round(courseForm.fee_amount * (1 - courseForm.discount_percent / 100))).toLocaleString('en-IN')})
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingCourse(null)}
+                  style={{
+                    background: '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: 6,
+                    padding: '8px 16px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    color: '#475569',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingCourse}
+                  style={{
+                    background: '#0284c7',
+                    border: 'none',
+                    borderRadius: 6,
+                    padding: '8px 20px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    color: '#ffffff',
+                  }}
+                >
+                  {savingCourse ? 'Saving Changes...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Spotlight Testimonial Selection Modal */}
       {showSpotlightModal && (
@@ -4590,6 +5260,38 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   )
 }
 
+function CoursesPage() {
+  const [modalOpen, setModalOpen] = useState(false)
+  return (
+    <>
+      <SiteHeader onDemo={() => setModalOpen(true)} />
+      <main className="subpage-shell" style={{ paddingTop: 110, paddingBottom: 60 }}>
+        <div className="content-shell without-demo">
+          <CoursesSection />
+        </div>
+      </main>
+      <SiteFooter onDemo={() => setModalOpen(true)} />
+      <DemoModal open={modalOpen} onClose={() => setModalOpen(false)} />
+    </>
+  )
+}
+
+function NotFoundPage() {
+  const [modalOpen, setModalOpen] = useState(false)
+  return (
+    <>
+      <SiteHeader onDemo={() => setModalOpen(true)} />
+      <main className="not-found">
+        <h1>Page not found</h1>
+        <p>The page you are looking for does not exist.</p>
+        <Link to="/" className="primary-button">Back to Home</Link>
+      </main>
+      <SiteFooter onDemo={() => setModalOpen(true)} />
+      <DemoModal open={modalOpen} onClose={() => setModalOpen(false)} />
+    </>
+  )
+}
+
 function RootLayout() {
   const pathname = useRouterState({ select: state => state.location.pathname })
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }) }, [pathname])
@@ -4602,8 +5304,9 @@ function RootLayout() {
   )
 }
 
-const rootRoute = createRootRoute({ component: RootLayout })
+const rootRoute = createRootRoute({ component: RootLayout, notFoundComponent: NotFoundPage })
 const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: LandingPage })
+const coursesIndexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/courses', component: CoursesPage })
 const courseRoute = createRoute({ getParentRoute: () => rootRoute, path: '/courses/$courseSlug', component: CourseDetail })
 const aboutRoute = createRoute({ getParentRoute: () => rootRoute, path: '/about', component: AboutPage })
 const trainerRoute = createRoute({ getParentRoute: () => rootRoute, path: '/trainer', component: TrainerPage })
@@ -4613,7 +5316,7 @@ const successStoriesRoute = createRoute({ getParentRoute: () => rootRoute, path:
 const contactRoute = createRoute({ getParentRoute: () => rootRoute, path: '/contact', component: ContactPage })
 const contactUsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/contact-us', component: ContactPage })
 
-// Admin Routes (Main portal, Leads, Testimonials, Add & Edit)
+// Admin Routes (Main portal, Leads, Testimonials, Add & Edit, Courses)
 const verboraEduAdminRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
 const verboraEduAdminLeadsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin/leads', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
 const verboraEduAdminTestimonialsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin/testimonials', component: () => <VerboraEduAdminPage defaultRoute="testimonials" /> })
@@ -4623,6 +5326,7 @@ const verboraEduAdminTestimonialsEditRoute = createRoute({
   path: '/verbora-edu-admin/testimonials/edit/$id',
   component: () => <VerboraEduAdminPage defaultRoute="testimonials" />,
 })
+const verboraEduAdminCoursesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin/courses', component: () => <VerboraEduAdminPage defaultRoute="courses" /> })
 
 // Shivam-admin Aliases
 const shivamAdminRoute = createRoute({ getParentRoute: () => rootRoute, path: '/shivam-admin', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
@@ -4634,6 +5338,7 @@ const shivamAdminTestimonialsEditRoute = createRoute({
   path: '/shivam-admin/testimonials/edit/$id',
   component: () => <VerboraEduAdminPage defaultRoute="testimonials" />,
 })
+const shivamAdminCoursesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/shivam-admin/courses', component: () => <VerboraEduAdminPage defaultRoute="courses" /> })
 
 // General admin Aliases
 const adminRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admin', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
@@ -4645,9 +5350,11 @@ const adminTestimonialsEditRoute = createRoute({
   path: '/admin/testimonials/edit/$id',
   component: () => <VerboraEduAdminPage defaultRoute="testimonials" />,
 })
+const adminCoursesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admin/courses', component: () => <VerboraEduAdminPage defaultRoute="courses" /> })
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  coursesIndexRoute,
   courseRoute,
   aboutRoute,
   trainerRoute,
@@ -4661,16 +5368,19 @@ const routeTree = rootRoute.addChildren([
   verboraEduAdminTestimonialsRoute,
   verboraEduAdminTestimonialsAddRoute,
   verboraEduAdminTestimonialsEditRoute,
+  verboraEduAdminCoursesRoute,
   shivamAdminRoute,
   shivamAdminLeadsRoute,
   shivamAdminTestimonialsRoute,
   shivamAdminTestimonialsAddRoute,
   shivamAdminTestimonialsEditRoute,
+  shivamAdminCoursesRoute,
   adminRoute,
   adminLeadsRoute,
   adminTestimonialsRoute,
   adminTestimonialsAddRoute,
   adminTestimonialsEditRoute,
+  adminCoursesRoute,
 ])
 const router = createRouter({ routeTree })
 

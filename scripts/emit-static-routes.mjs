@@ -12,6 +12,7 @@ for (const slug of slugs) {
 
 // Standalone routes
 const pages = [
+  'courses',
   'about',
   'trainer',
   'trainers',
@@ -23,14 +24,17 @@ const pages = [
   'verbora-edu-admin/leads',
   'verbora-edu-admin/testimonials',
   'verbora-edu-admin/testimonials/add',
+  'verbora-edu-admin/courses',
   'shivam-admin',
   'shivam-admin/leads',
   'shivam-admin/testimonials',
   'shivam-admin/testimonials/add',
+  'shivam-admin/courses',
   'admin',
   'admin/leads',
   'admin/testimonials',
   'admin/testimonials/add',
+  'admin/courses',
 ]
 for (const page of pages) {
   const directory = resolve(dist, ...page.split('/'))
