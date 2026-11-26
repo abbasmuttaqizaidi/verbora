@@ -4191,7 +4191,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                                       borderRadius: 10,
                                     }}
                                   >
-                                    ★ Spotlight
+                                    Spotlight
                                   </span>
                                 )}
                                 <button
