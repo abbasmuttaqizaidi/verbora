@@ -3679,7 +3679,15 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
 
                 {/* Testimonials Toolbar */}
                 <div className="admin-toolbar">
-                  <div className="admin-toolbar-actions admin-toolbar-testimonials">
+                  <div className="admin-tabs">
+                    <div className="admin-tab active" style={{ cursor: 'default' }}>
+                      <Quote size={15} />
+                      <span>Student Stories</span>
+                      <span className="admin-tab-count">{totalTestimonials}</span>
+                    </div>
+                  </div>
+
+                  <div className="admin-toolbar-actions">
                     <div className="admin-search-box">
                       <Search size={14} className="admin-search-icon" />
                       <input
