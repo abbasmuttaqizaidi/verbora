@@ -27,6 +27,7 @@ import { DemoBooking, ContactMessage, Testimonial } from './types/database'
 import {
   uploadImageToCloudinary,
   uploadVideoToCloudinary,
+  deleteMediaFromCloudinary,
   getSavedUploadPreset,
   saveUploadPreset,
   CLOUDINARY_CLOUD_NAME,
@@ -2724,6 +2725,10 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const handleDeleteTestimonial = async (id: string, name: string) => {
     if (!window.confirm(`Are you sure you want to delete testimonial by "${name}"?`)) return
     setUpdatingId(id)
+    const target = testimonials.find(t => t.id === id)
+    if (target?.video) {
+      deleteMediaFromCloudinary(target.video, 'video').catch(() => {})
+    }
     const res = await api.testimonials.deleteTestimonial(id)
     if (res.success) {
       setTestimonials(prev => prev.filter(t => t.id !== id))
@@ -2816,6 +2821,11 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     setVideoSuccessUrl(null)
 
     try {
+      // If replacing an existing video in this session, remove old video from Cloudinary
+      if (testimonialForm.video) {
+        deleteMediaFromCloudinary(testimonialForm.video, 'video').catch(() => {})
+      }
+
       saveUploadPreset(customPreset)
       const result = await uploadVideoToCloudinary(file, totalUsedStorageBytes, customPreset)
       if (result.url) {
@@ -3656,7 +3666,15 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                                   </span>
                                   <button
                                     type="button"
-                                    onClick={() => setTestimonialForm(prev => ({ ...prev, video: '', video_size_bytes: 0 }))}
+                                    onClick={() => {
+                                      const videoToDelete = testimonialForm.video
+                                      if (videoToDelete) {
+                                        deleteMediaFromCloudinary(videoToDelete, 'video').catch(() => {})
+                                      }
+                                      setTestimonialForm(prev => ({ ...prev, video: '', video_size_bytes: 0 }))
+                                      setVideoSuccessUrl(null)
+                                      showToast('Video removed and deleted from Cloudinary.')
+                                    }}
                                     style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}
                                   >
                                     Remove

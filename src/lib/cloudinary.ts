@@ -174,3 +174,64 @@ export async function uploadImageToCloudinary(
     }
   }
 }
+
+/**
+ * Extracts Cloudinary public_id from a Cloudinary URL
+ * Example: https://res.cloudinary.com/demo/video/upload/v12345/verbora/testimonials/sample.mp4 -> verbora/testimonials/sample
+ */
+export function extractCloudinaryPublicId(url: string): string | null {
+  if (!url || !url.includes('cloudinary.com')) return null
+  try {
+    const parts = url.split('/upload/')
+    if (parts.length < 2) return null
+    // Remove version segment (e.g. v1711234567/)
+    const afterUpload = parts[1].replace(/^v\d+\//, '')
+    // Remove extension (.mp4, .jpg, etc)
+    const publicId = afterUpload.replace(/\.[^/.]+$/, '')
+    return publicId || null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Permanently deletes media asset from Cloudinary via serverless API
+ */
+export async function deleteMediaFromCloudinary(
+  publicIdOrUrl: string,
+  resourceType: 'video' | 'image' = 'video'
+): Promise<{ success: boolean; error?: string }> {
+  if (!publicIdOrUrl) return { success: false, error: 'No media specified' }
+
+  let publicId = publicIdOrUrl
+  if (publicIdOrUrl.startsWith('http://') || publicIdOrUrl.startsWith('https://')) {
+    const extracted = extractCloudinaryPublicId(publicIdOrUrl)
+    if (extracted) {
+      publicId = extracted
+    }
+  }
+
+  try {
+    const res = await fetch('/api/delete-media', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        public_id: publicId,
+        resource_type: resourceType,
+      }),
+    })
+
+    const data = await res.json()
+    if (res.ok && data.success) {
+      return { success: true }
+    } else {
+      return { success: false, error: data.error || 'Failed to delete asset from Cloudinary' }
+    }
+  } catch (err: any) {
+    console.warn('Media deletion call failed (likely local dev without vercel api running):', err?.message)
+    return { success: false, error: err?.message }
+  }
+}
+
