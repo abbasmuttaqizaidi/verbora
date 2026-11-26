@@ -26,13 +26,18 @@ import { api } from './api'
 import { DemoBooking, ContactMessage, Testimonial } from './types/database'
 import {
   uploadImageToCloudinary,
-  uploadVideoToCloudinary,
   deleteMediaFromCloudinary,
   getSavedUploadPreset,
   saveUploadPreset,
   CLOUDINARY_CLOUD_NAME,
   MAX_STORAGE_BYTES,
 } from './lib/cloudinary'
+import {
+  startBackgroundVideoUpload,
+  subscribeToVideoUpload,
+  clearVideoUploadTask,
+  VideoUploadTask,
+} from './lib/videoUploadManager'
 
 type CourseId = 'spoken-english' | 'business-english' | 'public-speaking' | 'interview-preparation' | 'personality-development'
 
@@ -2604,6 +2609,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   // Cloudinary upload state
   const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadingVideo, setUploadingVideo] = useState(false)
+  const [activeUploadTask, setActiveUploadTask] = useState<VideoUploadTask | null>(null)
+  const [showVideoCompletedModal, setShowVideoCompletedModal] = useState<VideoUploadTask | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [videoUploadError, setVideoUploadError] = useState<string | null>(null)
   const [uploadSuccessUrl, setUploadSuccessUrl] = useState<string | null>(null)
@@ -2611,6 +2618,30 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const [customPreset, setCustomPreset] = useState<string>(() => getSavedUploadPreset())
   const [showCloudinarySettings, setShowCloudinarySettings] = useState(false)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+
+  // Subscribe to background video upload across route changes
+  useEffect(() => {
+    const unsub = subscribeToVideoUpload(task => {
+      setActiveUploadTask(task)
+      if (task?.status === 'uploading') {
+        setUploadingVideo(true)
+      } else {
+        setUploadingVideo(false)
+        if (task?.status === 'completed' && task.resultUrl) {
+          setTestimonialForm(prev => ({
+            ...prev,
+            video: task.resultUrl!,
+            video_size_bytes: task.resultBytes || 0,
+          }))
+          setVideoSuccessUrl(task.resultUrl)
+          setShowVideoCompletedModal(task)
+        } else if (task?.status === 'error') {
+          setVideoUploadError(task.error || 'Video upload failed')
+        }
+      }
+    })
+    return unsub
+  }, [])
 
   const showToast = (msg: string) => {
     setToastMessage(msg)
@@ -2814,37 +2845,12 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     const file = e.target.files?.[0]
     if (!file) return
 
-    setUploadingVideo(true)
     setVideoUploadError(null)
     setVideoSuccessUrl(null)
+    saveUploadPreset(customPreset)
 
-    try {
-      // If replacing an existing video in this session, remove old video from Cloudinary
-      if (testimonialForm.video) {
-        deleteMediaFromCloudinary(testimonialForm.video, 'video').catch(() => {})
-      }
-
-      saveUploadPreset(customPreset)
-      const result = await uploadVideoToCloudinary(file, totalUsedStorageBytes, customPreset)
-      if (result.url) {
-        setTestimonialForm(prev => ({
-          ...prev,
-          video: result.url!,
-          video_size_bytes: result.bytes || file.size,
-        }))
-        setVideoSuccessUrl(result.url)
-        showToast(`Video uploaded successfully (${((result.bytes || file.size) / (1024 * 1024)).toFixed(1)} MB)!`)
-      } else {
-        setVideoUploadError(result.error || 'Failed to upload video.')
-        if (result.error && result.error.includes('Storage Quota Exceeded')) {
-          setShowUpgradeModal(true)
-        }
-      }
-    } catch (err: any) {
-      setVideoUploadError(err?.message || 'Error uploading video.')
-    } finally {
-      setUploadingVideo(false)
-    }
+    showToast(`Uploading ${file.name} in background... You can switch tabs/routes freely!`)
+    startBackgroundVideoUpload(file, totalUsedStorageBytes, customPreset, testimonialForm.video)
   }
 
   useEffect(() => {
@@ -4239,6 +4245,93 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
         <div className="admin-toast-popup">
           <CheckCircle2 size={18} />
           <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Floating Background Upload Progress Pill (Visible on all admin routes) */}
+      {uploadingVideo && activeUploadTask && (
+        <div style={{
+          position: 'fixed',
+          bottom: 24,
+          right: 24,
+          zIndex: 9998,
+          background: '#0f172a',
+          color: '#ffffff',
+          borderRadius: 8,
+          padding: '14px 18px',
+          boxShadow: '0 8px 30px rgba(0, 0, 0, 0.25)',
+          border: '1px solid #334155',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          maxWidth: 340,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Upload size={16} className="spin" />
+            <strong style={{ fontSize: 13, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              Uploading Video...
+            </strong>
+            <span style={{ fontSize: 11, color: '#94a3b8' }}>Background</span>
+          </div>
+          <div style={{ fontSize: 12, color: '#cbd5e1', lineHeight: 1.4 }}>
+            {activeUploadTask.file.name} ({((activeUploadTask.file.size) / (1024 * 1024)).toFixed(1)} MB)
+          </div>
+          <div style={{ width: '100%', height: 4, background: '#334155', borderRadius: 2, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: '100%', background: '#38bdf8', animation: 'progressPulse 1.5s infinite ease-in-out' }} />
+          </div>
+        </div>
+      )}
+
+      {/* Route-Independent Video Upload Completed Confirmation Modal */}
+      {showVideoCompletedModal && (
+        <div className="admin-modal-overlay">
+          <div className="admin-modal-dialog" style={{ maxWidth: 460, borderRadius: 10, padding: 24 }}>
+            <div className="admin-modal-header" style={{ marginBottom: 16, paddingBottom: 14 }}>
+              <div className="admin-modal-title-group">
+                <div className="admin-modal-icon" style={{ background: '#f0fdf4', color: '#15803d', borderColor: '#bbf7d0' }}>
+                  <CheckCircle2 size={22} />
+                </div>
+                <div>
+                  <h3 className="admin-modal-title" style={{ fontSize: 17 }}>Video Upload Complete</h3>
+                  <p className="admin-modal-sub">
+                    File uploaded & securely processed by Cloudinary.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="admin-modal-close-btn"
+                onClick={() => {
+                  setShowVideoCompletedModal(null)
+                  clearVideoUploadTask()
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 12.5, color: '#334155' }}>
+                <div style={{ marginBottom: 4 }}><strong>File:</strong> {showVideoCompletedModal.file.name}</div>
+                <div style={{ marginBottom: 4 }}><strong>Size:</strong> {((showVideoCompletedModal.resultBytes || showVideoCompletedModal.file.size) / (1024 * 1024)).toFixed(1)} MB</div>
+                <div><strong>Status:</strong> Successfully linked to testimonial media</div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button
+                  type="button"
+                  className="admin-btn-primary"
+                  style={{ borderRadius: 6, padding: '8px 16px', fontSize: 13 }}
+                  onClick={() => {
+                    setShowVideoCompletedModal(null)
+                    clearVideoUploadTask()
+                  }}
+                >
+                  OK, Got it
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
