@@ -2731,6 +2731,9 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     if (target?.video) {
       deleteMediaFromCloudinary(target.video, 'video').catch(() => {})
     }
+    if (target?.image && target.image.includes('cloudinary.com')) {
+      deleteMediaFromCloudinary(target.image, 'image').catch(() => {})
+    }
     const res = await api.testimonials.deleteTestimonial(id)
     if (res.success) {
       setTestimonials(prev => prev.filter(t => t.id !== id))
@@ -2744,11 +2747,20 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     if (!testimonialForm.name.trim()) return alert('Please enter student name.')
     if (!testimonialForm.role.trim()) return alert('Please enter student role or course.')
     if (!testimonialForm.text.trim()) return alert('Please enter testimonial quote text.')
-    if (!testimonialForm.image.trim()) return alert('Please provide or upload an avatar image.')
+    if (!testimonialForm.image.trim()) return alert('Please upload an avatar image.')
 
     setLoading(true)
     try {
       if (editingTestimonial) {
+        // If image was replaced on edit, ensure old Cloudinary image is deleted
+        if (
+          editingTestimonial.image &&
+          editingTestimonial.image !== testimonialForm.image &&
+          editingTestimonial.image.includes('cloudinary.com')
+        ) {
+          deleteMediaFromCloudinary(editingTestimonial.image, 'image').catch(() => {})
+        }
+
         const res = await api.testimonials.updateTestimonial(editingTestimonial.id, {
           name: testimonialForm.name.trim(),
           role: testimonialForm.role.trim(),
@@ -2797,10 +2809,19 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     setUploadError(null)
     setUploadSuccessUrl(null)
 
+    // Capture old image to delete it from Cloudinary when replaced
+    const oldImageToDelete = testimonialForm.image
+
     try {
       saveUploadPreset(customPreset)
       const result = await uploadImageToCloudinary(file, customPreset)
       if (result.url) {
+        // If an old image existed on Cloudinary and is replaced, delete it permanently
+        if (oldImageToDelete && oldImageToDelete !== result.url && oldImageToDelete.includes('cloudinary.com')) {
+          deleteMediaFromCloudinary(oldImageToDelete, 'image').catch(err => {
+            console.warn('Failed to delete old replaced avatar from Cloudinary:', err)
+          })
+        }
         setTestimonialForm(prev => ({ ...prev, image: result.url! }))
         setUploadSuccessUrl(result.url)
         showToast('Image uploaded successfully!')
@@ -3612,7 +3633,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                                 <div className="admin-avatar-file-upload">
                                   <label className="admin-file-picker-btn">
                                     <Upload size={14} className={uploadingImage ? 'spin' : ''} />
-                                    <span>{uploadingImage ? 'Uploading Image...' : 'Upload Photo'}</span>
+                                    <span>{uploadingImage ? 'Uploading Image...' : testimonialForm.image ? 'Change Photo' : 'Upload Photo'}</span>
                                     <input
                                       type="file"
                                       accept="image/*"
@@ -3621,16 +3642,6 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                                       style={{ display: 'none' }}
                                     />
                                   </label>
-                                </div>
-
-                                <div className="admin-avatar-url-fallback">
-                                  <input
-                                    type="url"
-                                    placeholder="or paste direct image URL"
-                                    value={testimonialForm.image}
-                                    onChange={e => setTestimonialForm(prev => ({ ...prev, image: e.target.value }))}
-                                    className="admin-input-styled admin-input-url"
-                                  />
                                 </div>
 
                                 {uploadError && (
