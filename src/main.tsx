@@ -18,7 +18,7 @@ import {
   Quote, HeartHandshake, Target, Award, BadgeCheck, ShieldCheck,
   MapPin, Send, Lock, KeyRound, RefreshCw, Trash2, Download, LogOut,
   Eye, EyeOff, Database, Inbox, Calendar, AlertCircle,
-  Plus, Edit3, Image, Upload, Video, ExternalLink, ArrowLeft, HardDrive, Zap,
+  Plus, Edit3, Image, Upload, Video, ExternalLink, ArrowLeft, HardDrive,
 } from 'lucide-react'
 import './styles.css'
 import './adjustments.css'
@@ -3631,11 +3631,11 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
 
                                 <button
                                   type="button"
-                                  className="admin-upgrade-pill-btn"
+                                  className="admin-action-btn admin-btn-edit"
                                   onClick={() => setShowUpgradeModal(true)}
                                 >
-                                  <Zap size={13} />
-                                  <span>Upgrade 1 GB (₹150/mo)</span>
+                                  <HardDrive size={13} />
+                                  <span>Upgrade to 1 GB (₹150/mo)</span>
                                 </button>
                               </div>
 
@@ -3931,10 +3931,10 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
 
                   <button
                     type="button"
-                    className="admin-btn-primary admin-btn-upgrade"
+                    className="admin-btn-primary"
                     onClick={() => setShowUpgradeModal(true)}
                   >
-                    <Zap size={14} />
+                    <HardDrive size={14} />
                     <span>Upgrade to 1 GB (₹150/mo)</span>
                   </button>
                 </div>
@@ -4027,7 +4027,6 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                             <p className="admin-testi-role">{t.role}</p>
                             {t.badge && (
                               <span className="admin-testi-tag">
-                                <Sparkles size={11} />
                                 {t.badge}
                               </span>
                             )}
@@ -4093,16 +4092,16 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
       {/* Storage Limit Exceeded / Upgrade Plan Modal */}
       {showUpgradeModal && (
         <div className="admin-modal-overlay">
-          <div className="admin-modal-dialog" style={{ maxWidth: 480 }}>
-            <div className="admin-modal-header">
+          <div className="admin-modal-dialog" style={{ maxWidth: 500, padding: 24, borderRadius: 12 }}>
+            <div className="admin-modal-header" style={{ marginBottom: 18, paddingBottom: 16 }}>
               <div className="admin-modal-title-group">
-                <div className="admin-modal-icon" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', borderColor: 'rgba(168, 85, 247, 0.3)' }}>
-                  <Zap size={22} />
+                <div className="admin-modal-icon" style={{ background: '#f1f5f9', color: '#0f172a', borderColor: '#cbd5e1' }}>
+                  <HardDrive size={20} />
                 </div>
                 <div>
-                  <h3 className="admin-modal-title">Upgrade Video Storage</h3>
+                  <h3 className="admin-modal-title" style={{ fontSize: 17 }}>Upgrade Video Storage</h3>
                   <p className="admin-modal-sub">
-                    You have reached the 100 MB free quota limit for testimonials media.
+                    100 MB free quota limit reached for testimonial media.
                   </p>
                 </div>
               </div>
@@ -4118,47 +4117,66 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Current Usage Snapshot */}
-              <div style={{ background: 'rgba(0, 0, 0, 0.3)', padding: 16, borderRadius: 12, border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              <div style={{ background: '#f8fafc', padding: 14, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+                  <span style={{ color: '#64748b' }}>Current Plan:</span>
+                  <strong style={{ color: '#0f172a' }}>100 MB (Free Tier)</strong>
+                </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8 }}>
-                  <span style={{ color: '#94a3b8' }}>Current Plan Limit:</span>
-                  <strong style={{ color: '#f8fafc' }}>100 MB (Free)</strong>
+                  <span style={{ color: '#64748b' }}>Used Space:</span>
+                  <strong style={{ color: isStorageQuotaExceeded ? '#dc2626' : '#0f172a' }}>
+                    {usedStorageMB} MB ({storageUsagePercent}%)
+                  </strong>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 10 }}>
-                  <span style={{ color: '#94a3b8' }}>Total Used Media:</span>
-                  <strong style={{ color: isStorageQuotaExceeded ? '#f87171' : '#38bdf8' }}>{usedStorageMB} MB ({storageUsagePercent}%)</strong>
-                </div>
-                <div className="admin-quota-bar-wrap" style={{ height: 8 }}>
-                  <div className="admin-quota-bar-fill fill-danger" style={{ width: `${storageUsagePercent}%` }} />
+                <div className="admin-quota-bar-wrap" style={{ height: 6, background: '#e2e8f0', borderRadius: 4 }}>
+                  <div
+                    className="admin-quota-bar-fill"
+                    style={{
+                      width: `${storageUsagePercent}%`,
+                      background: isStorageQuotaExceeded ? '#dc2626' : '#0f172a',
+                      borderRadius: 4
+                    }}
+                  />
                 </div>
               </div>
 
-              {/* Upgrade Offer Card */}
+              {/* Upgrade Offer Card - Minimal Black & White */}
               <div style={{
-                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.18) 0%, rgba(59, 130, 246, 0.1) 100%)',
-                border: '1.5px solid rgba(168, 85, 247, 0.45)',
-                borderRadius: 16,
-                padding: '20px 22px',
+                background: '#ffffff',
+                border: '1px solid #0f172a',
+                borderRadius: 8,
+                padding: '16px 18px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 12
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ background: '#a855f7', color: '#fff', fontSize: 11, fontWeight: 800, padding: '3px 8px', borderRadius: 6, textTransform: 'uppercase' }}>
-                      Pro Storage
+                  <div>
+                    <span style={{
+                      display: 'inline-block',
+                      background: '#0f172a',
+                      color: '#ffffff',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      textTransform: 'uppercase',
+                      marginBottom: 4
+                    }}>
+                      Expanded Capacity
                     </span>
-                    <strong style={{ color: '#ffffff', fontSize: 17 }}>1 GB Cloud Space</strong>
+                    <strong style={{ display: 'block', color: '#0f172a', fontSize: 16 }}>1 GB Video Storage</strong>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: 22, fontWeight: 800, color: '#38bdf8' }}>₹150</span>
-                    <small style={{ color: '#94a3b8', display: 'block', fontSize: 11 }}>/ month</small>
+                    <span style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>₹150</span>
+                    <small style={{ color: '#64748b', display: 'block', fontSize: 11 }}>/ month</small>
                   </div>
                 </div>
 
-                <ul style={{ margin: 0, paddingLeft: 18, color: '#cbd5e1', fontSize: 12.5, lineHeight: 1.6 }}>
-                  <li>Store 10x more high-definition student video stories (upto 1,024 MB).</li>
+                <ul style={{ margin: 0, paddingLeft: 18, color: '#475569', fontSize: 12.5, lineHeight: 1.5 }}>
+                  <li>Store up to 10x more high quality video testimonials (1,024 MB).</li>
+                  <li>Direct Cloudinary video uploads without size restriction errors.</li>
                   <li>Fast global CDN video streaming with instant load on Home page.</li>
-                  <li>Priority video processing & automatic mobile transcoding.</li>
                   <li>Cancel or adjust anytime with zero lock-in.</li>
                 </ul>
 
@@ -4168,18 +4186,20 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                   rel="noopener noreferrer"
                   className="admin-btn-primary"
                   style={{
-                    background: 'linear-gradient(90deg, #a855f7 0%, #3b82f6 100%)',
+                    background: '#0f172a',
+                    color: '#ffffff',
+                    border: '1px solid #0f172a',
                     justifyContent: 'center',
-                    marginTop: 6,
-                    padding: '12px 20px',
-                    fontSize: 14,
+                    marginTop: 4,
+                    padding: '10px 16px',
+                    fontSize: 13,
+                    borderRadius: 6,
                     textDecoration: 'none'
                   }}
                   onClick={() => {
                     showToast('Opening billing upgrade inquiry...')
                   }}
                 >
-                  <Zap size={16} />
                   <span>Upgrade to 1 GB (₹150 / mo)</span>
                 </a>
               </div>
