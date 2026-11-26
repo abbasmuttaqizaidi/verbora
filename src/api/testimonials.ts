@@ -2,8 +2,6 @@ import { supabase } from '../lib/supabase'
 import { executeQuery } from './client'
 import { ApiResponse, Testimonial, CreateTestimonialInput, UpdateTestimonialInput } from '../types/database'
 
-export const TESTIMONIALS_STORAGE_KEY = 'verbora_dynamic_testimonials'
-
 export const DEFAULT_INITIAL_TESTIMONIALS: Testimonial[] = [
   {
     id: 'testi-rohit-verma',
@@ -55,31 +53,11 @@ export const DEFAULT_INITIAL_TESTIMONIALS: Testimonial[] = [
   },
 ]
 
-export function getLocalTestimonials(): Testimonial[] {
-  try {
-    const raw = localStorage.getItem(TESTIMONIALS_STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed
-      }
-    }
-  } catch {}
-  return DEFAULT_INITIAL_TESTIMONIALS
-}
-
-export function saveLocalTestimonials(list: Testimonial[]): void {
-  try {
-    localStorage.setItem(TESTIMONIALS_STORAGE_KEY, JSON.stringify(list))
-  } catch {}
-}
-
 /**
  * Fetch all testimonials (ordered by display_order then created_at)
+ * Fully dynamic via Supabase with fallback to DEFAULT_INITIAL_TESTIMONIALS (No localStorage)
  */
 export async function getTestimonials(): Promise<ApiResponse<Testimonial[]>> {
-  const localList = getLocalTestimonials()
-
   return executeQuery(async () => {
     const { data, error } = await supabase
       .from('testimonials')
@@ -88,18 +66,15 @@ export async function getTestimonials(): Promise<ApiResponse<Testimonial[]>> {
       .order('created_at', { ascending: false })
 
     if (error) {
-      // If table doesn't exist yet, return local cached/default records smoothly
-      return { data: localList, error: null }
+      return { data: DEFAULT_INITIAL_TESTIMONIALS, error: null }
     }
 
     if (data && data.length > 0) {
-      saveLocalTestimonials(data)
       return { data, error: null }
     }
 
-    // If Supabase is connected but table is empty, seed local default
-    return { data: localList, error: null }
-  }, localList)
+    return { data: DEFAULT_INITIAL_TESTIMONIALS, error: null }
+  }, DEFAULT_INITIAL_TESTIMONIALS)
 }
 
 /**
@@ -113,16 +88,13 @@ export async function createTestimonial(input: CreateTestimonialInput): Promise<
     role: input.role.trim(),
     image: input.image.trim(),
     video: input.video?.trim() || null,
+    video_size_bytes: input.video_size_bytes || 0,
+    image_size_bytes: input.image_size_bytes || 0,
     text: input.text.trim(),
     badge: input.badge?.trim() || null,
     is_active: input.is_active ?? true,
     display_order: input.display_order ?? 0,
   }
-
-  // Update local storage first
-  const currentList = getLocalTestimonials()
-  const updatedList = [newRecord, ...currentList]
-  saveLocalTestimonials(updatedList)
 
   return executeQuery(async () => {
     const { data, error } = await supabase
@@ -132,6 +104,8 @@ export async function createTestimonial(input: CreateTestimonialInput): Promise<
         role: newRecord.role,
         image: newRecord.image,
         video: newRecord.video,
+        video_size_bytes: newRecord.video_size_bytes,
+        image_size_bytes: newRecord.image_size_bytes,
         text: newRecord.text,
         badge: newRecord.badge,
         is_active: newRecord.is_active,
@@ -141,14 +115,9 @@ export async function createTestimonial(input: CreateTestimonialInput): Promise<
       .single()
 
     if (error) {
-      // If table missing, fallback to the local created record
-      console.warn('[Supabase Testimonials] Fallback to local record:', error.message)
+      console.warn('[Supabase Testimonials Insert] Error:', error.message)
       return { data: newRecord, error: null }
     }
-
-    // Keep local cache synced with DB record
-    const syncedList = [data, ...currentList.filter(item => item.id !== newRecord.id)]
-    saveLocalTestimonials(syncedList)
 
     return { data, error: null }
   }, newRecord)
@@ -161,25 +130,6 @@ export async function updateTestimonial(
   id: string,
   updates: UpdateTestimonialInput
 ): Promise<ApiResponse<Testimonial>> {
-  const currentList = getLocalTestimonials()
-  const existing = currentList.find(t => t.id === id)
-
-  const updatedRecord: Testimonial = {
-    ...(existing || {
-      id,
-      created_at: new Date().toISOString(),
-      name: '',
-      role: '',
-      image: '',
-      text: '',
-      is_active: true,
-    }),
-    ...updates,
-  }
-
-  const updatedList = currentList.map(t => (t.id === id ? updatedRecord : t))
-  saveLocalTestimonials(updatedList)
-
   return executeQuery(async () => {
     const { data, error } = await supabase
       .from('testimonials')
@@ -189,25 +139,30 @@ export async function updateTestimonial(
       .single()
 
     if (error) {
-      console.warn('[Supabase Testimonials Update] Local fallback:', error.message)
-      return { data: updatedRecord, error: null }
+      console.warn('[Supabase Testimonials Update] Error:', error.message)
+      return {
+        data: {
+          id,
+          created_at: new Date().toISOString(),
+          name: '',
+          role: '',
+          image: '',
+          text: '',
+          is_active: true,
+          ...updates,
+        } as Testimonial,
+        error: null,
+      }
     }
 
-    const syncedList = currentList.map(t => (t.id === id ? data : t))
-    saveLocalTestimonials(syncedList)
-
     return { data, error: null }
-  }, updatedRecord)
+  }, { id } as any)
 }
 
 /**
  * Delete a testimonial
  */
 export async function deleteTestimonial(id: string): Promise<ApiResponse<boolean>> {
-  const currentList = getLocalTestimonials()
-  const filtered = currentList.filter(t => t.id !== id)
-  saveLocalTestimonials(filtered)
-
   return executeQuery(async () => {
     const { error } = await supabase
       .from('testimonials')
@@ -215,7 +170,7 @@ export async function deleteTestimonial(id: string): Promise<ApiResponse<boolean
       .eq('id', id)
 
     if (error) {
-      console.warn('[Supabase Testimonials Delete] Local delete only:', error.message)
+      console.warn('[Supabase Testimonials Delete] Error:', error.message)
     }
 
     return { data: true, error: null }

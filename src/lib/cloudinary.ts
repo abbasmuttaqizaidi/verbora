@@ -223,14 +223,16 @@ export async function deleteMediaFromCloudinary(
       }),
     })
 
-    const data = await res.json()
-    if (res.ok && data.success) {
+    const data = await res.json().catch(() => null)
+    if (res.ok && data?.success) {
+      console.log(`[Cloudinary] Successfully destroyed ${resourceType}:`, publicId)
       return { success: true }
     } else {
-      return { success: false, error: data.error || 'Failed to delete asset from Cloudinary' }
+      console.warn(`[Cloudinary] Deletion returned warning or non-200:`, data)
+      return { success: false, error: data?.error || 'Failed to delete asset from Cloudinary' }
     }
   } catch (err: any) {
-    console.warn('Media deletion call failed (likely local dev without vercel api running):', err?.message)
+    console.error('[Cloudinary] Media deletion request failed:', err?.message)
     return { success: false, error: err?.message }
   }
 }

@@ -1,5 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { createRoot } from 'react-dom/client'
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from '@tanstack/react-query'
 import {
   createRootRoute,
   createRoute,
@@ -638,48 +643,49 @@ function StoryVideoModal({ story, onClose }: { story: StoryItem | null; onClose:
   )
 }
 
+// TanStack Query Client with optimal caching (5 minutes stale time, no localStorage pollution)
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // Cache results in memory for 5 minutes
+      gcTime: 1000 * 60 * 30,    // Keep garbage collection cache for 30 minutes
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+})
+
+export function useTestimonialsQuery() {
+  return useQuery({
+    queryKey: ['testimonials'],
+    queryFn: async () => {
+      const res = await api.testimonials.getTestimonials()
+      return res.data || []
+    },
+  })
+}
+
 function StoriesSection() {
   const [active, setActive] = useState(0)
   const [videoStory, setVideoStory] = useState<StoryItem | null>(null)
-  const [testimonialsList, setTestimonialsList] = useState<StoryItem[]>(() => {
-    try {
-      const local = api.testimonials.getLocalTestimonials()
-      const activeItems = local.filter(t => t.is_active)
-      if (activeItems.length > 0) {
-        return activeItems.map(t => ({
-          name: t.name,
-          role: t.role,
-          image: t.image,
-          video: t.video || undefined,
-          text: t.text,
-          badge: t.badge || undefined,
-        }))
-      }
-    } catch {}
+  
+  // High performance in-memory caching via TanStack Query
+  const { data: dbTestimonials = [] } = useTestimonialsQuery()
+
+  const currentStories: StoryItem[] = useMemo(() => {
+    const activeItems = dbTestimonials.filter(t => t.is_active)
+    if (activeItems.length > 0) {
+      return activeItems.map(t => ({
+        name: t.name,
+        role: t.role,
+        image: t.image,
+        video: t.video || undefined,
+        text: t.text,
+        badge: t.badge || undefined,
+      }))
+    }
     return stories
-  })
-
-  useEffect(() => {
-    let mounted = true
-    api.testimonials.getTestimonials().then(res => {
-      if (mounted && res.data && res.data.length > 0) {
-        const activeItems = res.data.filter(t => t.is_active)
-        if (activeItems.length > 0) {
-          setTestimonialsList(activeItems.map(t => ({
-            name: t.name,
-            role: t.role,
-            image: t.image,
-            video: t.video || undefined,
-            text: t.text,
-            badge: t.badge || undefined,
-          })))
-        }
-      }
-    })
-    return () => { mounted = false }
-  }, [])
-
-  const currentStories = testimonialsList.length > 0 ? testimonialsList : stories
+  }, [dbTestimonials])
 
   return (
     <>
@@ -1573,128 +1579,101 @@ function StoriesPage() {
 
   const showDemo = () => setModalOpen(true)
 
-  const detailedStories = [
-    {
-      id: 'rohit-verma',
-      name: 'Rohit Verma',
-      role: 'Senior Software Engineer',
-      company: 'TechCorp Global',
-      category: 'spoken-english' as const,
-      badge: 'Fluency Breakthrough',
-      image: '/assets/testimonials/rohit.jpg',
-      video: '/assets/testimonials/sample-video.mp4',
-      challenge: 'Translating Hindi sentences to English in mind, freezing up on US client sprint calls, and avoiding spontaneous discussions.',
-      breakthrough: 'Overcame the translation loop within 3 weeks using Thought-Pacing Drills. Now leads daily standups and sprint planning effortlessly.',
-      quote: 'VERBORA didn’t just teach me grammar; it transformed how my brain processes English. In 4 weeks, my client anxiety was completely gone.',
-      metric: '90% Less Hesitation',
-      metricLabel: 'Sprint Lead & Presenter',
-    },
-    {
-      id: 'sneha-gupta',
-      name: 'Sneha Gupta',
-      role: 'Product Marketing Manager',
-      company: 'Apex Media Group',
-      category: 'business-english' as const,
-      badge: 'Executive Presence',
-      image: '/assets/testimonials/sneha.jpg',
-      video: '/assets/testimonials/sample-video.mp4',
-      challenge: 'Hesitated to speak in high-stakes executive meetings and held back strategic ideas due to lack of corporate vocal polish.',
-      breakthrough: 'Mastered executive tonality, strategic pauses, and persuasive meeting vocabulary. Promoted to Regional Lead within 3 months.',
-      quote: 'Bijay Sir taught me how to command the room with composure. I learned that pausing with poise is a mark of confidence, not hesitation.',
-      metric: 'Promoted to Regional Lead',
-      metricLabel: 'Boardroom Diplomacy',
-    },
-    {
-      id: 'aman-singh',
-      name: 'Aman Singh',
-      role: 'Associate Consultant',
-      company: 'Deloitte',
-      category: 'interview-prep' as const,
-      badge: 'Deloitte Offer',
-      image: '/assets/testimonials/aman.jpg',
-      video: '/assets/testimonials/sample-video.mp4',
-      challenge: 'Faced 3 painful campus interview rejections due to rambling answers, stuttering under pressure, and nervous posture.',
-      breakthrough: 'Learned the STAR storytelling framework, calm eye contact, and situational question drills. Cleared Deloitte on first attempt.',
-      quote: 'The simulated mock interviews were so realistic that on the actual interview day, I felt completely relaxed and in full control.',
-      metric: 'Deloitte Offer Letter',
-      metricLabel: 'Top Tier Placement',
-    },
-    {
-      id: 'priya-sharma',
-      name: 'Priya Sharma',
-      role: 'Engineering Team Lead',
-      company: 'FinTech Solutions',
-      category: 'public-speaking' as const,
-      badge: 'Keynote Speaker',
-      image: '/assets/testimonials/priya.jpg',
-      video: '/assets/testimonials/sample-video.mp4',
-      challenge: 'Trembling voice, fast heartbeat, and severe stage fright when speaking in front of more than 5 colleagues.',
-      breakthrough: 'Mastered diaphragmatic breathing, purposeful stage movement, and vocal projection. Delivered a 300+ attendee tech keynote.',
-      quote: 'Conquering stage fright was something I thought was impossible for me. The patient coaching at VERBORA gave me my authentic voice.',
-      metric: '300+ Attendee Keynote',
-      metricLabel: 'Zero Stage Fright',
-    },
-    {
-      id: 'kavita-nair',
-      name: 'Kavita Nair',
-      role: 'HR Business Partner',
-      company: 'Nexus Global',
-      category: 'business-english' as const,
-      badge: 'Executive Diplomacy',
-      image: '/assets/testimonials/sneha.jpg',
-      video: '/assets/testimonials/sample-video.mp4',
-      challenge: 'Struggled to stay assertive during difficult appraisals, salary negotiations, and high-pressure leadership townhalls.',
-      breakthrough: 'Acquired assertive diplomacy phrasing, vocal modulation, and emotional equilibrium during conflict discussions.',
-      quote: 'Daily WhatsApp voice note coaching with direct corrections made sure I practiced every single day. My authority at work multiplied.',
-      metric: 'Appointed People Ops Head',
-      metricLabel: 'Assertive Negotiation',
-    },
-    {
-      id: 'arjun-mehta',
-      name: 'Arjun Mehta',
-      role: 'Founder & CEO',
-      company: 'CloudFlow SaaS',
-      category: 'public-speaking' as const,
-      badge: 'Seed Round Pitch',
-      image: '/assets/testimonials/rohit.jpg',
-      video: '/assets/testimonials/sample-video.mp4',
-      challenge: 'Over-explaining technical details and failing to convey concise business vision to international venture capitalists.',
-      breakthrough: 'Refined narrative hooks, dynamic vocal inflection, and investor Q&A defense. Successfully closed $1.2M seed round.',
-      quote: 'Investors bet on the clarity and charisma of the founder. VERBORA turned my confusing technical talk into an inspiring business story.',
-      metric: 'Closed $1.2M Funding',
-      metricLabel: 'Global VC Buy-In',
-    },
-    {
-      id: 'rhea-sen',
-      name: 'Rhea Sen',
-      role: 'Clinical Liaison Specialist',
-      company: 'BioHealth International',
-      category: 'spoken-english' as const,
-      badge: 'Accent Neutralization',
-      image: '/assets/testimonials/priya.jpg',
-      video: '/assets/testimonials/sample-video.mp4',
-      challenge: 'Heavy mother-tongue influence and rushing words caused overseas doctors to frequently ask her to repeat herself.',
-      breakthrough: 'Neutralized vowel elongation, smoothed consonants, and developed crisp, globally understood articulation.',
-      quote: 'I used to feel self-conscious every time I opened my mouth. Now, my speech is crisp, natural, and respected across international teams.',
-      metric: '100% Speech Clarity',
-      metricLabel: 'International Recognition',
-    },
-    {
-      id: 'vikram-malhotra',
-      name: 'Vikram Malhotra',
-      role: 'Senior Financial Analyst',
-      company: 'Apex Capital',
-      category: 'interview-prep' as const,
-      badge: 'Executive Switch',
-      image: '/assets/testimonials/aman.jpg',
-      video: '/assets/testimonials/sample-video.mp4',
-      challenge: 'Constant filler words (“um”, “like”, “basically”) weakened his impact during executive investment briefings.',
-      breakthrough: 'Eliminated verbal crutches using Thought-Pause training. Aced executive panel interviews for a Director-level role.',
-      quote: 'Hearing my before and after voice recordings was shocking. The poise, crispness, and maturity in my speech increased tenfold.',
-      metric: 'Director Promotion',
-      metricLabel: 'Zero Verbal Crutches',
-    },
-  ]
+  // Dynamic Testimonials from TanStack Query (in-memory cached, 0 localStorage)
+  const { data: dbTestimonials = [] } = useTestimonialsQuery()
+
+  const detailedStories = useMemo(() => {
+    const activeDb = dbTestimonials.filter(t => t.is_active)
+    if (activeDb.length > 0) {
+      return activeDb.map((t, idx) => {
+        // Derive category from role or badge
+        const rLower = (t.role + ' ' + (t.badge || '')).toLowerCase()
+        let category: 'spoken-english' | 'business-english' | 'interview-prep' | 'public-speaking' = 'spoken-english'
+        if (rLower.includes('business') || rLower.includes('corporate') || rLower.includes('lead')) category = 'business-english'
+        else if (rLower.includes('interview') || rLower.includes('job') || rLower.includes('consultant')) category = 'interview-prep'
+        else if (rLower.includes('public') || rLower.includes('speaking') || rLower.includes('stage')) category = 'public-speaking'
+
+        return {
+          id: t.id || `story-${idx}`,
+          name: t.name,
+          role: t.role,
+          company: 'VERBORA Alumni',
+          category,
+          badge: t.badge || 'Verified Breakthrough',
+          image: t.image,
+          video: t.video || undefined,
+          challenge: 'Struggled with hesitation and lack of confidence in high-stakes conversations.',
+          breakthrough: 'Achieved rapid fluency, polished tone, and clear articulation through personal mentorship.',
+          quote: t.text,
+          metric: '100% Verified Impact',
+          metricLabel: 'Career & Speech Growth',
+        }
+      })
+    }
+
+    return [
+      {
+        id: 'rohit-verma',
+        name: 'Rohit Verma',
+        role: 'Senior Software Engineer',
+        company: 'TechCorp Global',
+        category: 'spoken-english' as const,
+        badge: 'Fluency Breakthrough',
+        image: '/assets/testimonials/rohit.jpg',
+        video: undefined as string | undefined,
+        challenge: 'Translating Hindi sentences to English in mind, freezing up on US client sprint calls, and avoiding spontaneous discussions.',
+        breakthrough: 'Overcame the translation loop within 3 weeks using Thought-Pacing Drills. Now leads daily standups and sprint planning effortlessly.',
+        quote: 'VERBORA didn’t just teach me grammar; it transformed how my brain processes English. In 4 weeks, my client anxiety was completely gone.',
+        metric: '90% Less Hesitation',
+        metricLabel: 'Sprint Lead & Presenter',
+      },
+      {
+        id: 'sneha-gupta',
+        name: 'Sneha Gupta',
+        role: 'Product Marketing Manager',
+        company: 'Apex Media Group',
+        category: 'business-english' as const,
+        badge: 'Executive Presence',
+        image: '/assets/testimonials/sneha.jpg',
+        video: undefined as string | undefined,
+        challenge: 'Hesitated to speak in high-stakes executive meetings and held back strategic ideas due to lack of corporate vocal polish.',
+        breakthrough: 'Mastered executive tonality, strategic pauses, and persuasive meeting vocabulary. Promoted to Regional Lead within 3 months.',
+        quote: 'Bijay Sir taught me how to command the room with composure. I learned that pausing with poise is a mark of confidence, not hesitation.',
+        metric: 'Promoted to Regional Lead',
+        metricLabel: 'Boardroom Diplomacy',
+      },
+      {
+        id: 'aman-singh',
+        name: 'Aman Singh',
+        role: 'Associate Consultant',
+        company: 'Deloitte',
+        category: 'interview-prep' as const,
+        badge: 'Deloitte Offer',
+        image: '/assets/testimonials/aman.jpg',
+        video: undefined as string | undefined,
+        challenge: 'Faced 3 painful campus interview rejections due to rambling answers, stuttering under pressure, and nervous posture.',
+        breakthrough: 'Learned the STAR storytelling framework, calm eye contact, and situational question drills. Cleared Deloitte on first attempt.',
+        quote: 'The simulated mock interviews were so realistic that on the actual interview day, I felt completely relaxed and in full control.',
+        metric: 'Deloitte Offer Letter',
+        metricLabel: 'Top Tier Placement',
+      },
+      {
+        id: 'priya-sharma',
+        name: 'Priya Sharma',
+        role: 'Engineering Team Lead',
+        company: 'FinTech Solutions',
+        category: 'public-speaking' as const,
+        badge: 'Keynote Speaker',
+        image: '/assets/testimonials/priya.jpg',
+        video: undefined as string | undefined,
+        challenge: 'Trembling voice, fast heartbeat, and severe stage fright when speaking in front of more than 5 colleagues.',
+        breakthrough: 'Mastered diaphragmatic breathing, purposeful stage movement, and vocal projection. Delivered a 300+ attendee tech keynote.',
+        quote: 'Conquering stage fright was something I thought was impossible for me. The patient coaching at VERBORA gave me my authentic voice.',
+        metric: '300+ Attendee Keynote',
+        metricLabel: 'Zero Stage Fright',
+      },
+    ]
+  }, [dbTestimonials])
 
   const stats = [
     { number: '12,000+', label: 'Careers Transformed', sub: 'Across tech, finance & leadership' },
@@ -1762,14 +1741,16 @@ function StoriesPage() {
           {/* 3. Featured Spotlight Story Card */}
           <section className="stories-spotlight-section">
             <div className="stories-spotlight-card">
-              <div className="spotlight-media-wrap" onClick={() => setVideoStory({ ...spotlight, text: spotlight.quote })}>
+              <div className="spotlight-media-wrap" onClick={() => spotlight.video && setVideoStory({ ...spotlight, text: spotlight.quote, video: spotlight.video })}>
                 <img src={spotlight.image} alt={spotlight.name} className="spotlight-img" />
-                <div className="spotlight-play-overlay">
-                  <span className="spotlight-play-btn">
-                    <CirclePlay size={36} fill="#ffffff" color="#0284c7" />
-                  </span>
-                  <span className="spotlight-play-label">Watch Transformation Video</span>
-                </div>
+                {spotlight.video && (
+                  <div className="spotlight-play-overlay">
+                    <span className="spotlight-play-btn">
+                      <CirclePlay size={36} fill="#ffffff" color="#0284c7" />
+                    </span>
+                    <span className="spotlight-play-label">Watch Transformation Video</span>
+                  </div>
+                )}
                 <span className="spotlight-badge">★ Spotlight Case Study</span>
               </div>
               <div className="spotlight-content">
@@ -1802,10 +1783,12 @@ function StoriesPage() {
                     <strong>{spotlight.metric}</strong>
                     <small>{spotlight.metricLabel}</small>
                   </div>
-                  <button className="primary-button spotlight-video-btn" onClick={() => setVideoStory({ ...spotlight, text: spotlight.quote })}>
-                    <CirclePlay size={17} />
-                    <span>Watch Story</span>
-                  </button>
+                  {spotlight.video && (
+                    <button className="primary-button spotlight-video-btn" onClick={() => setVideoStory({ ...spotlight, text: spotlight.quote, video: spotlight.video })}>
+                      <CirclePlay size={17} />
+                      <span>Watch Story</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1838,11 +1821,13 @@ function StoriesPage() {
               {filtered.map(story => (
                 <div className="story-journey-card" key={story.id}>
                   <div className="story-card-top">
-                    <div className="story-card-media" onClick={() => setVideoStory({ ...story, text: story.quote })}>
+                    <div className="story-card-media" onClick={() => story.video && setVideoStory({ ...story, text: story.quote, video: story.video })}>
                       <img src={story.image} alt={story.name} className="story-card-img" />
-                      <button className="story-card-play" aria-label={`Play video of ${story.name}`}>
-                        <CirclePlay size={24} fill="#ffffff" color="#0284c7" />
-                      </button>
+                      {story.video && (
+                        <button className="story-card-play" aria-label={`Play video of ${story.name}`}>
+                          <CirclePlay size={24} fill="#ffffff" color="#0284c7" />
+                        </button>
+                      )}
                       <span className="story-card-badge">{story.badge}</span>
                     </div>
                     <div className="story-card-meta">
@@ -1875,10 +1860,12 @@ function StoriesPage() {
                       <strong>{story.metric}</strong>
                       <small>{story.metricLabel}</small>
                     </div>
-                    <button className="story-watch-link" onClick={() => setVideoStory({ ...story, text: story.quote })}>
-                      <CirclePlay size={16} />
-                      <span>Watch Video</span>
-                    </button>
+                    {story.video && (
+                      <button className="story-watch-link" onClick={() => setVideoStory({ ...story, text: story.quote, video: story.video })}>
+                        <CirclePlay size={16} />
+                        <span>Watch Video</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -2568,13 +2555,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   // Data states
   const [bookings, setBookings] = useState<DemoBooking[]>([])
   const [contacts, setContacts] = useState<ContactMessage[]>([])
-  const [testimonials, setTestimonials] = useState<Testimonial[]>(() => {
-    try {
-      return api.testimonials.getLocalTestimonials()
-    } catch {
-      return []
-    }
-  })
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -4424,4 +4405,8 @@ const router = createRouter({ routeTree })
 
 declare module '@tanstack/react-router' { interface Register { router: typeof router } }
 
-createRoot(document.getElementById('root')!).render(<RouterProvider router={router} />)
+createRoot(document.getElementById('root')!).render(
+  <QueryClientProvider client={queryClient}>
+    <RouterProvider router={router} />
+  </QueryClientProvider>
+)
