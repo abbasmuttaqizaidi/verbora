@@ -5896,22 +5896,28 @@ footer.site-footer::before {
 
 .admin-icon-btn {
   background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: #cbd5e1;
-  padding: 7px 12px;
+  padding: 8px 14px;
   border-radius: 10px;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   transition: all 0.2s ease;
+  font-family: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .admin-icon-btn:hover {
   background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
 }
 
 .admin-logout-btn {
@@ -6007,6 +6013,164 @@ footer.site-footer::before {
   padding: 2px 7px;
   border-radius: 5px;
   font-size: 11.5px;
+}
+
+/* ==========================================================================
+   LEADS CONTROLS CARD & TAB BUTTONS (DEMO BOOKINGS, CONTACTS, SUBSCRIBERS)
+   ========================================================================== */
+
+.admin-controls-card {
+  background: #0d151a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 18px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.admin-tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 16px;
+}
+
+.admin-tabs-list {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* The Tab Buttons (Demo Bookings, Contact Messages, Subscribers) */
+.admin-tab-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  padding: 9px 18px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.admin-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.admin-tab-btn.active {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #10b981;
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35);
+}
+
+.admin-tab-badge {
+  background: rgba(0, 0, 0, 0.28);
+  color: #e2e8f0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 18px;
+  text-align: center;
+}
+
+.admin-tab-btn.active .admin-tab-badge {
+  background: rgba(0, 0, 0, 0.35);
+  color: #ffffff;
+}
+
+/* Filter Row: Search Input + Status Pills */
+.admin-filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.admin-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 260px;
+  max-width: 440px;
+}
+
+.admin-search-wrap .admin-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  pointer-events: none;
+}
+
+.admin-search-wrap .admin-search-input {
+  width: 100%;
+  background: #070c0f;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 10px 14px 10px 38px;
+  color: #ffffff;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.admin-search-wrap .admin-search-input:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.admin-status-filters {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+/* Filter Pill Buttons (All Bookings, New, Contacted, Scheduled, Completed, Cancelled) */
+.admin-filter-pill {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: #94a3b8;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-filter-pill:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #f1f5f9;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.admin-filter-pill.active {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.45);
+  color: #34d399;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
 }
 
 /* Modern Unified Admin Toolbar */
@@ -6238,6 +6402,31 @@ footer.site-footer::before {
   text-decoration: underline;
 }
 
+/* Lead Type Badges (Demo vs Contact) */
+.admin-lead-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  width: fit-content;
+  letter-spacing: 0.02em;
+}
+
+.admin-lead-type-badge.badge-booking {
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+}
+
+.admin-lead-type-badge.badge-contact {
+  background: rgba(168, 85, 247, 0.14);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  color: #c084fc;
+}
+
 /* Status Badges & Select */
 .admin-status-select {
   background: #090f13;
@@ -6276,6 +6465,26 @@ footer.site-footer::before {
   color: #f87171;
 }
 
+.admin-status-select.status-unread {
+  border-color: #f59e0b;
+  color: #fbbf24;
+}
+
+.admin-status-select.status-read {
+  border-color: #64748b;
+  color: #94a3b8;
+}
+
+.admin-status-select.status-replied {
+  border-color: #10b981;
+  color: #34d399;
+}
+
+.admin-status-select.status-archived {
+  border-color: #475569;
+  color: #64748b;
+}
+
 /* Action Buttons */
 .admin-actions-cell {
   display: flex;
@@ -6287,21 +6496,26 @@ footer.site-footer::before {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #cbd5e1;
-  padding: 6px 10px;
+  padding: 6px 11px;
   border-radius: 8px;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   text-decoration: none;
   transition: all 0.15s ease;
+  font-family: inherit;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .admin-action-btn:hover {
   background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
 }
 
 .admin-action-whatsapp {

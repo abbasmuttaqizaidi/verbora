@@ -23,7 +23,7 @@ import {
 import './styles.css'
 import './adjustments.css'
 import { api } from './api'
-import { DemoBooking, ContactMessage, NewsletterSubscriber, Testimonial } from './types/database'
+import { DemoBooking, ContactMessage, Testimonial } from './types/database'
 import { uploadImageToCloudinary, getSavedUploadPreset, saveUploadPreset, CLOUDINARY_CLOUD_NAME } from './lib/cloudinary'
 
 type CourseId = 'spoken-english' | 'business-english' | 'public-speaking' | 'interview-preparation' | 'personality-development'
@@ -2548,10 +2548,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Data states
-  const [activeTab, setActiveTab] = useState<'bookings' | 'contacts' | 'subscribers'>('bookings')
   const [bookings, setBookings] = useState<DemoBooking[]>([])
   const [contacts, setContacts] = useState<ContactMessage[]>([])
-  const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([])
   const [testimonials, setTestimonials] = useState<Testimonial[]>(() => {
     try {
       return api.testimonials.getLocalTestimonials()
@@ -2623,15 +2621,13 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const loadData = async () => {
     setLoading(true)
     try {
-      const [bRes, cRes, sRes, tRes] = await Promise.all([
+      const [bRes, cRes, tRes] = await Promise.all([
         api.bookings.getDemoBookings(),
         api.contact.getContactMessages(),
-        api.subscribers.getSubscribers(),
         api.testimonials.getTestimonials(),
       ])
       if (bRes.data) setBookings(bRes.data)
       if (cRes.data) setContacts(cRes.data)
-      if (sRes.data) setSubscribers(sRes.data)
       if (tRes.data) setTestimonials(tRes.data)
     } catch (err) {
       console.error('Error fetching admin data:', err)
@@ -2816,62 +2812,6 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     setUpdatingId(null)
   }
 
-  const handleDeleteSubscriber = async (id: string, email: string) => {
-    if (!window.confirm(`Delete subscriber "${email}"?`)) return
-    setUpdatingId(id)
-    const res = await api.subscribers.deleteSubscriber(id)
-    if (res.success) {
-      setSubscribers(prev => prev.filter(s => s.id !== id))
-      showToast(`Subscriber "${email}" deleted.`)
-    }
-    setUpdatingId(null)
-  }
-
-  // Export CSV functions
-  const handleExportBookings = () => {
-    const headers = ['ID', 'Date', 'Name', 'Phone', 'Email', 'Course', 'Time Slot', 'Status', 'Source', 'Notes']
-    const rows = bookings.map(b => [
-      b.id,
-      `"${new Date(b.created_at).toLocaleString()}"`,
-      `"${b.name || ''}"`,
-      `"${b.phone || ''}"`,
-      `"${b.email || ''}"`,
-      `"${b.course || ''}"`,
-      `"${b.time_slot || ''}"`,
-      `"${b.status}"`,
-      `"${b.source || ''}"`,
-      `"${(b.notes || '').replace(/"/g, '""')}"`
-    ])
-    downloadCSV(`verbora-bookings-${new Date().toISOString().split('T')[0]}.csv`, [headers, ...rows])
-  }
-
-  const handleExportContacts = () => {
-    const headers = ['ID', 'Date', 'Name', 'Email', 'Phone', 'Course', 'Goal', 'Status', 'Message']
-    const rows = contacts.map(c => [
-      c.id,
-      `"${new Date(c.created_at).toLocaleString()}"`,
-      `"${c.name || ''}"`,
-      `"${c.email || ''}"`,
-      `"${c.phone || ''}"`,
-      `"${c.course || ''}"`,
-      `"${c.goal || ''}"`,
-      `"${c.status}"`,
-      `"${(c.message || '').replace(/"/g, '""')}"`
-    ])
-    downloadCSV(`verbora-contacts-${new Date().toISOString().split('T')[0]}.csv`, [headers, ...rows])
-  }
-
-  const handleExportSubscribers = () => {
-    const headers = ['ID', 'Date', 'Email', 'Status']
-    const rows = subscribers.map(s => [
-      s.id,
-      `"${new Date(s.created_at).toLocaleString()}"`,
-      `"${s.email || ''}"`,
-      `"${s.status}"`
-    ])
-    downloadCSV(`verbora-subscribers-${new Date().toISOString().split('T')[0]}.csv`, [headers, ...rows])
-  }
-
   // Gate Screen if not authenticated
   if (!isAuthenticated) {
     return (
@@ -2927,11 +2867,15 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
 
   // Calculate Leads Metrics
   const totalBookings = bookings.length
-  const newBookingsCount = bookings.filter(b => b.status === 'new').length
   const totalContacts = contacts.length
+  const totalLeads = totalBookings + totalContacts
+  const newBookingsCount = bookings.filter(b => b.status === 'new').length
   const unreadContactsCount = contacts.filter(c => c.status === 'unread').length
-  const totalSubscribers = subscribers.length
-  const contactedRate = totalBookings > 0 ? Math.round(((totalBookings - newBookingsCount) / totalBookings) * 100) : 0
+  const newLeadsCount = newBookingsCount + unreadContactsCount
+  const contactedLeadsCount =
+    bookings.filter(b => b.status !== 'new').length +
+    contacts.filter(c => c.status !== 'unread').length
+  const leadActionRate = totalLeads > 0 ? Math.round((contactedLeadsCount / totalLeads) * 100) : 0
 
   // Calculate Testimonials Metrics
   const totalTestimonials = testimonials.length
@@ -2939,38 +2883,84 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const hiddenTestimonialsCount = totalTestimonials - activeTestimonialsCount
   const videoTestimonialsCount = testimonials.filter(t => !!t.video).length
 
+  // Construct Unified Leads list
+  type UnifiedLeadType = 'booking' | 'contact'
+  interface UnifiedLead {
+    id: string
+    type: UnifiedLeadType
+    name: string
+    email?: string | null
+    phone?: string | null
+    course: string
+    details: string
+    timeSlot?: string | null
+    notes?: string | null
+    message?: string | null
+    goal?: string | null
+    status: string
+    created_at: string
+  }
+
+  const unifiedLeads: UnifiedLead[] = [
+    ...bookings.map(b => ({
+      id: b.id,
+      type: 'booking' as const,
+      name: b.name,
+      email: b.email,
+      phone: b.phone,
+      course: b.course,
+      details: b.time_slot ? `Slot: ${b.time_slot}` : 'Anytime slot',
+      timeSlot: b.time_slot,
+      notes: b.notes,
+      status: b.status,
+      created_at: b.created_at,
+    })),
+    ...contacts.map(c => ({
+      id: c.id,
+      type: 'contact' as const,
+      name: c.name,
+      email: c.email,
+      phone: c.phone,
+      course: c.course || 'General Coaching',
+      details: c.message || 'No written message',
+      goal: c.goal,
+      message: c.message,
+      status: c.status,
+      created_at: c.created_at,
+    })),
+  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
   // Filter lists
-  const filteredBookings = bookings.filter(b => {
+  const filteredLeads = unifiedLeads.filter(l => {
     const q = searchQuery.toLowerCase().trim()
-    const matchesSearch = !q ||
-      b.name.toLowerCase().includes(q) ||
-      (b.phone && b.phone.includes(q)) ||
-      (b.email && b.email.toLowerCase().includes(q)) ||
-      b.course.toLowerCase().includes(q)
-    const matchesStatus = statusFilter === 'all' || b.status === statusFilter
+    const matchesSearch =
+      !q ||
+      l.name.toLowerCase().includes(q) ||
+      (l.phone && l.phone.includes(q)) ||
+      (l.email && l.email.toLowerCase().includes(q)) ||
+      l.course.toLowerCase().includes(q) ||
+      (l.details && l.details.toLowerCase().includes(q))
+    let matchesStatus = true
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'new') {
+        matchesStatus = l.status === 'new' || l.status === 'unread'
+      } else if (statusFilter === 'contacted') {
+        matchesStatus = l.status === 'contacted' || l.status === 'replied' || l.status === 'scheduled'
+      } else if (statusFilter === 'completed') {
+        matchesStatus = l.status === 'completed' || l.status === 'read'
+      } else if (statusFilter === 'cancelled') {
+        matchesStatus = l.status === 'cancelled' || l.status === 'archived'
+      } else {
+        matchesStatus = l.status === statusFilter
+      }
+    }
     return matchesSearch && matchesStatus
-  })
-
-  const filteredContacts = contacts.filter(c => {
-    const q = searchQuery.toLowerCase().trim()
-    const matchesSearch = !q ||
-      c.name.toLowerCase().includes(q) ||
-      c.email.toLowerCase().includes(q) ||
-      (c.phone && c.phone.includes(q)) ||
-      (c.message && c.message.toLowerCase().includes(q)) ||
-      (c.course && c.course.toLowerCase().includes(q))
-    const matchesStatus = statusFilter === 'all' || c.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
-
-  const filteredSubscribers = subscribers.filter(s => {
-    const q = searchQuery.toLowerCase().trim()
-    return !q || s.email.toLowerCase().includes(q)
   })
 
   const filteredTestimonials = testimonials.filter(t => {
     const q = searchQuery.toLowerCase().trim()
-    const matchesSearch = !q ||
+    const matchesSearch =
+      !q ||
       t.name.toLowerCase().includes(q) ||
       t.role.toLowerCase().includes(q) ||
       t.text.toLowerCase().includes(q) ||
@@ -2980,6 +2970,22 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
       (testimonialFilter === 'active' ? t.is_active : !t.is_active)
     return matchesSearch && matchesStatus
   })
+
+  const handleExportAllLeads = () => {
+    const headers = ['Lead Type', 'ID', 'Date', 'Name', 'Phone', 'Email', 'Course', 'Status', 'Inquiry Details']
+    const rows = filteredLeads.map(l => [
+      l.type === 'booking' ? 'Demo Booking' : 'Contact Message',
+      l.id,
+      `"${new Date(l.created_at).toLocaleString()}"`,
+      `"${l.name || ''}"`,
+      `"${l.phone || ''}"`,
+      `"${l.email || ''}"`,
+      `"${l.course || ''}"`,
+      `"${l.status}"`,
+      `"${(l.details || '').replace(/"/g, '""')}"`
+    ])
+    downloadCSV(`verbora-all-leads-${new Date().toISOString().split('T')[0]}.csv`, [headers, ...rows])
+  }
 
   return (
     <div className="admin-page-root">
@@ -3111,338 +3117,139 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
         <section className="admin-stats-grid">
           <div className="admin-stat-card">
             <div className="admin-stat-header">
-              <span className="admin-stat-label">Diagnostic Bookings</span>
-              <div className="admin-stat-icon"><Calendar size={18} /></div>
+              <span className="admin-stat-label">Total Leads & Inquiries</span>
+              <div className="admin-stat-icon"><UsersRound size={18} /></div>
             </div>
-            <div className="admin-stat-value">{totalBookings}</div>
+            <div className="admin-stat-value">{totalLeads}</div>
             <div className="admin-stat-sub">
-              <span className="admin-stat-sub-badge">{newBookingsCount} New</span>
+              <span className="admin-stat-sub-badge">{newLeadsCount} New</span>
               <span>awaiting response</span>
             </div>
           </div>
 
           <div className="admin-stat-card">
             <div className="admin-stat-header">
-              <span className="admin-stat-label">Contact Inquiries</span>
+              <span className="admin-stat-label">Diagnostic Bookings</span>
+              <div className="admin-stat-icon"><Calendar size={18} /></div>
+            </div>
+            <div className="admin-stat-value">{totalBookings}</div>
+            <div className="admin-stat-sub">
+              <span className="admin-stat-sub-badge">{newBookingsCount} New Calls</span>
+              <span>scheduled/requested</span>
+            </div>
+          </div>
+
+          <div className="admin-stat-card">
+            <div className="admin-stat-header">
+              <span className="admin-stat-label">Contact Messages</span>
               <div className="admin-stat-icon"><Inbox size={18} /></div>
             </div>
             <div className="admin-stat-value">{totalContacts}</div>
             <div className="admin-stat-sub">
               <span className="admin-stat-sub-badge">{unreadContactsCount} Unread</span>
-              <span>messages received</span>
+              <span>contact queries</span>
             </div>
           </div>
 
           <div className="admin-stat-card">
             <div className="admin-stat-header">
-              <span className="admin-stat-label">Newsletter Audience</span>
-              <div className="admin-stat-icon"><Mail size={18} /></div>
-            </div>
-            <div className="admin-stat-value">{totalSubscribers}</div>
-            <div className="admin-stat-sub">
-              <span className="admin-stat-sub-badge">100% Active</span>
-              <span>subscribers</span>
-            </div>
-          </div>
-
-          <div className="admin-stat-card">
-            <div className="admin-stat-header">
-              <span className="admin-stat-label">Lead Action Rate</span>
+              <span className="admin-stat-label">Response Engagement</span>
               <div className="admin-stat-icon"><Target size={18} /></div>
             </div>
-            <div className="admin-stat-value">{contactedRate}%</div>
+            <div className="admin-stat-value">{leadActionRate}%</div>
             <div className="admin-stat-sub">
-              <span className="admin-stat-sub-badge">{totalBookings - newBookingsCount} Contacted</span>
+              <span className="admin-stat-sub-badge">{contactedLeadsCount} Contacted</span>
               <span>conversion pipeline</span>
             </div>
           </div>
         </section>
 
-        {/* Tab Switcher & Filter Controls */}
+        {/* Filter & Action Controls */}
         <div className="admin-controls-card">
-          <div className="admin-tabs-row">
-            <div className="admin-tabs-list">
-              <button
-                type="button"
-                className={`admin-tab-btn ${activeTab === 'bookings' ? 'active' : ''}`}
-                onClick={() => { setActiveTab('bookings'); setStatusFilter('all'); }}
-              >
-                <Calendar size={15} />
-                <span>Demo Bookings</span>
-                <span className="admin-tab-badge">{totalBookings}</span>
-              </button>
-
-              <button
-                type="button"
-                className={`admin-tab-btn ${activeTab === 'contacts' ? 'active' : ''}`}
-                onClick={() => { setActiveTab('contacts'); setStatusFilter('all'); }}
-              >
-                <Inbox size={15} />
-                <span>Contact Messages</span>
-                <span className="admin-tab-badge">{unreadContactsCount > 0 ? `${unreadContactsCount} new` : totalContacts}</span>
-              </button>
-
-              <button
-                type="button"
-                className={`admin-tab-btn ${activeTab === 'subscribers' ? 'active' : ''}`}
-                onClick={() => { setActiveTab('subscribers'); setStatusFilter('all'); }}
-              >
-                <Mail size={15} />
-                <span>Subscribers</span>
-                <span className="admin-tab-badge">{totalSubscribers}</span>
-              </button>
-            </div>
-
-            {/* Export CSV Button */}
-            <div>
-              {activeTab === 'bookings' && (
-                <button type="button" className="admin-icon-btn" onClick={handleExportBookings}>
-                  <Download size={14} />
-                  <span>Export Bookings CSV</span>
-                </button>
-              )}
-              {activeTab === 'contacts' && (
-                <button type="button" className="admin-icon-btn" onClick={handleExportContacts}>
-                  <Download size={14} />
-                  <span>Export Contacts CSV</span>
-                </button>
-              )}
-              {activeTab === 'subscribers' && (
-                <button type="button" className="admin-icon-btn" onClick={handleExportSubscribers}>
-                  <Download size={14} />
-                  <span>Export Subscribers CSV</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Search & Status Filters */}
           <div className="admin-filter-row">
             <div className="admin-search-wrap">
               <Search size={15} className="admin-search-icon" />
               <input
                 type="text"
                 className="admin-search-input"
-                placeholder={activeTab === 'subscribers' ? 'Search by email address...' : 'Search student by name, phone, course...'}
+                placeholder="Search lead by student name, phone, course, message..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
             </div>
 
-            {activeTab === 'bookings' && (
-              <div className="admin-status-filters">
-                {(['all', 'new', 'contacted', 'scheduled', 'completed', 'cancelled'] as const).map(st => (
-                  <button
-                    key={st}
-                    type="button"
-                    className={`admin-filter-pill ${statusFilter === st ? 'active' : ''}`}
-                    onClick={() => setStatusFilter(st)}
-                  >
-                    {st === 'all' ? 'All Bookings' : st.charAt(0).toUpperCase() + st.slice(1)}
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="admin-status-filters">
+              {/* Export All Leads CSV */}
+              <button type="button" className="admin-icon-btn" onClick={handleExportAllLeads}>
+                <Download size={14} />
+                <span>Export All Leads CSV</span>
+              </button>
 
-            {activeTab === 'contacts' && (
-              <div className="admin-status-filters">
-                {(['all', 'unread', 'read', 'replied', 'archived'] as const).map(st => (
-                  <button
-                    key={st}
-                    type="button"
-                    className={`admin-filter-pill ${statusFilter === st ? 'active' : ''}`}
-                    onClick={() => setStatusFilter(st)}
-                  >
-                    {st === 'all' ? 'All Inquiries' : st.charAt(0).toUpperCase() + st.slice(1)}
-                  </button>
-                ))}
-              </div>
-            )}
+              {/* Status Dropdown Filter */}
+              <select
+                className="admin-filter-select"
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value)}
+              >
+                <option value="all">All Statuses</option>
+                <option value="new">● New / Unread ({newLeadsCount})</option>
+                <option value="contacted">● Contacted / In Progress</option>
+                <option value="completed">● Completed / Replied</option>
+                <option value="cancelled">● Cancelled / Archived</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* Tab 1: Bookings Table */}
-        {activeTab === 'bookings' && (
-          <div className="admin-table-card">
+        {/* Unified Leads Table */}
+        <div className="admin-table-card">
             <div className="admin-table-responsive">
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>Student / Lead</th>
-                    <th>Course & Time Slot</th>
+                    <th>Lead Info</th>
+                    <th>Type & Program</th>
+                    <th>Inquiry Details</th>
                     <th>Status</th>
                     <th>Date Received</th>
                     <th>Quick Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredBookings.length === 0 ? (
-                    <tr>
-                      <td colSpan={5}>
-                        <div className="admin-empty-state">
-                          <Database size={40} className="admin-empty-icon" />
-                          <p>No booking leads found matching your filters.</p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredBookings.map(b => {
-                      const cleanPhone = (b.phone || '').replace(/[^0-9]/g, '')
-                      const waUrl = cleanPhone
-                        ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hi ${b.name}, thank you for booking your Free Diagnostic Session with Verbora for ${b.course}. When would be a good time to connect?`)}`
-                        : null
-
-                      return (
-                        <tr key={b.id}>
-                          <td>
-                            <div className="admin-user-cell">
-                              <span className="admin-user-name">{b.name}</span>
-                              <div className="admin-user-meta">
-                                {b.phone && (
-                                  <a href={`tel:${b.phone}`} title="Call phone">
-                                    {b.phone}
-                                  </a>
-                                )}
-                                {b.email && (
-                                  <a href={`mailto:${b.email}`} title="Email student">
-                                    {b.email}
-                                  </a>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-
-                          <td>
-                            <div className="admin-user-cell">
-                              <span style={{ fontWeight: 600, color: '#f1f5f9' }}>{b.course}</span>
-                              <span style={{ fontSize: 11.5, color: '#94a3b8' }}>
-                                {b.time_slot || 'Anytime'} · <small style={{ color: '#64748b' }}>{b.source || 'web'}</small>
-                              </span>
-                              {b.notes && (
-                                <span style={{ fontSize: 11, color: '#38bdf8', marginTop: 2 }}>
-                                  {b.notes}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-
-                          <td>
-                            <select
-                              className={`admin-status-select status-${b.status}`}
-                              value={b.status}
-                              disabled={updatingId === b.id}
-                              onChange={e => handleUpdateBookingStatus(b.id, e.target.value as DemoBooking['status'])}
-                            >
-                              <option value="new">● New Lead</option>
-                              <option value="contacted">● Contacted</option>
-                              <option value="scheduled">● Scheduled</option>
-                              <option value="completed">● Completed</option>
-                              <option value="cancelled">● Cancelled</option>
-                            </select>
-                          </td>
-
-                          <td style={{ color: '#94a3b8', fontSize: 12 }}>
-                            {new Date(b.created_at).toLocaleString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                              hour: 'numeric',
-                              minute: '2-digit',
-                              hour12: true,
-                            })}
-                          </td>
-
-                          <td>
-                            <div className="admin-actions-cell">
-                              {waUrl && (
-                                <a
-                                  href={waUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="admin-action-btn admin-action-whatsapp"
-                                  title="Chat with student on WhatsApp"
-                                >
-                                  <MessageCircle size={13} />
-                                  <span>WhatsApp</span>
-                                </a>
-                              )}
-
-                              {b.phone && (
-                                <a
-                                  href={`tel:${b.phone}`}
-                                  className="admin-action-btn"
-                                  title="Call phone directly"
-                                >
-                                  <Phone size={13} />
-                                  <span>Call</span>
-                                </a>
-                              )}
-
-                              <button
-                                type="button"
-                                className="admin-action-btn admin-action-delete"
-                                title="Delete booking entry"
-                                disabled={updatingId === b.id}
-                                onClick={() => handleDeleteBooking(b.id, b.name)}
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 2: Contact Inquiries Table */}
-        {activeTab === 'contacts' && (
-          <div className="admin-table-card">
-            <div className="admin-table-responsive">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Sender Info</th>
-                    <th>Program & Goal</th>
-                    <th>Message</th>
-                    <th>Status</th>
-                    <th>Date Received</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredContacts.length === 0 ? (
+                  {filteredLeads.length === 0 ? (
                     <tr>
                       <td colSpan={6}>
                         <div className="admin-empty-state">
-                          <Inbox size={40} className="admin-empty-icon" />
-                          <p>No contact messages found matching your criteria.</p>
+                          <Database size={40} className="admin-empty-icon" />
+                          <p>No leads found matching your search or filters.</p>
                         </div>
                       </td>
                     </tr>
                   ) : (
-                    filteredContacts.map(c => {
-                      const cleanPhone = (c.phone || '').replace(/[^0-9]/g, '')
+                    filteredLeads.map(lead => {
+                      const cleanPhone = (lead.phone || '').replace(/[^0-9]/g, '')
                       const waUrl = cleanPhone
-                        ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hi ${c.name}, thank you for reaching out to Verbora regarding ${c.course || 'our coaching programs'}.`)}`
+                        ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(
+                            lead.type === 'booking'
+                              ? `Hi ${lead.name}, thank you for booking your Free Diagnostic Session with Verbora for ${lead.course}. When would be a good time to connect?`
+                              : `Hi ${lead.name}, thank you for reaching out to Verbora regarding ${lead.course}. How can we assist you?`
+                          )}`
                         : null
 
                       return (
-                        <tr key={c.id}>
+                        <tr key={`${lead.type}-${lead.id}`}>
                           <td>
                             <div className="admin-user-cell">
-                              <span className="admin-user-name">{c.name}</span>
+                              <span className="admin-user-name">{lead.name}</span>
                               <div className="admin-user-meta">
-                                <a href={`mailto:${c.email}`} title="Email sender">
-                                  {c.email}
-                                </a>
-                                {c.phone && (
-                                  <a href={`tel:${c.phone}`} title="Call sender">
-                                    {c.phone}
+                                {lead.phone && (
+                                  <a href={`tel:${lead.phone}`} title="Call phone">
+                                    {lead.phone}
+                                  </a>
+                                )}
+                                {lead.email && (
+                                  <a href={`mailto:${lead.email}`} title="Email student">
+                                    {lead.email}
                                   </a>
                                 )}
                               </div>
@@ -3451,33 +3258,88 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
 
                           <td>
                             <div className="admin-user-cell">
-                              <span style={{ fontWeight: 600, color: '#f1f5f9' }}>{c.course || 'General'}</span>
-                              <span style={{ fontSize: 11.5, color: '#38bdf8' }}>Goal: {c.goal || 'General'}</span>
+                              <span
+                                className={`admin-lead-type-badge ${
+                                  lead.type === 'booking' ? 'badge-booking' : 'badge-contact'
+                                }`}
+                              >
+                                {lead.type === 'booking' ? (
+                                  <>
+                                    <Calendar size={11} />
+                                    <span>Demo Booking</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Inbox size={11} />
+                                    <span>Contact Query</span>
+                                  </>
+                                )}
+                              </span>
+                              <span style={{ fontWeight: 600, color: '#f1f5f9', marginTop: 4 }}>
+                                {lead.course}
+                              </span>
                             </div>
                           </td>
 
-                          <td style={{ maxWidth: 300 }}>
-                            <p style={{ margin: 0, fontSize: 12.5, color: '#cbd5e1', lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
-                              {c.message || 'No written message provided.'}
-                            </p>
+                          <td style={{ maxWidth: 320 }}>
+                            <div style={{ fontSize: 12.5, color: '#cbd5e1', lineHeight: 1.45 }}>
+                              {lead.type === 'booking' ? (
+                                <>
+                                  <span style={{ color: '#38bdf8', fontWeight: 600, display: 'block', fontSize: 11.5 }}>
+                                    {lead.details}
+                                  </span>
+                                  {lead.notes && (
+                                    <span style={{ color: '#94a3b8', fontSize: 11.5, marginTop: 2, display: 'block' }}>
+                                      Note: {lead.notes}
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  {lead.goal && (
+                                    <span style={{ color: '#a78bfa', fontWeight: 600, display: 'block', fontSize: 11.5, marginBottom: 2 }}>
+                                      Goal: {lead.goal}
+                                    </span>
+                                  )}
+                                  <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+                                    {lead.message || 'No written message provided.'}
+                                  </p>
+                                </>
+                              )}
+                            </div>
                           </td>
 
                           <td>
-                            <select
-                              className={`admin-status-select status-${c.status}`}
-                              value={c.status}
-                              disabled={updatingId === c.id}
-                              onChange={e => handleUpdateContactStatus(c.id, e.target.value as ContactMessage['status'])}
-                            >
-                              <option value="unread">● Unread</option>
-                              <option value="read">● Read</option>
-                              <option value="replied">● Replied</option>
-                              <option value="archived">● Archived</option>
-                            </select>
+                            {lead.type === 'booking' ? (
+                              <select
+                                className={`admin-status-select status-${lead.status}`}
+                                value={lead.status}
+                                disabled={updatingId === lead.id}
+                                onChange={e => handleUpdateBookingStatus(lead.id, e.target.value as DemoBooking['status'])}
+                              >
+                                <option value="new">● New Lead</option>
+                                <option value="contacted">● Contacted</option>
+                                <option value="scheduled">● Scheduled</option>
+                                <option value="completed">● Completed</option>
+                                <option value="cancelled">● Cancelled</option>
+                              </select>
+                            ) : (
+                              <select
+                                className={`admin-status-select status-${lead.status}`}
+                                value={lead.status}
+                                disabled={updatingId === lead.id}
+                                onChange={e => handleUpdateContactStatus(lead.id, e.target.value as ContactMessage['status'])}
+                              >
+                                <option value="unread">● Unread</option>
+                                <option value="read">● Read</option>
+                                <option value="replied">● Replied</option>
+                                <option value="archived">● Archived</option>
+                              </select>
+                            )}
                           </td>
 
-                          <td style={{ color: '#94a3b8', fontSize: 12 }}>
-                            {new Date(c.created_at).toLocaleString('en-US', {
+                          <td style={{ color: '#94a3b8', fontSize: 12, whiteSpace: 'nowrap' }}>
+                            {new Date(lead.created_at).toLocaleString('en-US', {
                               month: 'short',
                               day: 'numeric',
                               year: 'numeric',
@@ -3489,15 +3351,6 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
 
                           <td>
                             <div className="admin-actions-cell">
-                              <a
-                                href={`mailto:${c.email}?subject=Regarding%20your%20Verbora%20Inquiry`}
-                                className="admin-action-btn"
-                                title="Reply via Email"
-                              >
-                                <Mail size={13} />
-                                <span>Email</span>
-                              </a>
-
                               {waUrl && (
                                 <a
                                   href={waUrl}
@@ -3507,15 +3360,40 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                                   title="Chat on WhatsApp"
                                 >
                                   <MessageCircle size={13} />
+                                  <span>WhatsApp</span>
+                                </a>
+                              )}
+
+                              {lead.phone && (
+                                <a
+                                  href={`tel:${lead.phone}`}
+                                  className="admin-action-btn"
+                                  title="Call phone"
+                                >
+                                  <Phone size={13} />
+                                </a>
+                              )}
+
+                              {lead.email && (
+                                <a
+                                  href={`mailto:${lead.email}?subject=Regarding%20your%20Verbora%20Inquiry`}
+                                  className="admin-action-btn"
+                                  title="Send Email"
+                                >
+                                  <Mail size={13} />
                                 </a>
                               )}
 
                               <button
                                 type="button"
                                 className="admin-action-btn admin-action-delete"
-                                title="Delete inquiry"
-                                disabled={updatingId === c.id}
-                                onClick={() => handleDeleteContact(c.id, c.name)}
+                                title="Delete lead entry"
+                                disabled={updatingId === lead.id}
+                                onClick={() =>
+                                  lead.type === 'booking'
+                                    ? handleDeleteBooking(lead.id, lead.name)
+                                    : handleDeleteContact(lead.id, lead.name)
+                                }
                               >
                                 <Trash2 size={13} />
                               </button>
@@ -3529,101 +3407,10 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
               </table>
             </div>
           </div>
-        )}
+        </>
+      )}
 
-        {/* Tab 3: Newsletter Subscribers Table */}
-        {activeTab === 'subscribers' && (
-          <div className="admin-table-card">
-            <div className="admin-table-responsive">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Subscriber Email</th>
-                    <th>Status</th>
-                    <th>Subscribed On</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredSubscribers.length === 0 ? (
-                    <tr>
-                      <td colSpan={4}>
-                        <div className="admin-empty-state">
-                          <Mail size={40} className="admin-empty-icon" />
-                          <p>No newsletter subscribers found.</p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredSubscribers.map(s => (
-                      <tr key={s.id}>
-                        <td>
-                          <div className="admin-user-cell">
-                            <span className="admin-user-name">{s.email}</span>
-                          </div>
-                        </td>
-
-                        <td>
-                          <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 5,
-                            background: s.status === 'active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                            color: s.status === 'active' ? '#34d399' : '#f87171',
-                            padding: '3px 8px',
-                            borderRadius: 6,
-                            fontSize: 12,
-                            fontWeight: 700
-                          }}>
-                            ● {s.status.toUpperCase()}
-                          </span>
-                        </td>
-
-                        <td style={{ color: '#94a3b8', fontSize: 12 }}>
-                          {new Date(s.created_at).toLocaleString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: true,
-                          })}
-                        </td>
-
-                        <td>
-                          <div className="admin-actions-cell">
-                            <a
-                              href={`mailto:${s.email}`}
-                              className="admin-action-btn"
-                              title="Send Email"
-                            >
-                              <Mail size={13} />
-                              <span>Email</span>
-                            </a>
-
-                            <button
-                              type="button"
-                              className="admin-action-btn admin-action-delete"
-                              title="Delete subscriber"
-                              disabled={updatingId === s.id}
-                              onClick={() => handleDeleteSubscriber(s.id, s.email)}
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-              </>
-            )}
-
-            {/* Testimonials Section */}
+      {/* Testimonials Section */}
             {activeSection === 'testimonials' && (
               <>
                 {/* Testimonials KPI Stats */}
