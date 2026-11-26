@@ -2585,6 +2585,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     role: string
     image: string
     video: string
+    video_size_bytes?: number
+    image_size_bytes?: number
     text: string
     badge: string
     is_active: boolean
@@ -2593,6 +2595,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     role: '',
     image: '/assets/testimonials/sample-avatar.jpg',
     video: '',
+    video_size_bytes: 0,
+    image_size_bytes: 0,
     text: '',
     badge: '',
     is_active: true,
@@ -2696,6 +2700,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
       role: item.role,
       image: item.image,
       video: item.video || '',
+      video_size_bytes: item.video_size_bytes || 0,
+      image_size_bytes: item.image_size_bytes || 0,
       text: item.text,
       badge: item.badge || '',
       is_active: item.is_active,
@@ -2813,7 +2819,11 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
       saveUploadPreset(customPreset)
       const result = await uploadVideoToCloudinary(file, totalUsedStorageBytes, customPreset)
       if (result.url) {
-        setTestimonialForm(prev => ({ ...prev, video: result.url! }))
+        setTestimonialForm(prev => ({
+          ...prev,
+          video: result.url!,
+          video_size_bytes: result.bytes || file.size,
+        }))
         setVideoSuccessUrl(result.url)
         showToast(`Video uploaded successfully (${((result.bytes || file.size) / (1024 * 1024)).toFixed(1)} MB)!`)
       } else {
@@ -3639,16 +3649,20 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                                 </button>
                               </div>
 
-                              <div className="admin-avatar-url-fallback">
-                                <span className="admin-or-divider">or paste direct video URL / YouTube / Cloudinary link</span>
-                                <input
-                                  type="url"
-                                  placeholder="https://res.cloudinary.com/... or https://youtube.com/..."
-                                  value={testimonialForm.video}
-                                  onChange={e => setTestimonialForm(prev => ({ ...prev, video: e.target.value }))}
-                                  className="admin-input-styled admin-input-url"
-                                />
-                              </div>
+                              {testimonialForm.video && (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#ffffff', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }}>
+                                  <span style={{ color: '#0f172a', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 320 }}>
+                                    ✓ Video Attached ({testimonialForm.video_size_bytes ? `${(testimonialForm.video_size_bytes / (1024 * 1024)).toFixed(1)} MB` : 'Cloudinary Media'})
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setTestimonialForm(prev => ({ ...prev, video: '', video_size_bytes: 0 }))}
+                                    style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              )}
 
                               {videoUploadError && (
                                 <div className="admin-upload-alert admin-upload-error">
