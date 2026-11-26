@@ -3979,8 +3979,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                       className="admin-tab"
                       style={{
                         cursor: 'pointer',
-                        background: '#f8fafc',
-                        border: '1px solid #cbd5e1',
+                        background: '#059669',
+                        border: '1px solid #047857',
                         borderRadius: 8,
                         display: 'flex',
                         alignItems: 'center',
@@ -3988,15 +3988,15 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                         padding: '8px 14px',
                         fontSize: 13,
                         fontWeight: 600,
-                        color: '#0f172a',
+                        color: '#ffffff',
                       }}
                       onClick={handleOpenSpotlightModal}
                       title="Select which testimonial is featured as the Spotlight on /stories"
                     >
-                      <Star size={15} style={{ fill: '#f59e0b', color: '#f59e0b' }} />
+                      <Star size={15} style={{ fill: '#ffffff', color: '#ffffff' }} />
                       <span>Spotlight Testimonial</span>
                       {testimonials.find(t => t.is_spotlight) && (
-                        <span style={{ fontSize: 11, background: '#fef3c7', color: '#b45309', padding: '1px 6px', borderRadius: 6, fontWeight: 700 }}>
+                        <span style={{ fontSize: 11, background: '#d1fae5', color: '#065f46', padding: '1px 6px', borderRadius: 6, fontWeight: 700 }}>
                           {testimonials.find(t => t.is_spotlight)?.name.split(' ')[0]}
                         </span>
                       )}
@@ -4026,7 +4026,20 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
 
                     <button
                       type="button"
-                      className="admin-btn-primary"
+                      className="admin-btn-secondary"
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #cbd5e1',
+                        color: '#0f172a',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '8px 14px',
+                        borderRadius: 8,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
                       onClick={handleOpenAddTestimonial}
                     >
                       <Plus size={15} />
@@ -4294,13 +4307,21 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                   onChange={e => setSelectedSpotlightId(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '9px 12px',
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none',
+                    backgroundColor: '#ffffff',
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 12px center',
+                    backgroundSize: '14px 14px',
+                    padding: '9px 34px 9px 12px',
                     borderRadius: 8,
                     border: '1px solid #cbd5e1',
                     fontSize: 13.5,
                     color: '#0f172a',
-                    background: '#ffffff',
                     outline: 'none',
+                    cursor: 'pointer',
                   }}
                 >
                   <option value="">None (Use default latest story)</option>
