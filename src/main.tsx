@@ -755,41 +755,6 @@ function StoriesSection() {
   )
 }
 
-function ResourcesSection() {
-  const [active, setActive] = useState(0)
-  const tips = [
-    { category: 'Communication Tip', title: 'Speak clearly, not quickly.', text: 'Pause between ideas. A steady pace helps listeners follow your message with complete ease.' },
-    { category: 'Interview Tip', title: 'Tell a story with your answer.', text: 'Describe the situation, your concrete action, and the measurable outcome that resulted.' },
-    { category: 'Confidence Tip', title: 'Practice out loud every day.', text: 'Even 5 focused minutes of vocal pacing builds unshakable spontaneity and composure.' },
-  ]
-  return (
-    <section className="home-row-section" id="resources">
-      <div className="home-row-header">
-        <h2 className="home-row-title">From The Learning Desk</h2>
-        <p className="home-row-sub">Bite-sized daily principles to help you communicate more comfortably and articulately.</p>
-      </div>
-
-      <div className="home-resources-container">
-        <div className="home-tip-card">
-          <span className="home-tip-tag">{tips[active].category}</span>
-          <h3 className="home-tip-title">{tips[active].title}</h3>
-          <p className="home-tip-text">{tips[active].text}</p>
-          <div className="home-tip-dots">
-            {tips.map((tip, index) => (
-              <button
-                key={tip.title}
-                className={index === active ? 'active' : ''}
-                aria-label={`Show tip ${index + 1}`}
-                onClick={() => setActive(index)}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
 function SiteFooter({ onDemo }: { onDemo: () => void }) {
   return (
     <footer id="contact" className="site-footer">
@@ -995,9 +960,6 @@ function LandingPage() {
           <CoursesSection />
           <WhySection onDemo={showDemo} />
           <StoriesSection />
-          {/* Removing deliberately */}
-          {/* <FocusStrip /> */}
-          <ResourcesSection />
         </div>
       </main>
       <SiteFooter onDemo={showDemo} />
