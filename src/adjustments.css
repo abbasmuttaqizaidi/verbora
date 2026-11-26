@@ -1818,9 +1818,16 @@ footer.site-footer::before {
    Nav bar ONLY opens via Hamburger Menu Drawer; desktop navbar pill is hidden.
    ========================================================================== */
 @media (max-width: 1024px) {
-  /* Ensure course detail banner has proper top clearance for absolute header on tablet */
-  .course-detail-banner {
+  /* Ensure all subpage heroes and banners have proper top clearance for absolute header on tablet */
+  .course-detail-banner,
+  .about-hero,
+  .trainer-hero,
+  .stories-hero,
+  .contact-hero {
     padding-top: 88px !important;
+  }
+  .not-found {
+    padding-top: 130px !important;
   }
   /* Header & Fixed Navigation - Transparent directly floating over the video */
   .site-header {
@@ -2395,7 +2402,11 @@ footer.site-footer::before {
   .trainer-hero,
   .stories-hero,
   .contact-hero {
-    padding: 32px 16px 28px !important;
+    padding: 82px 16px 28px !important;
+  }
+
+  .not-found {
+    padding-top: 110px !important;
   }
 
   /* Hero Section: Full viewport height with background video */
@@ -3330,7 +3341,7 @@ footer.site-footer::before {
 
 @media (max-width: 640px) {
   .about-hero {
-    padding: 35px 16px 30px;
+    padding: 82px 16px 30px !important;
   }
   .about-hero h1 {
     font-size: clamp(26px, 6.5vw, 34px);
@@ -4065,7 +4076,7 @@ footer.site-footer::before {
 
 @media (max-width: 640px) {
   .trainer-hero {
-    padding: 32px 16px 28px !important;
+    padding: 82px 16px 28px !important;
   }
   .trainer-hero-copy h1 {
     font-size: clamp(26px, 6.5vw, 36px);
@@ -4895,7 +4906,7 @@ footer.site-footer::before {
 
 @media (max-width: 640px) {
   .stories-hero {
-    padding: 32px 16px 28px !important;
+    padding: 82px 16px 28px !important;
   }
   .stories-hero h1 {
     font-size: clamp(26px, 6.5vw, 36px);
@@ -5524,7 +5535,7 @@ footer.site-footer::before {
 
 @media (max-width: 640px) {
   .contact-hero {
-    padding: 32px 16px 28px !important;
+    padding: 82px 16px 28px !important;
   }
   .contact-hero h1 {
     font-size: clamp(26px, 6.5vw, 36px);
@@ -6584,9 +6595,16 @@ footer.site-footer::before {
 }
 
 @media (max-width: 1024px) {
-  /* Ensure course detail banner has proper top clearance for absolute header on tablet */
-  .course-detail-banner {
+  /* Ensure all subpage heroes and banners have proper top clearance for absolute header on tablet */
+  .course-detail-banner,
+  .about-hero,
+  .trainer-hero,
+  .stories-hero,
+  .contact-hero {
     padding-top: 88px !important;
+  }
+  .not-found {
+    padding-top: 130px !important;
   }
   .admin-stats-grid {
     grid-template-columns: repeat(2, 1fr);
