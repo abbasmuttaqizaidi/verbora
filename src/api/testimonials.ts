@@ -97,13 +97,21 @@ export async function createTestimonial(input: CreateTestimonialInput): Promise<
     text: input.text.trim(),
     badge: input.badge?.trim() || null,
     is_active: input.is_active ?? true,
+    is_spotlight: input.is_spotlight ?? false,
     display_order: input.display_order ?? 0,
   }
 
   // Prepend to in-memory store immediately so changes are active at once
+  if (newRecord.is_spotlight) {
+    inMemoryTestimonials = inMemoryTestimonials.map(t => ({ ...t, is_spotlight: false }))
+  }
   inMemoryTestimonials = [newRecord, ...inMemoryTestimonials]
 
   return executeQuery(async () => {
+    if (newRecord.is_spotlight) {
+      await supabase.from('testimonials').update({ is_spotlight: false }).neq('id', newRecord.id)
+    }
+
     const { data, error } = await supabase
       .from('testimonials')
       .insert({
@@ -117,6 +125,7 @@ export async function createTestimonial(input: CreateTestimonialInput): Promise<
         text: newRecord.text,
         badge: newRecord.badge,
         is_active: newRecord.is_active,
+        is_spotlight: newRecord.is_spotlight,
         display_order: newRecord.display_order,
       })
       .select()
@@ -157,12 +166,22 @@ export async function updateTestimonial(
     text: updates.text !== undefined ? updates.text : (existing?.text || ''),
     badge: updates.badge !== undefined ? updates.badge : (existing?.badge || null),
     is_active: updates.is_active !== undefined ? updates.is_active : (existing?.is_active ?? true),
+    is_spotlight: updates.is_spotlight !== undefined ? updates.is_spotlight : (existing?.is_spotlight ?? false),
     display_order: updates.display_order !== undefined ? updates.display_order : (existing?.display_order || 0),
   }
 
-  inMemoryTestimonials = inMemoryTestimonials.map(t => (t.id === id ? updatedRecord : t))
+  if (updatedRecord.is_spotlight) {
+    inMemoryTestimonials = inMemoryTestimonials.map(t => (t.id === id ? updatedRecord : { ...t, is_spotlight: false }))
+  } else {
+    inMemoryTestimonials = inMemoryTestimonials.map(t => (t.id === id ? updatedRecord : t))
+  }
 
   return executeQuery(async () => {
+    // If setting as spotlight, unset other spotlights first
+    if (updatedRecord.is_spotlight) {
+      await supabase.from('testimonials').update({ is_spotlight: false }).neq('id', id)
+    }
+
     // Use upsert so that even mock/initial records get saved into Supabase seamlessly
     const { data, error } = await supabase
       .from('testimonials')
@@ -177,6 +196,7 @@ export async function updateTestimonial(
         text: updatedRecord.text,
         badge: updatedRecord.badge,
         is_active: updatedRecord.is_active,
+        is_spotlight: updatedRecord.is_spotlight,
         display_order: updatedRecord.display_order,
       })
       .select()

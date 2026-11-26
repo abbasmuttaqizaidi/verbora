@@ -1593,6 +1593,7 @@ function StoriesPage() {
           company: 'VERBORA Alumni',
           category,
           badge: t.badge || 'Verified Breakthrough',
+          is_spotlight: !!t.is_spotlight,
           image: t.image,
           video: t.video || undefined,
           challenge: 'Struggled with hesitation and lack of confidence in high-stakes conversations.',
@@ -1687,7 +1688,7 @@ function StoriesPage() {
     ? detailedStories
     : detailedStories.filter(s => s.category === activeTab)
 
-  const spotlight = detailedStories[0]
+  const spotlight = detailedStories.find(s => (s as any).is_spotlight) || detailedStories[0]
 
   return (
     <>
@@ -2569,6 +2570,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     text: string
     badge: string
     is_active: boolean
+    is_spotlight: boolean
   }>({
     name: '',
     role: '',
@@ -2579,6 +2581,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     text: '',
     badge: '',
     is_active: true,
+    is_spotlight: false,
   })
 
   // Cloudinary upload state
@@ -2676,6 +2679,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
           text: found.text,
           badge: found.badge || '',
           is_active: found.is_active,
+          is_spotlight: !!found.is_spotlight,
         })
       }
     } else if (isTestimonialsAddRoute) {
@@ -2688,6 +2692,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
         text: '',
         badge: '',
         is_active: true,
+        is_spotlight: false,
       })
     }
   }, [editId, isTestimonialsAddRoute, testimonials])
@@ -2705,6 +2710,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
       text: '',
       badge: '',
       is_active: true,
+      is_spotlight: false,
     })
     navigate({ to: addTestimonialRoutePath as any })
   }
@@ -2721,8 +2727,25 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
       text: item.text,
       badge: item.badge || '',
       is_active: item.is_active,
+      is_spotlight: !!item.is_spotlight,
     })
     navigate({ to: `${testimonialsRoutePath}/edit/${item.id}` as any })
+  }
+
+  const handleToggleTestimonialSpotlight = async (id: string, current: boolean) => {
+    const next = !current
+    setUpdatingId(id)
+    if (next) {
+      setTestimonials(prev => prev.map(t => (t.id === id ? { ...t, is_spotlight: true } : { ...t, is_spotlight: false })))
+    } else {
+      setTestimonials(prev => prev.map(t => (t.id === id ? { ...t, is_spotlight: false } : t)))
+    }
+    const res = await api.testimonials.updateTestimonial(id, { is_spotlight: next })
+    if (res.success) {
+      showToast(next ? 'Marked as Featured Spotlight on /stories!' : 'Removed from Spotlight')
+      queryClient.invalidateQueries({ queryKey: ['testimonials'] })
+    }
+    setUpdatingId(null)
   }
 
   const handleToggleTestimonialActive = async (id: string, current: boolean) => {
@@ -2785,9 +2808,14 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
           text: testimonialForm.text.trim(),
           badge: testimonialForm.badge.trim() || null,
           is_active: testimonialForm.is_active,
+          is_spotlight: testimonialForm.is_spotlight,
         })
         if (res.data) {
-          setTestimonials(prev => prev.map(t => (t.id === editingTestimonial.id ? res.data! : t)))
+          if (testimonialForm.is_spotlight) {
+            setTestimonials(prev => prev.map(t => (t.id === editingTestimonial.id ? res.data! : { ...t, is_spotlight: false })))
+          } else {
+            setTestimonials(prev => prev.map(t => (t.id === editingTestimonial.id ? res.data! : t)))
+          }
           showToast(`Testimonial for "${res.data.name}" updated!`)
           queryClient.invalidateQueries({ queryKey: ['testimonials'] })
           setEditingTestimonial(null)
@@ -2804,9 +2832,14 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
           text: testimonialForm.text.trim(),
           badge: testimonialForm.badge.trim() || null,
           is_active: testimonialForm.is_active,
+          is_spotlight: testimonialForm.is_spotlight,
         })
         if (res.data) {
-          setTestimonials(prev => [res.data!, ...prev])
+          if (testimonialForm.is_spotlight) {
+            setTestimonials(prev => [res.data!, ...prev.map(t => ({ ...t, is_spotlight: false }))])
+          } else {
+            setTestimonials(prev => [res.data!, ...prev])
+          }
           showToast(`New testimonial for "${res.data.name}" added to Home!`)
           queryClient.invalidateQueries({ queryKey: ['testimonials'] })
           setEditingTestimonial(null)
@@ -3797,7 +3830,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                           />
                         </div>
 
-                        <div className="admin-form-checkbox-row">
+                        <div className="admin-form-checkbox-row" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                           <label className="admin-checkbox-label">
                             <input
                               type="checkbox"
@@ -3806,6 +3839,16 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                               className="admin-checkbox"
                             />
                             <span>Publish actively on Home page</span>
+                          </label>
+
+                          <label className="admin-checkbox-label" style={{ color: testimonialForm.is_spotlight ? '#b45309' : undefined, fontWeight: testimonialForm.is_spotlight ? 600 : undefined }}>
+                            <input
+                              type="checkbox"
+                              checked={testimonialForm.is_spotlight}
+                              onChange={e => setTestimonialForm(prev => ({ ...prev, is_spotlight: e.target.checked }))}
+                              className="admin-checkbox"
+                            />
+                            <span>★ Feature as Spotlight Case Study on /stories</span>
                           </label>
                         </div>
 
@@ -4059,14 +4102,36 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                           <div className="admin-testi-meta">
                             <div className="admin-testi-name-row">
                               <h3 className="admin-testi-name">{t.name}</h3>
-                              <button
-                                type="button"
-                                className={`admin-status-pill ${t.is_active ? 'pill-active' : 'pill-hidden'}`}
-                                onClick={() => handleToggleTestimonialActive(t.id, t.is_active)}
-                                title={t.is_active ? 'Click to hide from website' : 'Click to show on website'}
-                              >
-                                {t.is_active ? '● Active' : '○ Hidden'}
-                              </button>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <button
+                                  type="button"
+                                  className={`admin-status-pill ${t.is_spotlight ? 'pill-spotlight' : 'pill-not-spotlight'}`}
+                                  style={{
+                                    background: t.is_spotlight ? '#fef3c7' : '#f1f5f9',
+                                    color: t.is_spotlight ? '#b45309' : '#64748b',
+                                    borderColor: t.is_spotlight ? '#fcd34d' : '#e2e8f0',
+                                    borderWidth: 1,
+                                    borderStyle: 'solid',
+                                    cursor: 'pointer',
+                                    fontSize: 10.5,
+                                    fontWeight: 700,
+                                    padding: '2px 7px',
+                                    borderRadius: 10,
+                                  }}
+                                  onClick={() => handleToggleTestimonialSpotlight(t.id, !!t.is_spotlight)}
+                                  title={t.is_spotlight ? 'Currently featured spotlight on /stories (Click to remove)' : 'Click to set as Spotlight Case Study on /stories'}
+                                >
+                                  {t.is_spotlight ? '★ Spotlight' : '☆ Make Spotlight'}
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`admin-status-pill ${t.is_active ? 'pill-active' : 'pill-hidden'}`}
+                                  onClick={() => handleToggleTestimonialActive(t.id, t.is_active)}
+                                  title={t.is_active ? 'Click to hide from website' : 'Click to show on website'}
+                                >
+                                  {t.is_active ? '● Active' : '○ Hidden'}
+                                </button>
+                              </div>
                             </div>
                             <p className="admin-testi-role">{t.role}</p>
                             {t.badge && (

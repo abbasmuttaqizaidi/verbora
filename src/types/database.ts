@@ -67,6 +67,7 @@ export interface Testimonial {
   text: string
   badge?: string | null
   is_active: boolean
+  is_spotlight?: boolean
   display_order?: number
   video_size_bytes?: number | null
   image_size_bytes?: number | null
@@ -80,6 +81,7 @@ export type CreateTestimonialInput = {
   text: string
   badge?: string | null
   is_active?: boolean
+  is_spotlight?: boolean
   display_order?: number
   video_size_bytes?: number | null
   image_size_bytes?: number | null
