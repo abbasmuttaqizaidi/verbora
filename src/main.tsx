@@ -2780,6 +2780,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
           role: testimonialForm.role.trim(),
           image: testimonialForm.image.trim(),
           video: testimonialForm.video.trim() || null,
+          video_size_bytes: testimonialForm.video_size_bytes ?? 0,
+          image_size_bytes: testimonialForm.image_size_bytes ?? 0,
           text: testimonialForm.text.trim(),
           badge: testimonialForm.badge.trim() || null,
           is_active: testimonialForm.is_active,
@@ -2797,6 +2799,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
           role: testimonialForm.role.trim(),
           image: testimonialForm.image.trim(),
           video: testimonialForm.video.trim() || null,
+          video_size_bytes: testimonialForm.video_size_bytes ?? 0,
+          image_size_bytes: testimonialForm.image_size_bytes ?? 0,
           text: testimonialForm.text.trim(),
           badge: testimonialForm.badge.trim() || null,
           is_active: testimonialForm.is_active,
@@ -2838,7 +2842,11 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
             console.warn('Failed to delete old replaced avatar from Cloudinary:', err)
           })
         }
-        setTestimonialForm(prev => ({ ...prev, image: result.url! }))
+        setTestimonialForm(prev => ({
+          ...prev,
+          image: result.url!,
+          image_size_bytes: result.bytes || 0,
+        }))
         setUploadSuccessUrl(result.url)
         showToast('Image uploaded successfully!')
       } else {
