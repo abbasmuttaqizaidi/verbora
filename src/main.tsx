@@ -3685,32 +3685,17 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                           </div>
                         </div>
 
-                        <div className="admin-form-grid-2">
-                          <div className="admin-form-group">
-                            <label className="admin-form-label">
-                              Badge / Highlight (Optional)
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="e.g. Fluency Breakthrough, Job Placement"
-                              value={testimonialForm.badge}
-                              onChange={e => setTestimonialForm(prev => ({ ...prev, badge: e.target.value }))}
-                              className="admin-input-styled"
-                            />
-                          </div>
-
-                          <div className="admin-form-group" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                            <label className="admin-form-label">Visibility</label>
-                            <label className="admin-checkbox-label" style={{ marginTop: 6 }}>
-                              <input
-                                type="checkbox"
-                                checked={testimonialForm.is_active}
-                                onChange={e => setTestimonialForm(prev => ({ ...prev, is_active: e.target.checked }))}
-                                className="admin-checkbox"
-                              />
-                              <span>Visible on website</span>
-                            </label>
-                          </div>
+                        <div className="admin-form-group">
+                          <label className="admin-form-label">
+                            Badge / Highlight (Optional)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Fluency Breakthrough, Job Placement"
+                            value={testimonialForm.badge}
+                            onChange={e => setTestimonialForm(prev => ({ ...prev, badge: e.target.value }))}
+                            className="admin-input-styled"
+                          />
                         </div>
 
                         {/* Media Uploads Grid */}
