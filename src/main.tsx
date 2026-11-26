@@ -509,27 +509,33 @@ function Hero() {
 
 function CoursesSection() {
   return (
-    <section className="courses-section" id="courses">
-      <div className="section-title-wrap">
-        <span className="eyebrow centered">Our Courses</span>
-        <h2>Comprehensive Programs for <span>Your Growth</span></h2>
-        <p>Choose a learning path that matches where you want to go.</p>
+    <section className="home-row-section" id="courses">
+      <div className="home-row-header">
+        <h2 className="home-row-title">Comprehensive Courses for Your Growth</h2>
+        <p className="home-row-sub">Choose a structured program designed to build fluent, confident, and professional speech.</p>
       </div>
-      <div className="course-grid">
+
+      <div className="home-cards-scroll-track">
         {courses.map(course => (
           <Link
             to="/courses/$courseSlug"
             params={{ courseSlug: course.id }}
             key={course.id}
-            className="course-card"
+            className="home-course-item-card"
           >
-            <img src={course.cover} alt={course.title} className="course-card-img" />
-            <div className="course-card-overlay">
-              <span className="course-card-icon-wrap">
-                <course.icon size={19} strokeWidth={2.4} />
+            <div className="home-course-thumb-wrap">
+              <img src={course.cover} alt={course.title} className="home-course-thumb-img" />
+              <span className="home-course-icon-badge">
+                <course.icon size={18} strokeWidth={2.4} />
               </span>
-              <strong className="course-card-heading">{course.title}</strong>
-              <span className="course-card-subheading">{course.short}</span>
+            </div>
+            <div className="home-course-info">
+              <strong className="home-course-name">{course.title}</strong>
+              <p className="home-course-tagline">{course.short}</p>
+              <div className="home-course-card-footer">
+                <span className="home-course-link-text">Explore Program</span>
+                <MoveRight size={14} />
+              </div>
             </div>
           </Link>
         ))}
@@ -539,15 +545,34 @@ function CoursesSection() {
 }
 
 const benefits = [
-  { icon: Rocket, title: 'Expert Trainers', text: 'Guidance that helps you keep improving.' },
-  { icon: MonitorPlay, title: 'Interactive Classes', text: 'Learn by speaking and participating.' },
-  { icon: TrendingUp, title: 'Practical Learning', text: 'Use your skills beyond the classroom.' },
-  { icon: Handshake, title: 'Career Confidence', text: 'Communicate with purpose at work.' },
-  { icon: Headphones, title: 'Continued Support', text: 'Stay motivated as your skills grow.' },
+  { icon: Rocket, title: 'Expert Trainers', text: '1-on-1 guidance that continually refines your pronunciation, diction, and tonality.' },
+  { icon: MonitorPlay, title: 'Interactive Classes', text: 'Active participatory drills, live mock situations, and constructive real-time feedback.' },
+  { icon: TrendingUp, title: 'Practical Learning', text: 'Speech frameworks that apply directly in office meetings, presentations, and client discussions.' },
+  { icon: Handshake, title: 'Career Confidence', text: 'Speak with executive presence, natural assertiveness, and composure in high-stakes rooms.' },
+  { icon: Headphones, title: 'Continued Support', text: 'Daily WhatsApp voice note coaching and habit drills to guarantee lasting fluency.' },
 ]
 
-function WhySection({ onDemo }: { onDemo: () => void }) {
-  return <section className="why-section" id="about"><div className="why-copy"><span className="section-kicker">Why Choose VERBORA?</span><h2>More Than Just an <span>English Institute</span></h2><p>We're here to help learners become comfortable communicators—through practice, constructive feedback, and skills that feel useful in the real world.</p><button className="lime-button" onClick={onDemo}>Know More</button></div><div className="benefits" id="trainers">{benefits.map(benefit => <div className="benefit" key={benefit.title}><span className="benefit-icon"><benefit.icon size={35} strokeWidth={1.8} /></span><strong>{benefit.title}</strong><small>{benefit.text}</small></div>)}</div></section>
+function WhySection({ onDemo: _onDemo }: { onDemo?: () => void } = {}) {
+  return (
+    <section className="home-row-section" id="about">
+      <div className="home-row-header">
+        <h2 className="home-row-title">Why Verbora?</h2>
+        <p className="home-row-sub">Transforming learners into confident communicators through personalized mentorship and practical speech habits.</p>
+      </div>
+
+      <div className="home-cards-scroll-track">
+        {benefits.map(benefit => (
+          <div className="home-benefit-item-card" key={benefit.title}>
+            <span className="home-benefit-icon-box">
+              <benefit.icon size={26} strokeWidth={2} />
+            </span>
+            <strong className="home-benefit-card-title">{benefit.title}</strong>
+            <p className="home-benefit-card-text">{benefit.text}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
 }
 
 interface StoryItem {
@@ -666,7 +691,6 @@ export function useTestimonialsQuery() {
 }
 
 function StoriesSection() {
-  const [active, setActive] = useState(0)
   const [videoStory, setVideoStory] = useState<StoryItem | null>(null)
   
   // High performance in-memory caching via TanStack Query
@@ -689,52 +713,46 @@ function StoriesSection() {
 
   return (
     <>
-      <section className="stories-section" id="stories">
-        <div className="stories-heading">
-          <span className="section-kicker">Student Success Stories</span>
-          <h2>Real People. Real Progress.</h2>
-          <p>Hear how VERBORA learners developed confidence and clarity in everyday and professional communication.</p>
-          <div className="story-controls">
-            <button aria-label="Previous testimonial" onClick={() => setActive(index => (index + currentStories.length - 1) % currentStories.length)}>‹</button>
-            <button aria-label="Next testimonial" onClick={() => setActive(index => (index + 1) % currentStories.length)}>›</button>
-          </div>
+      <section className="home-row-section" id="stories">
+        <div className="home-row-header">
+          <h2 className="home-row-title">Testimonials</h2>
+          <p className="home-row-sub">Hear directly from learners who transformed their fluency and confidence.</p>
         </div>
 
-        <div className="story-cards">
-          {[0, 1].map(offset => {
-            const story = currentStories[(active + offset) % currentStories.length]
-            return (
-              <article className="story-card" key={(story?.name || 'story') + offset}>
-                <div className="story-avatar-wrap">
-                  <img src={story.image} alt={story.name} className="story-avatar-img" />
+        {/* Horizontally scrolling single-row container */}
+        <div className="home-cards-scroll-track">
+          {currentStories.map((story, idx) => (
+            <article className="home-testimonial-item-card" key={(story.name || 'story') + idx}>
+              <div className="home-testi-top-row">
+                <img src={story.image} alt={story.name} className="home-testi-avatar" />
+                <div className="home-testi-meta">
+                  <strong className="home-testi-name">{story.name}</strong>
+                  <span className="home-testi-role">{story.role}</span>
+                  {story.badge && <span className="home-testi-badge">{story.badge}</span>}
                 </div>
-                <div className="story-content">
-                  <div className="story-quote-row">
-                    <Quote size={18} fill="currentColor" />
-                    <p>“{story.text}”</p>
-                  </div>
-                  <div className="story-footer-row">
-                    <div className="story-author-info">
-                      <strong>{story.name}</strong>
-                      <small>{story.role}</small>
-                    </div>
-                    {story.video && (
-                      <button
-                        type="button"
-                        className="story-arrow-btn"
-                        onClick={() => setVideoStory(story)}
-                        aria-label={`Watch ${story.name}'s video story`}
-                        title="Watch video story"
-                      >
-                        <span>Watch Story</span>
-                        <MoveRight size={15} />
-                      </button>
-                    )}
-                  </div>
+              </div>
+
+              <div className="home-testi-quote-wrap">
+                <Quote size={16} className="home-testi-quote-icon" />
+                <p className="home-testi-quote-text">“{story.text}”</p>
+              </div>
+
+              {story.video && (
+                <div className="home-testi-footer">
+                  <button
+                    type="button"
+                    className="home-testi-video-btn"
+                    onClick={() => setVideoStory(story)}
+                    aria-label={`Watch ${story.name}'s video testimonial`}
+                    title="Watch video testimonial"
+                  >
+                    <CirclePlay size={15} fill="currentColor" />
+                    <span>Watch Video Testimonial</span>
+                  </button>
                 </div>
-              </article>
-            )
-          })}
+              )}
+            </article>
+          ))}
         </div>
       </section>
 
@@ -743,21 +761,39 @@ function StoriesSection() {
   )
 }
 
-/* Deliberately removed FocusStrip as per latest commit */
-/*
-function FocusStrip() {
-  return <section className="focus-strip"><div className="focus-heading"><span className="focus-line" /><BriefcaseBusiness size={21} /><h2>Speak English with VERBORA. Show up confidently wherever you go.</h2><span className="focus-line" /></div><div className="focus-tags"><span>Interviews</span><span>Workplace Meetings</span><span>Presentations</span><span>Networking</span><span>Everyday Life</span></div></section>
-}
-*/
-
 function ResourcesSection() {
   const [active, setActive] = useState(0)
   const tips = [
-    { category: 'Communication Tip', title: 'Speak clearly, not quickly.', text: 'Pause between ideas. A steady pace helps listeners follow your message.' },
-    { category: 'Interview Tip', title: 'Tell a story with your answer.', text: 'Describe the situation, your action, and what changed as a result.' },
-    { category: 'Confidence Tip', title: 'Practice out loud every day.', text: 'Even a few intentional minutes can help you become more comfortable speaking.' },
+    { category: 'Communication Tip', title: 'Speak clearly, not quickly.', text: 'Pause between ideas. A steady pace helps listeners follow your message with complete ease.' },
+    { category: 'Interview Tip', title: 'Tell a story with your answer.', text: 'Describe the situation, your concrete action, and the measurable outcome that resulted.' },
+    { category: 'Confidence Tip', title: 'Practice out loud every day.', text: 'Even 5 focused minutes of vocal pacing builds unshakable spontaneity and composure.' },
   ]
-  return <section className="resources-section" id="resources"><div><span className="section-kicker">From The Learning Desk</span><h2>A little practice.<br /><span>A lot of progress.</span></h2><p>Small ideas to help you communicate more confidently, one day at a time.</p><div className="tip-dots">{tips.map((tip, index) => <button key={tip.title} className={index === active ? 'active' : ''} aria-label={`Show tip ${index + 1}`} onClick={() => setActive(index)} />)}</div></div><article className="tip-card"><h3>{tips[active].title}</h3><p>{tips[active].text}</p><div className="tip-abstract"><span /><span /><span /></div></article></section>
+  return (
+    <section className="home-row-section" id="resources">
+      <div className="home-row-header">
+        <h2 className="home-row-title">From The Learning Desk</h2>
+        <p className="home-row-sub">Bite-sized daily principles to help you communicate more comfortably and articulately.</p>
+      </div>
+
+      <div className="home-resources-container">
+        <div className="home-tip-card">
+          <span className="home-tip-tag">{tips[active].category}</span>
+          <h3 className="home-tip-title">{tips[active].title}</h3>
+          <p className="home-tip-text">{tips[active].text}</p>
+          <div className="home-tip-dots">
+            {tips.map((tip, index) => (
+              <button
+                key={tip.title}
+                className={index === active ? 'active' : ''}
+                aria-label={`Show tip ${index + 1}`}
+                onClick={() => setActive(index)}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
 }
 
 function SiteFooter({ onDemo }: { onDemo: () => void }) {
