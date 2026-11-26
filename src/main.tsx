@@ -2676,6 +2676,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
           role: found.role,
           image: found.image,
           video: found.video || '',
+          video_size_bytes: found.video_size_bytes || 0,
+          image_size_bytes: found.image_size_bytes || 0,
           text: found.text,
           badge: found.badge || '',
           is_active: found.is_active,
@@ -2689,6 +2691,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
         role: '',
         image: '/assets/testimonials/sample-avatar.jpg',
         video: '',
+        video_size_bytes: 0,
+        image_size_bytes: 0,
         text: '',
         badge: '',
         is_active: true,
@@ -2779,6 +2783,27 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     setUpdatingId(null)
   }
 
+  const handleRemoveVideoDirect = async (id: string) => {
+    const target = testimonials.find(t => t.id === id)
+    if (!target || !target.video) return
+    if (!window.confirm(`Remove video story from "${target.name}"?`)) return
+
+    setUpdatingId(id)
+    const videoToDelete = target.video
+    deleteMediaFromCloudinary(videoToDelete, 'video').catch(() => {})
+
+    const res = await api.testimonials.updateTestimonial(id, {
+      video: null,
+      video_size_bytes: 0,
+    })
+    if (res.success) {
+      setTestimonials(prev => prev.map(t => (t.id === id ? { ...t, video: null, video_size_bytes: 0 } : t)))
+      showToast(`Video removed from "${target.name}"!`)
+      queryClient.invalidateQueries({ queryKey: ['testimonials'] })
+    }
+    setUpdatingId(null)
+  }
+
   const handleSaveTestimonial = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!testimonialForm.name.trim()) return alert('Please enter student name.')
@@ -2796,6 +2821,15 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
           editingTestimonial.image.includes('cloudinary.com')
         ) {
           deleteMediaFromCloudinary(editingTestimonial.image, 'image').catch(() => {})
+        }
+
+        // If video was removed or replaced on edit, ensure old Cloudinary video is deleted
+        if (
+          editingTestimonial.video &&
+          editingTestimonial.video !== testimonialForm.video &&
+          editingTestimonial.video.includes('cloudinary.com')
+        ) {
+          deleteMediaFromCloudinary(editingTestimonial.video, 'video').catch(() => {})
         }
 
         const res = await api.testimonials.updateTestimonial(editingTestimonial.id, {
@@ -4148,11 +4182,30 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                         </div>
 
                         {t.video && (
-                          <div className="admin-testi-video-link">
-                            <Video size={13} />
-                            <a href={t.video} target="_blank" rel="noopener noreferrer">
-                              Watch Video Story Link
-                            </a>
+                          <div className="admin-testi-video-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Video size={13} />
+                              <a href={t.video} target="_blank" rel="noopener noreferrer">
+                                Watch Video Story
+                              </a>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveVideoDirect(t.id)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#dc2626',
+                                cursor: 'pointer',
+                                fontSize: 11,
+                                fontWeight: 700,
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                              }}
+                              title="Delete attached video from Cloudinary and testimonial"
+                            >
+                              Remove Video
+                            </button>
                           </div>
                         )}
 
