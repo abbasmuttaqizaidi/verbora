@@ -2596,6 +2596,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const [customPreset, setCustomPreset] = useState<string>(() => getSavedUploadPreset())
   const [showCloudinarySettings, setShowCloudinarySettings] = useState(false)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [showSpotlightModal, setShowSpotlightModal] = useState(false)
+  const [selectedSpotlightId, setSelectedSpotlightId] = useState<string>('')
 
   // Subscribe to background video upload across route changes
   useEffect(() => {
@@ -2736,20 +2738,38 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     navigate({ to: `${testimonialsRoutePath}/edit/${item.id}` as any })
   }
 
-  const handleToggleTestimonialSpotlight = async (id: string, current: boolean) => {
-    const next = !current
-    setUpdatingId(id)
-    if (next) {
-      setTestimonials(prev => prev.map(t => (t.id === id ? { ...t, is_spotlight: true } : { ...t, is_spotlight: false })))
-    } else {
-      setTestimonials(prev => prev.map(t => (t.id === id ? { ...t, is_spotlight: false } : t)))
-    }
-    const res = await api.testimonials.updateTestimonial(id, { is_spotlight: next })
-    if (res.success) {
-      showToast(next ? 'Marked as Featured Spotlight on /stories!' : 'Removed from Spotlight')
+  const handleOpenSpotlightModal = () => {
+    const currentSpotlight = testimonials.find(t => t.is_spotlight)
+    setSelectedSpotlightId(currentSpotlight?.id || '')
+    setShowSpotlightModal(true)
+  }
+
+  const handleSaveSpotlightSelection = async () => {
+    setLoading(true)
+    try {
+      if (!selectedSpotlightId) {
+        // If "None" selected, unset all spotlights
+        setTestimonials(prev => prev.map(t => ({ ...t, is_spotlight: false })))
+        const activeSpot = testimonials.find(t => t.is_spotlight)
+        if (activeSpot) {
+          await api.testimonials.updateTestimonial(activeSpot.id, { is_spotlight: false })
+        }
+        showToast('Spotlight removed from /stories.')
+      } else {
+        // Set selected testimonial as spotlight
+        setTestimonials(prev => prev.map(t => ({ ...t, is_spotlight: t.id === selectedSpotlightId })))
+        await api.testimonials.updateTestimonial(selectedSpotlightId, { is_spotlight: true })
+        const target = testimonials.find(t => t.id === selectedSpotlightId)
+        showToast(`"${target?.name || 'Selected student'}" set as Spotlight on /stories!`)
+      }
       queryClient.invalidateQueries({ queryKey: ['testimonials'] })
+      setShowSpotlightModal(false)
+    } catch (err) {
+      console.error('Failed to update spotlight:', err)
+      alert('Failed to update spotlight.')
+    } finally {
+      setLoading(false)
     }
-    setUpdatingId(null)
   }
 
   const handleToggleTestimonialActive = async (id: string, current: boolean) => {
@@ -3973,11 +3993,33 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                 {/* Testimonials Toolbar */}
                 <div className="admin-toolbar">
                   <div className="admin-tabs">
-                    <div className="admin-tab active" style={{ cursor: 'default' }}>
-                      <Quote size={15} />
-                      <span>Student Stories</span>
-                      <span className="admin-tab-count">{totalTestimonials}</span>
-                    </div>
+                    <button
+                      type="button"
+                      className="admin-tab"
+                      style={{
+                        cursor: 'pointer',
+                        background: '#f8fafc',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: 8,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '8px 14px',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: '#0f172a',
+                      }}
+                      onClick={handleOpenSpotlightModal}
+                      title="Select which testimonial is featured as the Spotlight on /stories"
+                    >
+                      <Star size={15} style={{ fill: '#f59e0b', color: '#f59e0b' }} />
+                      <span>Spotlight Testimonial</span>
+                      {testimonials.find(t => t.is_spotlight) && (
+                        <span style={{ fontSize: 11, background: '#fef3c7', color: '#b45309', padding: '1px 6px', borderRadius: 6, fontWeight: 700 }}>
+                          {testimonials.find(t => t.is_spotlight)?.name.split(' ')[0]}
+                        </span>
+                      )}
+                    </button>
                   </div>
 
                   <div className="admin-toolbar-actions">
@@ -4137,26 +4179,21 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                             <div className="admin-testi-name-row">
                               <h3 className="admin-testi-name">{t.name}</h3>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <button
-                                  type="button"
-                                  className={`admin-status-pill ${t.is_spotlight ? 'pill-spotlight' : 'pill-not-spotlight'}`}
-                                  style={{
-                                    background: t.is_spotlight ? '#fef3c7' : '#f1f5f9',
-                                    color: t.is_spotlight ? '#b45309' : '#64748b',
-                                    borderColor: t.is_spotlight ? '#fcd34d' : '#e2e8f0',
-                                    borderWidth: 1,
-                                    borderStyle: 'solid',
-                                    cursor: 'pointer',
-                                    fontSize: 10.5,
-                                    fontWeight: 700,
-                                    padding: '2px 7px',
-                                    borderRadius: 10,
-                                  }}
-                                  onClick={() => handleToggleTestimonialSpotlight(t.id, !!t.is_spotlight)}
-                                  title={t.is_spotlight ? 'Currently featured spotlight on /stories (Click to remove)' : 'Click to set as Spotlight Case Study on /stories'}
-                                >
-                                  {t.is_spotlight ? '★ Spotlight' : '☆ Make Spotlight'}
-                                </button>
+                                {t.is_spotlight && (
+                                  <span
+                                    style={{
+                                      background: '#fef3c7',
+                                      color: '#b45309',
+                                      border: '1px solid #fcd34d',
+                                      fontSize: 10.5,
+                                      fontWeight: 700,
+                                      padding: '2px 7px',
+                                      borderRadius: 10,
+                                    }}
+                                  >
+                                    ★ Spotlight
+                                  </span>
+                                )}
                                 <button
                                   type="button"
                                   className={`admin-status-pill ${t.is_active ? 'pill-active' : 'pill-hidden'}`}
@@ -4250,6 +4287,99 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
       </main>
     </div>
   </div>
+
+      {/* Spotlight Testimonial Selection Modal */}
+      {showSpotlightModal && (
+        <div className="admin-modal-overlay">
+          <div className="admin-modal-dialog" style={{ maxWidth: 440, padding: 22, borderRadius: 12 }}>
+            <div className="admin-modal-header" style={{ marginBottom: 16, paddingBottom: 12 }}>
+              <div className="admin-modal-title-group">
+                <div>
+                  <h3 className="admin-modal-title" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
+                    Spotlight Testimonial
+                  </h3>
+                  <p className="admin-modal-sub" style={{ margin: '4px 0 0 0', fontSize: 12.5, color: '#64748b' }}>
+                    Select which student story is featured as Spotlight on /stories.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="admin-modal-close-btn"
+                onClick={() => setShowSpotlightModal(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                  Choose Testimonial
+                </label>
+                <select
+                  value={selectedSpotlightId}
+                  onChange={e => setSelectedSpotlightId(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: 8,
+                    border: '1px solid #cbd5e1',
+                    fontSize: 13.5,
+                    color: '#0f172a',
+                    background: '#ffffff',
+                    outline: 'none',
+                  }}
+                >
+                  <option value="">None (Use default latest story)</option>
+                  {testimonials.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.role}) {t.video ? '📹 Video' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowSpotlightModal(false)}
+                  style={{
+                    background: '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: 6,
+                    padding: '8px 14px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    color: '#475569',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveSpotlightSelection}
+                  disabled={loading}
+                  style={{
+                    background: '#0284c7',
+                    border: 'none',
+                    borderRadius: 6,
+                    padding: '8px 18px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    color: '#ffffff',
+                  }}
+                >
+                  {loading ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Storage Limit Exceeded / Upgrade Plan Modal */}
       {showUpgradeModal && (
