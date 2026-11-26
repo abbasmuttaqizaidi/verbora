@@ -618,41 +618,32 @@ html {
    Normalized inter-section spacing: exactly 48px on desktop, 32px on mobile
    ========================================================================== */
 
-/* 1. Courses Section: Top spacing below Hero (44px) + Bottom spacing (24px) */
+/* ==========================================================================
+   UNIFIED HOMEPAGE SECTION SPACING & VERTICAL RHYTHM
+   Strictly identical spacing between all sections: 44px on desktop, 32px on mobile
+   1. Hero -> Courses: 44px
+   2. Courses -> Why Verbora: 44px
+   3. Why Verbora -> Testimonials: 44px
+   4. Testimonials -> Footer: 44px
+   ========================================================================== */
+
 .courses-section {
   padding-top: 44px !important;
-  padding-bottom: 24px !important;
+  padding-bottom: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 44px !important;
 }
 
-/* 2. Why Choose VERBORA Section: Top spacing (24px) + Bottom spacing (24px) -> Total from Courses = 48px */
-.why-section {
-  padding-top: 24px !important;
-  padding-bottom: 24px !important;
+.home-row-section {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 44px !important;
+  box-sizing: border-box !important;
 }
 
-/* 3. Student Stories Section: Top spacing (24px) + Bottom spacing (24px) -> Total from Why = 48px */
-.stories-section {
-  padding-top: 24px !important;
-  padding-bottom: 24px !important;
-  display: flex;
-  gap: 28px;
-  align-items: center;
-}
-
-/* 4. Focus Strip: Margin top (24px) + Margin bottom (24px) -> Total from Stories = 48px */
-.focus-strip {
-  margin-top: 24px !important;
-  margin-bottom: 24px !important;
-  padding: 16px 0 !important;
-}
-
-/* 5. Resources / Learning Desk: Margin top (24px) -> Total from Focus Strip = 48px; Margin bottom (48px) */
-.resources-section {
-  margin-top: 24px !important;
-  margin-bottom: 48px !important;
-}
-
-/* 6. Footer: Margin top (0) -> Total from Resources card = exactly 48px */
 footer.site-footer {
   margin-top: 0 !important;
 }
@@ -661,18 +652,14 @@ footer.site-footer {
 @media (max-width: 768px) {
   .courses-section {
     padding-top: 32px !important;
-    padding-bottom: 24px !important;
+    padding-bottom: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 32px !important;
   }
-  .why-section {
-    padding-top: 24px !important;
-    padding-bottom: 24px !important;
-  }
-  .stories-section {
-    padding-top: 24px !important;
-    padding-bottom: 24px !important;
-  }
-  .resources-section {
-    margin-top: 16px !important;
+  .home-row-section {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    margin-top: 0 !important;
     margin-bottom: 32px !important;
   }
   footer.site-footer {
@@ -7858,7 +7845,8 @@ footer.site-footer::before {
 .home-row-section {
   width: 100% !important;
   max-width: 100% !important;
-  padding: 44px 0 36px !important;
+  padding: 0 !important;
+  margin: 0 0 44px 0 !important;
   box-sizing: border-box !important;
 }
 
@@ -7897,7 +7885,7 @@ footer.site-footer::before {
   gap: 18px !important;
   overflow-x: auto !important;
   overflow-y: hidden !important;
-  padding: 8px 0 20px !important;
+  padding: 4px 0 8px !important;
   margin: 0 !important;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
@@ -8259,7 +8247,8 @@ footer.site-footer::before {
    ======================================================== */
 @media (max-width: 768px) {
   .home-row-section {
-    padding: 32px 0 24px !important;
+    padding: 0 !important;
+    margin: 0 0 32px 0 !important;
   }
   .home-row-header {
     margin-bottom: 14px;
@@ -8273,7 +8262,7 @@ footer.site-footer::before {
   }
   .home-cards-scroll-track {
     gap: 14px !important;
-    padding: 4px 0 16px !important;
+    padding: 4px 0 6px !important;
   }
   .home-course-item-card {
     flex: 0 0 280px !important;
