@@ -117,16 +117,17 @@ export function recordPopupDismissed(): void {
 
 type DemoValues = { name: string; email: string; phone: string; course: CourseId | '' }
 
-function Brand({ light = false, compact = false }: { light?: boolean; compact?: boolean }) {
+function Brand({ light = false, compact = false, dark = false }: { light?: boolean; compact?: boolean; dark?: boolean }) {
   return (
-    <Link to="/" className={`brand ${light ? 'brand-light' : ''} ${compact ? 'brand-compact' : ''}`} aria-label="VERBORA home">
-      <svg className="brand-symbol" viewBox="0 0 98 98" fill="none" aria-hidden="true">
-        <circle cx="48" cy="49" r="34" stroke="currentColor" strokeWidth="2.4" opacity=".88" />
-        <path d="M17 33c4-17 21-29 41-29 11 0 21 4 27 11M8 39C10 19 29 7 44 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" opacity=".48" />
-        <path d="M11 48c11-3 17 1 21 11l6 15 16-40 9 24 17-32" stroke="#11b7e8" strokeWidth="6.5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M11 48c11-3 17 1 21 11l6 15 16-40 9 24 17-32" stroke="#062656" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M26 74c13 16 41 17 55-2M63 88c19-6 29-22 27-40M67 12c7-5 13-7 21-8" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" opacity=".65" />
-      </svg>
+    <Link to="/" className={`brand ${light ? 'brand-light' : ''} ${compact ? 'brand-compact' : ''} ${dark ? 'brand-dark' : ''}`} aria-label="VERBORA home">
+      <img
+        src="/assets/verbora-symbol-transparent.png"
+        alt="VERBORA Logo"
+        className="brand-symbol"
+        width={compact ? 42 : 54}
+        height={compact ? 42 : 54}
+        loading="eager"
+      />
       <span className="brand-copy">
         <strong>VERBORA</strong>
         <small>SPEAK · EXPRESS · GROW</small>
@@ -365,9 +366,9 @@ function SiteHeader({ onDemo }: { onDemo: () => void }) {
   const isCourses = location.startsWith('/courses')
 
   return (
-    <header className="site-header">
+    <header className={`site-header ${isHome ? 'site-header-home' : 'site-header-subpage'}`}>
       <div className="header-inner">
-        <Brand compact />
+        <Brand compact dark={!isHome} />
         <nav className={`navigation ${menuOpen ? 'navigation-open' : ''}`} aria-label="Main navigation">
           <Link to="/" className={`nav-item ${isHome ? 'nav-active nav-home' : ''}`} onClick={() => setMenuOpen(false)}>
             <span>Home</span>
@@ -464,7 +465,7 @@ function Hero() {
           preload="auto"
         >
           <source
-            src="https://res.cloudinary.com/mtjv4nu9/video/upload/v1795637076/VIDEO-2026-11-25-15-59-08.mp4"
+            src="https://res.cloudinary.com/mtjv4nu9/video/upload/v1795687985/VIDEO-2026-11-25-15-59-08_2.mp4"
             type="video/mp4"
           />
         </video>
