@@ -544,7 +544,7 @@ interface StoryItem {
   name: string
   role: string
   image: string
-  video: string
+  video?: string
   text: string
   badge?: string
 }
@@ -554,7 +554,6 @@ const stories: StoryItem[] = [
     name: 'Rohit Verma',
     role: 'Software Engineer · Spoken English',
     image: '/assets/testimonials/rohit.jpg',
-    video: '/assets/testimonials/sample-video.mp4',
     text: 'VERBORA helped me improve my communication and speak with genuine confidence in client calls and global team presentations.',
     badge: 'Fluency & Workplace English',
   },
@@ -562,7 +561,6 @@ const stories: StoryItem[] = [
     name: 'Sneha Gupta',
     role: 'Marketing Lead · Business English',
     image: '/assets/testimonials/sneha.jpg',
-    video: '/assets/testimonials/sample-video.mp4',
     text: 'A practical learning experience with engaging sessions, constructive feedback, and continuous supportive guidance.',
     badge: 'Leadership & Impact',
   },
@@ -570,7 +568,6 @@ const stories: StoryItem[] = [
     name: 'Aman Singh',
     role: 'College Graduate · Interview Prep',
     image: '/assets/testimonials/aman.jpg',
-    video: '/assets/testimonials/sample-video.mp4',
     text: 'The structured mock interviews and body language practice gave me the clarity and confidence to crack my dream job.',
     badge: 'Interview Success',
   },
@@ -578,7 +575,6 @@ const stories: StoryItem[] = [
     name: 'Priya Sharma',
     role: 'Team Lead · Public Speaking',
     image: '/assets/testimonials/priya.jpg',
-    video: '/assets/testimonials/sample-video.mp4',
     text: 'Overcoming stage fright in front of a large audience was my biggest milestone. The trainers made public speaking enjoyable.',
     badge: 'Stage & Presentation',
   },
@@ -649,7 +645,7 @@ function StoriesSection() {
           name: t.name,
           role: t.role,
           image: t.image,
-          video: t.video || 'https://res.cloudinary.com/mtjv4nu9/video/upload/v1795687985/VIDEO-2026-11-25-15-59-08_2.mp4',
+          video: t.video || undefined,
           text: t.text,
           badge: t.badge || undefined,
         }))
@@ -668,7 +664,7 @@ function StoriesSection() {
             name: t.name,
             role: t.role,
             image: t.image,
-            video: t.video || 'https://res.cloudinary.com/mtjv4nu9/video/upload/v1795687985/VIDEO-2026-11-25-15-59-08_2.mp4',
+            video: t.video || undefined,
             text: t.text,
             badge: t.badge || undefined,
           })))
@@ -711,16 +707,18 @@ function StoriesSection() {
                       <strong>{story.name}</strong>
                       <small>{story.role}</small>
                     </div>
-                    <button
-                      type="button"
-                      className="story-arrow-btn"
-                      onClick={() => setVideoStory(story)}
-                      aria-label={`Watch ${story.name}'s video story`}
-                      title="Watch video story"
-                    >
-                      <span>Watch Story</span>
-                      <MoveRight size={15} />
-                    </button>
+                    {story.video && (
+                      <button
+                        type="button"
+                        className="story-arrow-btn"
+                        onClick={() => setVideoStory(story)}
+                        aria-label={`Watch ${story.name}'s video story`}
+                        title="Watch video story"
+                      >
+                        <span>Watch Story</span>
+                        <MoveRight size={15} />
+                      </button>
+                    )}
                   </div>
                 </div>
               </article>
@@ -2969,18 +2967,14 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const hiddenTestimonialsCount = totalTestimonials - activeTestimonialsCount
   const videoTestimonialsCount = testimonials.filter(t => !!t.video).length
 
-  // Calculate used storage bytes across testimonials (images & videos)
+  // Calculate used storage bytes across testimonials (only real uploaded media)
   const totalUsedStorageBytes = testimonials.reduce((acc, t) => {
     let bytes = 0
     if (t.video_size_bytes) {
       bytes += t.video_size_bytes
-    } else if (t.video && t.video.includes('cloudinary.com')) {
-      bytes += 8 * 1024 * 1024 // Estimated 8MB for existing Cloudinary video
     }
     if (t.image_size_bytes) {
       bytes += t.image_size_bytes
-    } else if (t.image && t.image.includes('cloudinary.com')) {
-      bytes += 350 * 1024 // Estimated 350KB for uploaded avatar
     }
     return acc + bytes
   }, 0)
