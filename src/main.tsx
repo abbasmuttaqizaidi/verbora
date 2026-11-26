@@ -2803,7 +2803,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
       if (result.url) {
         setTestimonialForm(prev => ({ ...prev, image: result.url! }))
         setUploadSuccessUrl(result.url)
-        showToast('Image uploaded to Cloudinary successfully!')
+        showToast('Image uploaded successfully!')
       } else {
         setUploadError(result.error || 'Failed to upload image.')
       }
@@ -3120,7 +3120,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
           </nav>
 
           <div className="admin-sidebar-footer">
-            <div className="admin-live-indicator" title="Connected to Supabase PostgreSQL & Cloudinary">
+            <div className="admin-live-indicator" title="Connected to Database & Storage">
               <span className="admin-live-dot" />
               <span>Database Live</span>
             </div>
@@ -3514,10 +3514,10 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                         <span>Back to Testimonials List</span>
                       </Link>
                       <h2 className="admin-page-form-title">
-                        {editingTestimonial ? 'Edit Student Testimonial' : 'Add New Home Testimonial'}
+                        {editingTestimonial ? 'Edit Testimonial' : 'Add New Testimonial'}
                       </h2>
                       <p className="admin-page-form-sub">
-                        Create or update the student review shown in the Home page stories carousel. Avatar images will be uploaded to Cloudinary.
+                        Enter student details, feedback quote, and upload media.
                       </p>
                     </div>
 
@@ -3556,7 +3556,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                         <div className="admin-form-grid-2">
                           <div className="admin-form-group">
                             <label className="admin-form-label">
-                              Badge / Tagline (Optional)
+                              Badge / Highlight (Optional)
                             </label>
                             <input
                               type="text"
@@ -3567,180 +3567,179 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                             />
                           </div>
 
-                        {/* Video Upload & Cloudinary Quota Section */}
-                        <div className="admin-avatar-upload-block" style={{ borderColor: 'rgba(168, 85, 247, 0.35)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                            <label className="admin-form-label" style={{ color: '#d8b4fe', margin: 0 }}>
-                              Student Transformation Video (Optional)
+                          <div className="admin-form-group" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                            <label className="admin-form-label">Visibility</label>
+                            <label className="admin-checkbox-label" style={{ marginTop: 6 }}>
+                              <input
+                                type="checkbox"
+                                checked={testimonialForm.is_active}
+                                onChange={e => setTestimonialForm(prev => ({ ...prev, is_active: e.target.checked }))}
+                                className="admin-checkbox"
+                              />
+                              <span>Visible on website</span>
                             </label>
-                            <span style={{ fontSize: 11.5, color: isStorageQuotaExceeded ? '#f87171' : '#94a3b8' }}>
-                              Used: <strong>{usedStorageMB} MB</strong> / {maxStorageMB} MB ({storageUsagePercent}%)
-                            </span>
                           </div>
+                        </div>
 
-                          <div className="admin-avatar-upload-row">
-                            <div className="admin-avatar-preview-box" style={{ borderRadius: 12, width: 80, height: 60, borderColor: '#a855f7' }}>
-                              {testimonialForm.video ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: '#c084fc', fontSize: 10, textAlign: 'center' }}>
-                                  <Video size={20} />
-                                  <span>Video Ready</span>
-                                </div>
-                              ) : (
-                                <div className="admin-avatar-empty">
-                                  <Video size={20} />
-                                  <span>No Video</span>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="admin-avatar-upload-controls">
-                              <div className="admin-avatar-file-upload">
-                                <label
-                                  className="admin-file-picker-btn"
-                                  style={{
-                                    background: 'rgba(168, 85, 247, 0.16)',
-                                    borderColor: 'rgba(168, 85, 247, 0.4)',
-                                    color: '#c084fc',
-                                    opacity: isStorageQuotaExceeded ? 0.6 : 1,
-                                    cursor: isStorageQuotaExceeded ? 'not-allowed' : 'pointer'
-                                  }}
-                                  onClick={(e) => {
-                                    if (isStorageQuotaExceeded) {
-                                      e.preventDefault()
-                                      setShowUpgradeModal(true)
-                                    }
-                                  }}
-                                >
-                                  <Upload size={14} className={uploadingVideo ? 'spin' : ''} />
-                                  <span>{uploadingVideo ? 'Uploading Video to Cloudinary...' : 'Upload Video File'}</span>
-                                  <input
-                                    type="file"
-                                    accept="video/*"
-                                    onChange={handleUploadVideoFile}
-                                    disabled={uploadingVideo || isStorageQuotaExceeded}
-                                    style={{ display: 'none' }}
-                                  />
-                                </label>
-
-                                <button
-                                  type="button"
-                                  className="admin-action-btn admin-btn-edit"
-                                  onClick={() => setShowUpgradeModal(true)}
-                                >
-                                  <HardDrive size={13} />
-                                  <span>Upgrade to 1 GB (₹150/mo)</span>
-                                </button>
-                              </div>
-
-                              {testimonialForm.video && (
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#ffffff', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }}>
-                                  <span style={{ color: '#0f172a', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 320 }}>
-                                    ✓ Video Attached ({testimonialForm.video_size_bytes ? `${(testimonialForm.video_size_bytes / (1024 * 1024)).toFixed(1)} MB` : 'Cloudinary Media'})
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const videoToDelete = testimonialForm.video
-                                      if (videoToDelete) {
-                                        deleteMediaFromCloudinary(videoToDelete, 'video').catch(() => {})
-                                      }
-                                      setTestimonialForm(prev => ({ ...prev, video: '', video_size_bytes: 0 }))
-                                      setVideoSuccessUrl(null)
-                                      showToast('Video removed and deleted from Cloudinary.')
+                        {/* Media Uploads Grid */}
+                        <div className="admin-form-grid-2">
+                          {/* Student Photo */}
+                          <div className="admin-avatar-upload-block">
+                            <label className="admin-form-label">
+                              Student Photo <span className="req">*</span>
+                            </label>
+                            <div className="admin-avatar-upload-row">
+                              <div className="admin-avatar-preview-box">
+                                {testimonialForm.image ? (
+                                  <img
+                                    src={testimonialForm.image}
+                                    alt="Avatar preview"
+                                    className="admin-avatar-preview-img"
+                                    onError={e => {
+                                      ;(e.target as HTMLImageElement).src =
+                                        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80'
                                     }}
-                                    style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}
-                                  >
-                                    Remove
-                                  </button>
-                                </div>
-                              )}
+                                  />
+                                ) : (
+                                  <div className="admin-avatar-empty">
+                                    <Image size={24} />
+                                    <span>No Photo</span>
+                                  </div>
+                                )}
+                              </div>
 
-                              {videoUploadError && (
-                                <div className="admin-upload-alert admin-upload-error">
-                                  <AlertCircle size={14} />
-                                  <span>{videoUploadError}</span>
+                              <div className="admin-avatar-upload-controls">
+                                <div className="admin-avatar-file-upload">
+                                  <label className="admin-file-picker-btn">
+                                    <Upload size={14} className={uploadingImage ? 'spin' : ''} />
+                                    <span>{uploadingImage ? 'Uploading Image...' : 'Upload Photo'}</span>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={handleUploadImageFile}
+                                      disabled={uploadingImage}
+                                      style={{ display: 'none' }}
+                                    />
+                                  </label>
                                 </div>
-                              )}
 
-                              {videoSuccessUrl && (
-                                <div className="admin-upload-alert admin-upload-success">
-                                  <CheckCircle2 size={14} />
-                                  <span>Video uploaded and connected to testimonial!</span>
+                                <div className="admin-avatar-url-fallback">
+                                  <input
+                                    type="url"
+                                    placeholder="or paste direct image URL"
+                                    value={testimonialForm.image}
+                                    onChange={e => setTestimonialForm(prev => ({ ...prev, image: e.target.value }))}
+                                    className="admin-input-styled admin-input-url"
+                                  />
                                 </div>
-                              )}
+
+                                {uploadError && (
+                                  <div className="admin-upload-alert admin-upload-error">
+                                    <AlertCircle size={14} />
+                                    <span>{uploadError}</span>
+                                  </div>
+                                )}
+
+                                {uploadSuccessUrl && (
+                                  <div className="admin-upload-alert admin-upload-success">
+                                    <CheckCircle2 size={14} />
+                                    <span>Image uploaded successfully!</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        </div>
 
-                        {/* Cloudinary Avatar Upload Section */}
-                        <div className="admin-avatar-upload-block">
-                          <label className="admin-form-label">
-                            Student Avatar Image <span className="req">*</span>
-                          </label>
-
-                          <div className="admin-avatar-upload-row">
-                            <div className="admin-avatar-preview-box">
-                              {testimonialForm.image ? (
-                                <img
-                                  src={testimonialForm.image}
-                                  alt="Avatar preview"
-                                  className="admin-avatar-preview-img"
-                                  onError={e => {
-                                    ;(e.target as HTMLImageElement).src =
-                                      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80'
-                                  }}
-                                />
-                              ) : (
-                                <div className="admin-avatar-empty">
-                                  <Image size={24} />
-                                  <span>No Avatar</span>
-                                </div>
-                              )}
+                          {/* Student Video */}
+                          <div className="admin-avatar-upload-block">
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                              <label className="admin-form-label" style={{ margin: 0 }}>
+                                Video Story (Optional)
+                              </label>
+                              <span style={{ fontSize: 11, color: isStorageQuotaExceeded ? '#f87171' : '#64748b' }}>
+                                {usedStorageMB} MB / {maxStorageMB} MB
+                              </span>
                             </div>
 
-                            <div className="admin-avatar-upload-controls">
-                              <div className="admin-avatar-file-upload">
-                                <label className="admin-file-picker-btn">
-                                  <Upload size={14} className={uploadingImage ? 'spin' : ''} />
-                                  <span>{uploadingImage ? 'Uploading to Cloudinary...' : 'Upload Image to Cloudinary'}</span>
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleUploadImageFile}
-                                    disabled={uploadingImage}
-                                    style={{ display: 'none' }}
-                                  />
-                                </label>
-                                <span className="admin-upload-note">
-                                  Saved directly to Cloudinary cloud <strong>{CLOUDINARY_CLOUD_NAME}</strong>
-                                </span>
+                            <div className="admin-avatar-upload-row">
+                              <div className="admin-avatar-preview-box" style={{ borderRadius: 12 }}>
+                                {testimonialForm.video ? (
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: '#0284c7', fontSize: 10, textAlign: 'center' }}>
+                                    <Video size={22} />
+                                    <span>Ready</span>
+                                  </div>
+                                ) : (
+                                  <div className="admin-avatar-empty">
+                                    <Video size={22} />
+                                    <span>No Video</span>
+                                  </div>
+                                )}
                               </div>
 
-                              <div className="admin-avatar-url-fallback">
-                                <span className="admin-or-divider">or paste direct image URL</span>
-                                <input
-                                  type="url"
-                                  placeholder="https://res.cloudinary.com/... or image link"
-                                  value={testimonialForm.image}
-                                  onChange={e => setTestimonialForm(prev => ({ ...prev, image: e.target.value }))}
-                                  className="admin-input-styled admin-input-url"
-                                />
+                              <div className="admin-avatar-upload-controls">
+                                {!testimonialForm.video ? (
+                                  <div className="admin-avatar-file-upload">
+                                    <label
+                                      className="admin-file-picker-btn"
+                                      style={{
+                                        opacity: isStorageQuotaExceeded ? 0.6 : 1,
+                                        cursor: isStorageQuotaExceeded ? 'not-allowed' : 'pointer'
+                                      }}
+                                      onClick={(e) => {
+                                        if (isStorageQuotaExceeded) {
+                                          e.preventDefault()
+                                          setShowUpgradeModal(true)
+                                        }
+                                      }}
+                                    >
+                                      <Upload size={14} className={uploadingVideo ? 'spin' : ''} />
+                                      <span>{uploadingVideo ? 'Uploading Video...' : 'Upload Video File'}</span>
+                                      <input
+                                        type="file"
+                                        accept="video/*"
+                                        onChange={handleUploadVideoFile}
+                                        disabled={uploadingVideo || isStorageQuotaExceeded}
+                                        style={{ display: 'none' }}
+                                      />
+                                    </label>
+                                  </div>
+                                ) : (
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 12 }}>
+                                    <span style={{ color: '#0f172a', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 190 }}>
+                                      ✓ Video Attached ({testimonialForm.video_size_bytes ? `${(testimonialForm.video_size_bytes / (1024 * 1024)).toFixed(1)} MB` : 'Attached'})
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const videoToDelete = testimonialForm.video
+                                        if (videoToDelete) {
+                                          deleteMediaFromCloudinary(videoToDelete, 'video').catch(() => {})
+                                        }
+                                        setTestimonialForm(prev => ({ ...prev, video: '', video_size_bytes: 0 }))
+                                        setVideoSuccessUrl(null)
+                                        showToast('Video removed successfully.')
+                                      }}
+                                      style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                )}
+
+                                {videoUploadError && (
+                                  <div className="admin-upload-alert admin-upload-error">
+                                    <AlertCircle size={14} />
+                                    <span>{videoUploadError}</span>
+                                  </div>
+                                )}
+
+                                {videoSuccessUrl && (
+                                  <div className="admin-upload-alert admin-upload-success">
+                                    <CheckCircle2 size={14} />
+                                    <span>Video uploaded successfully!</span>
+                                  </div>
+                                )}
                               </div>
-
-                              {uploadError && (
-                                <div className="admin-upload-alert admin-upload-error">
-                                  <AlertCircle size={14} />
-                                  <span>{uploadError}</span>
-                                </div>
-                              )}
-
-                              {uploadSuccessUrl && (
-                                <div className="admin-upload-alert admin-upload-success">
-                                  <CheckCircle2 size={14} />
-                                  <span>Image uploaded to Cloudinary successfully!</span>
-                                </div>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -4180,7 +4179,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
 
                 <ul style={{ margin: 0, paddingLeft: 18, color: '#475569', fontSize: 12.5, lineHeight: 1.5 }}>
                   <li>Store up to 10x more high quality video testimonials (1,024 MB).</li>
-                  <li>Direct Cloudinary video uploads without size restriction errors.</li>
+                  <li>Direct video uploads without size restriction errors.</li>
                   <li>Fast global CDN video streaming with instant load on Home page.</li>
                   <li>Cancel or adjust anytime with zero lock-in.</li>
                 </ul>
@@ -4267,7 +4266,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                 <div>
                   <h3 className="admin-modal-title" style={{ fontSize: 17 }}>Video Upload Complete</h3>
                   <p className="admin-modal-sub">
-                    File uploaded & securely processed by Cloudinary.
+                    File uploaded & securely processed.
                   </p>
                 </div>
               </div>
