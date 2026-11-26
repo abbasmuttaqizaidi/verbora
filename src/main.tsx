@@ -2558,7 +2558,6 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   // Testimonials filter & form state
-  const [testimonialFilter, setTestimonialFilter] = useState<'all' | 'active' | 'hidden'>('all')
   const [editingTestimonial, setEditingTestimonial] = useState<Testimonial | null>(null)
   const [testimonialForm, setTestimonialForm] = useState<{
     name: string
@@ -3171,16 +3170,13 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
 
   const filteredTestimonials = testimonials.filter(t => {
     const q = searchQuery.toLowerCase().trim()
-    const matchesSearch =
+    return (
       !q ||
       t.name.toLowerCase().includes(q) ||
       t.role.toLowerCase().includes(q) ||
       t.text.toLowerCase().includes(q) ||
       (t.badge && t.badge.toLowerCase().includes(q))
-    const matchesStatus =
-      testimonialFilter === 'all' ||
-      (testimonialFilter === 'active' ? t.is_active : !t.is_active)
-    return matchesSearch && matchesStatus
+    )
   })
 
   const handleExportAllLeads = () => {
@@ -4042,16 +4038,6 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                         </button>
                       )}
                     </div>
-
-                    <select
-                      className="admin-filter-select"
-                      value={testimonialFilter}
-                      onChange={e => setTestimonialFilter(e.target.value as any)}
-                    >
-                      <option value="all">All Statuses ({totalTestimonials})</option>
-                      <option value="active">Active Only ({activeTestimonialsCount})</option>
-                      <option value="hidden">Hidden Only ({hiddenTestimonialsCount})</option>
-                    </select>
 
                     <button
                       type="button"
