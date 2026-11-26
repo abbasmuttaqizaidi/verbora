@@ -1818,6 +1818,10 @@ footer.site-footer::before {
    Nav bar ONLY opens via Hamburger Menu Drawer; desktop navbar pill is hidden.
    ========================================================================== */
 @media (max-width: 1024px) {
+  /* Ensure course detail banner has proper top clearance for absolute header on tablet */
+  .course-detail-banner {
+    padding-top: 88px !important;
+  }
   /* Header & Fixed Navigation - Transparent directly floating over the video */
   .site-header {
     height: 60px !important;
@@ -2384,7 +2388,7 @@ footer.site-footer::before {
   }
 
   .course-detail-banner {
-    padding: 24px 20px 36px !important;
+    padding: 82px 20px 36px !important;
   }
 
   .about-hero,
@@ -6580,6 +6584,10 @@ footer.site-footer::before {
 }
 
 @media (max-width: 1024px) {
+  /* Ensure course detail banner has proper top clearance for absolute header on tablet */
+  .course-detail-banner {
+    padding-top: 88px !important;
+  }
   .admin-stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
