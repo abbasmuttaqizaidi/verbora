@@ -4567,7 +4567,7 @@ footer.site-footer::before {
   padding: 24px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 16px;
   box-shadow: 0 6px 20px rgba(6, 38, 86, 0.04);
   transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
@@ -4718,6 +4718,7 @@ footer.site-footer::before {
   justify-content: space-between;
   border-top: 1px solid #edf2f7;
   padding-top: 14px;
+  margin-top: auto;
 }
 
 .story-card-stat strong {

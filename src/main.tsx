@@ -1910,17 +1910,6 @@ function StoriesPage() {
 
                   <p className="story-card-quote">“{story.quote}”</p>
 
-                  <div className="story-card-breakdown">
-                    <div className="story-bd-row">
-                      <span className="bd-label challenge-label">Challenge</span>
-                      <p>{story.challenge}</p>
-                    </div>
-                    <div className="story-bd-row">
-                      <span className="bd-label result-label">Result</span>
-                      <p>{story.breakthrough}</p>
-                    </div>
-                  </div>
-
                   <div className="story-card-bottom">
                     <div className="story-card-stat">
                       <strong>{story.metric}</strong>
