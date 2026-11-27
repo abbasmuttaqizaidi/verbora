@@ -8386,6 +8386,119 @@ footer.site-footer::before {
   max-width: 620px !important;
 }
 
+/* Placement Companies Infinite Marquee Section */
+.placement-marquee-viewport {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  padding: 6px 0 8px;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    #000 6%,
+    #000 94%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    #000 6%,
+    #000 94%,
+    transparent 100%
+  );
+}
+
+.placement-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: placementMarqueeScroll 26s linear infinite;
+}
+
+.placement-marquee-viewport:hover .placement-marquee-track {
+  animation-play-state: paused;
+}
+
+.placement-marquee-group {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  padding-right: 16px;
+  flex-shrink: 0;
+}
+
+.placement-logo-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 185px;
+  padding: 16px 22px;
+  background: #ffffff;
+  border: 1px solid #dbeaf5;
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(6, 38, 86, 0.05);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.placement-logo-card:hover {
+  transform: translateY(-2px);
+  border-color: #7dd3fc;
+  box-shadow: 0 8px 20px rgba(2, 132, 199, 0.12);
+}
+
+.placement-logo-svg {
+  height: 30px;
+  width: auto;
+  max-width: 150px;
+  display: block;
+}
+
+.placement-logo-sub {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+@keyframes placementMarqueeScroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 768px) {
+  .placement-logo-card {
+    min-width: 155px;
+    padding: 13px 16px;
+    border-radius: 14px;
+  }
+
+  .placement-logo-svg {
+    height: 25px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .placement-marquee-viewport {
+    overflow-x: auto;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .placement-marquee-track {
+    animation: none;
+  }
+
+  .placement-marquee-group[aria-hidden='true'] {
+    display: none;
+  }
+}
+
 /* 3. Universal Horizontal Single-Row Scroll Track */
 .home-cards-scroll-track {
   display: flex !important;

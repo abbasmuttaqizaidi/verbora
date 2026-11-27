@@ -666,6 +666,193 @@ function WhySection({ onDemo: _onDemo }: { onDemo?: () => void } = {}) {
   )
 }
 
+const placementCompanies = [
+  {
+    id: 'tcs',
+    name: 'TCS',
+    subtitle: 'Tata Consultancy Services',
+    renderLogo: () => (
+      <svg viewBox="0 0 110 34" className="placement-logo-svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="tcsGrad" x1="0" y1="0" x2="110" y2="34" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#0f4c9a" />
+            <stop offset="55%" stopColor="#e11d48" />
+            <stop offset="100%" stopColor="#7c3aed" />
+          </linearGradient>
+        </defs>
+        <text
+          x="55"
+          y="25"
+          textAnchor="middle"
+          fill="url(#tcsGrad)"
+          fontFamily="Manrope, 'DM Sans', sans-serif"
+          fontSize="26"
+          fontWeight="900"
+          letterSpacing="-1"
+        >
+          tcs
+        </text>
+      </svg>
+    ),
+  },
+  {
+    id: 'wipro',
+    name: 'Wipro',
+    subtitle: 'Technology & Consulting',
+    renderLogo: () => (
+      <svg viewBox="0 0 146 36" className="placement-logo-svg" aria-hidden="true">
+        <circle cx="15" cy="11" r="2.3" fill="#0ea5e9" />
+        <circle cx="22" cy="9" r="2.1" fill="#8b5cf6" />
+        <circle cx="27" cy="14" r="2.2" fill="#ec4899" />
+        <circle cx="25" cy="21" r="2.1" fill="#f59e0b" />
+        <circle cx="18" cy="24" r="2.2" fill="#10b981" />
+        <circle cx="12" cy="18" r="2.1" fill="#3b82f6" />
+        <text
+          x="36"
+          y="25"
+          fill="#0f2942"
+          fontFamily="Manrope, 'DM Sans', sans-serif"
+          fontSize="24"
+          fontWeight="800"
+          letterSpacing="-0.8"
+        >
+          wipro
+        </text>
+      </svg>
+    ),
+  },
+  {
+    id: 'infosys',
+    name: 'Infosys',
+    subtitle: 'Global Digital Services',
+    renderLogo: () => (
+      <svg viewBox="0 0 144 36" className="placement-logo-svg" aria-hidden="true">
+        <text
+          x="72"
+          y="25"
+          textAnchor="middle"
+          fill="#007cc3"
+          fontFamily="Manrope, 'DM Sans', sans-serif"
+          fontSize="25"
+          fontWeight="800"
+          letterSpacing="-0.8"
+        >
+          Infosys
+        </text>
+      </svg>
+    ),
+  },
+  {
+    id: 'accenture',
+    name: 'Accenture',
+    subtitle: 'Strategy & Consulting',
+    renderLogo: () => (
+      <svg viewBox="0 0 164 38" className="placement-logo-svg" aria-hidden="true">
+        <path
+          d="M111 4L121 8.5L111 13"
+          fill="none"
+          stroke="#a100ff"
+          strokeWidth="2.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <text
+          x="82"
+          y="28"
+          textAnchor="middle"
+          fill="#111827"
+          fontFamily="Manrope, 'DM Sans', sans-serif"
+          fontSize="23"
+          fontWeight="800"
+          letterSpacing="-0.8"
+        >
+          accenture
+        </text>
+      </svg>
+    ),
+  },
+  {
+    id: 'genpact',
+    name: 'Genpact',
+    subtitle: 'Enterprise Operations',
+    renderLogo: () => (
+      <svg viewBox="0 0 154 36" className="placement-logo-svg" aria-hidden="true">
+        <rect x="8" y="10" width="6" height="16" rx="2" fill="#f97316" />
+        <rect x="16" y="14" width="6" height="12" rx="2" fill="#0f2942" />
+        <text
+          x="29"
+          y="25"
+          fill="#0f2942"
+          fontFamily="Manrope, 'DM Sans', sans-serif"
+          fontSize="23"
+          fontWeight="800"
+          letterSpacing="-0.7"
+        >
+          genpact
+        </text>
+      </svg>
+    ),
+  },
+  {
+    id: 'deloitte',
+    name: 'Deloitte',
+    subtitle: 'Audit, Tax & Advisory',
+    renderLogo: () => (
+      <svg viewBox="0 0 148 36" className="placement-logo-svg" aria-hidden="true">
+        <text
+          x="68"
+          y="25"
+          textAnchor="middle"
+          fill="#111827"
+          fontFamily="Manrope, 'DM Sans', sans-serif"
+          fontSize="24"
+          fontWeight="900"
+          letterSpacing="-0.8"
+        >
+          Deloitte
+        </text>
+        <circle cx="121" cy="22.5" r="3.2" fill="#86bc25" />
+      </svg>
+    ),
+  },
+]
+
+function PlacementsSection() {
+  return (
+    <section className="home-row-section placements-section" id="placements">
+      <div className="home-row-header">
+        <h2 className="home-row-title">Career Readiness for Leading Global Companies</h2>
+        <p className="home-row-sub">
+          Learners who complete our communication programs build the fluency and interview confidence needed to get hired and excel at top employers.
+        </p>
+      </div>
+
+      <div className="placement-marquee-viewport" aria-label="Companies where VERBORA learners build careers">
+        <div className="placement-marquee-track">
+          {[0, 1].map(loopIdx => (
+            <div
+              key={loopIdx}
+              className="placement-marquee-group"
+              aria-hidden={loopIdx === 1}
+            >
+              {placementCompanies.map(company => (
+                <div
+                  key={`${loopIdx}-${company.id}`}
+                  className="placement-logo-card"
+                  title={company.name}
+                >
+                  {company.renderLogo()}
+                  <span className="placement-logo-sub">{company.subtitle}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 interface StoryItem {
   name: string
   role: string
@@ -1110,6 +1297,7 @@ function LandingPage() {
         */}
         <div className="content-shell without-demo">
           <CoursesSection />
+          <PlacementsSection />
           <WhySection onDemo={showDemo} />
           <StoriesSection />
         </div>
