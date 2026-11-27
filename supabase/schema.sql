@@ -281,12 +281,76 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 
--- 5. Schema-level grants for anon and authenticated roles
+-- 5. Create Trainer Profile Table (single-row config)
+CREATE TABLE IF NOT EXISTS public.trainer_profile (
+  id TEXT PRIMARY KEY DEFAULT 'master-trainer',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  hero_kicker TEXT NOT NULL DEFAULT 'Meet Your Master Coach',
+  name TEXT NOT NULL DEFAULT 'Bijay Adhikari',
+  role_title TEXT NOT NULL DEFAULT 'Founder & Lead Communication Coach at VERBORA',
+  quote TEXT NOT NULL DEFAULT 'Fluency isn’t about using complex, difficult words. It’s about calming your mind, organizing your thoughts with clarity, and speaking with unwavering confidence.',
+  bio TEXT NOT NULL DEFAULT 'With over 10 years of intensive speech mentorship and 12,000+ students coached, Bijay Adhikari has helped engineers, managers, founders, and students break through English anxiety, master executive presence, and unlock their full career potential.',
+  photo_url TEXT,
+  photo_size_bytes BIGINT DEFAULT 0,
+  credential_label TEXT NOT NULL DEFAULT 'Certified TESOL Coach',
+  experience_label TEXT NOT NULL DEFAULT '10+ Yrs Mentorship',
+  learners_label TEXT NOT NULL DEFAULT '12,000+ Alumni',
+  rating_label TEXT NOT NULL DEFAULT '4.9★ Rated',
+  story_heading TEXT NOT NULL DEFAULT '“I saw brilliant minds silenced by communication fear.”',
+  story_body TEXT NOT NULL DEFAULT '',
+  stats JSONB
+);
+
+ALTER TABLE public.trainer_profile
+  ADD COLUMN IF NOT EXISTS hero_kicker TEXT NOT NULL DEFAULT 'Meet Your Master Coach',
+  ADD COLUMN IF NOT EXISTS stats JSONB;
+
+ALTER TABLE public.trainer_profile ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read trainer_profile" ON public.trainer_profile;
+CREATE POLICY "Allow public read trainer_profile"
+  ON public.trainer_profile
+  FOR SELECT
+  TO anon, authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "Allow anon and auth manage trainer_profile" ON public.trainer_profile;
+CREATE POLICY "Allow anon and auth manage trainer_profile"
+  ON public.trainer_profile
+  FOR ALL
+  TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
+
+INSERT INTO public.trainer_profile (
+  id, name, role_title, quote, bio, photo_url, photo_size_bytes,
+  credential_label, experience_label, learners_label, rating_label,
+  story_heading, story_body
+)
+VALUES (
+  'master-trainer',
+  'Bijay Adhikari',
+  'Founder & Lead Communication Coach at VERBORA',
+  'Fluency isn’t about using complex, difficult words. It’s about calming your mind, organizing your thoughts with clarity, and speaking with unwavering confidence.',
+  'With over 10 years of intensive speech mentorship and 12,000+ students coached, Bijay Adhikari has helped engineers, managers, founders, and students break through English anxiety, master executive presence, and unlock their full career potential.',
+  '/assets/trainer-profile.jpg',
+  0,
+  'Certified TESOL Coach',
+  '10+ Yrs Mentorship',
+  '12,000+ Alumni',
+  '4.9★ Rated',
+  '“I saw brilliant minds silenced by communication fear.”',
+  E'Throughout my career coaching professionals across tech, banking, and creative industries, I noticed a heartbreaking pattern: deeply intelligent, hard-working individuals were consistently passed over for promotions, froze in client meetings, or remained quiet in discussions simply because they doubted their English fluency.\n\nTraditional institutes made it worse by treating spoken English like a textbook grammar exam. They forced memorization of tenses and complex vocabulary, which only increased overthinking and hesitation.\n\nI founded VERBORA to rewrite that script. We built a safe, empowering environment where communication is treated as a practical sport—where you speak 80% of the time, receive real-time positive feedback, and build emotional confidence that stays with you for life.'
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- 6. Schema-level grants for anon and authenticated roles
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT ALL ON TABLE public.leads TO anon, authenticated;
 GRANT ALL ON TABLE public.testimonials TO anon, authenticated;
 GRANT ALL ON TABLE public.courses TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.trainer_profile TO anon, authenticated, service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 
--- 6. Reload PostgREST schema cache
+-- 7. Reload PostgREST schema cache
 NOTIFY pgrst, 'reload schema';

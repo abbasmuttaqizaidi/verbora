@@ -133,3 +133,34 @@ export type UpdateCourseInput = {
   is_visible?: boolean
   is_upcoming?: boolean
 }
+
+// -------------------------------------------------------------------------
+// Trainer Profile
+// -------------------------------------------------------------------------
+
+export interface TrainerStatItem {
+  number: string
+  label: string
+  sub: string
+}
+
+export interface TrainerProfile {
+  id: string
+  updated_at?: string
+  hero_kicker: string
+  name: string
+  role_title: string
+  quote: string
+  bio: string
+  photo_url?: string | null
+  photo_size_bytes?: number | null
+  credential_label: string
+  experience_label: string
+  learners_label: string
+  rating_label: string
+  story_heading: string
+  story_body: string
+  stats: TrainerStatItem[]
+}
+
+export type UpdateTrainerProfileInput = Partial<Omit<TrainerProfile, 'id' | 'updated_at'>>

@@ -1,18 +1,28 @@
-import { Course, Testimonial } from '../types/database'
+import { Course, Testimonial, TrainerProfile } from '../types/database'
 import { mergeVisibleCourseRows, getVisibleCourses } from './courses'
 import { getActiveTestimonials } from './testimonials'
-import { writeCachedCourses, writeCachedTestimonials } from '../lib/homeCache'
+import {
+  DEFAULT_TRAINER_PROFILE,
+  getTrainerProfile,
+  mapTrainerRow,
+} from './trainer'
+import {
+  writeCachedCourses,
+  writeCachedTestimonials,
+  writeCachedTrainerProfile,
+} from '../lib/homeCache'
 
 export interface PublicHomeData {
   courses: Course[]
   testimonials: Testimonial[]
+  trainerProfile: TrainerProfile
 }
 
 let inflightHomeRequest: Promise<PublicHomeData> | null = null
 
 /**
- * Fetches visible Home courses (is_visible=true) and active testimonials in a single
- * edge-cached /api/home-data request, falling back seamlessly to direct Supabase queries.
+ * Fetches visible Home courses (is_visible=true), active testimonials, and trainer profile
+ * in a single edge-cached /api/home-data request, falling back seamlessly to direct Supabase queries.
  */
 export async function getPublicHomeData(bypassCache = false): Promise<PublicHomeData> {
   if (!bypassCache && inflightHomeRequest) {
@@ -29,16 +39,24 @@ export async function getPublicHomeData(bypassCache = false): Promise<PublicHome
         const json = await res.json()
         const rawCourses = Array.isArray(json?.courses) ? json.courses : null
         const rawTestimonials = Array.isArray(json?.testimonials) ? json.testimonials : []
+        const rawTrainer = json?.trainerProfile ?? undefined
 
         if (rawCourses !== null) {
           const visibleCourses = mergeVisibleCourseRows(rawCourses)
+          const trainerProfile = rawTrainer
+            ? mapTrainerRow(rawTrainer)
+            : { ...DEFAULT_TRAINER_PROFILE }
+
           writeCachedCourses(visibleCourses)
           if (rawTestimonials.length > 0) {
             writeCachedTestimonials(rawTestimonials)
           }
+          writeCachedTrainerProfile(trainerProfile)
+
           return {
             courses: visibleCourses,
             testimonials: rawTestimonials,
+            trainerProfile,
           }
         }
       }
@@ -46,18 +64,21 @@ export async function getPublicHomeData(bypassCache = false): Promise<PublicHome
       // Fallback to direct Supabase queries below
     }
 
-    const [coursesRes, testiRes] = await Promise.all([
+    const [coursesRes, testiRes, trainerRes] = await Promise.all([
       getVisibleCourses(),
       getActiveTestimonials(),
+      getTrainerProfile(),
     ])
 
     const courses = coursesRes.data || []
     const testimonials = testiRes.data || []
+    const trainerProfile = trainerRes.data || { ...DEFAULT_TRAINER_PROFILE }
 
     writeCachedCourses(courses)
     if (testimonials.length > 0) writeCachedTestimonials(testimonials)
+    writeCachedTrainerProfile(trainerProfile)
 
-    return { courses, testimonials }
+    return { courses, testimonials, trainerProfile }
   }
 
   const promise = run().finally(() => {

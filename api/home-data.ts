@@ -13,6 +13,10 @@ const LEGACY_COURSE_COLUMNS =
   'id,title,tagline,short,summary,fee_amount,discount_percent,display_order,created_at,updated_at'
 const TESTIMONIAL_COLUMNS =
   'id,name,role,image,video,text,badge,is_active,is_spotlight,display_order,created_at'
+const TRAINER_FULL_COLUMNS =
+  'id,hero_kicker,name,role_title,quote,bio,photo_url,photo_size_bytes,credential_label,experience_label,learners_label,rating_label,story_heading,story_body,stats,updated_at'
+const TRAINER_CORE_COLUMNS =
+  'id,name,role_title,quote,bio,photo_url,photo_size_bytes,credential_label,experience_label,learners_label,rating_label,story_heading,story_body,updated_at'
 
 async function fetchSupabaseTable(pathAndQuery: string) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${pathAndQuery}`, {
@@ -52,6 +56,29 @@ async function fetchVisibleCourses() {
   }
 }
 
+async function fetchTrainerProfile() {
+  try {
+    const rows = await fetchSupabaseTable(
+      `trainer_profile?select=${TRAINER_FULL_COLUMNS}&id=eq.master-trainer&limit=1`
+    )
+    return Array.isArray(rows) ? rows[0] || null : null
+  } catch (err: any) {
+    const body = String(err?.body || '')
+    if (err?.status === 400 && (body.includes('hero_kicker') || body.includes('stats'))) {
+      try {
+        const fallbackRows = await fetchSupabaseTable(
+          `trainer_profile?select=${TRAINER_CORE_COLUMNS}&id=eq.master-trainer&limit=1`
+        )
+        return Array.isArray(fallbackRows) ? fallbackRows[0] || null : null
+      } catch {
+        return null
+      }
+    }
+    // Table may not exist yet — client maps null safely to DEFAULT_TRAINER_PROFILE
+    return null
+  }
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method Not Allowed' })
@@ -59,18 +86,19 @@ export default async function handler(req: any, res: any) {
 
   try {
     const fresh = req.query?.fresh === '1'
-    const [courses, testimonials] = await Promise.all([
+    const [courses, testimonials, trainerProfile] = await Promise.all([
       fetchVisibleCourses(),
       fetchSupabaseTable(
         `testimonials?select=${TESTIMONIAL_COLUMNS}&is_active=eq.true&order=display_order.asc,created_at.desc`
       ),
+      fetchTrainerProfile(),
     ])
 
     res.setHeader(
       'Cache-Control',
       fresh ? 'no-store' : 'public, s-maxage=60, stale-while-revalidate=300'
     )
-    return res.status(200).json({ courses, testimonials })
+    return res.status(200).json({ courses, testimonials, trainerProfile })
   } catch (error: any) {
     console.error('Error in /api/home-data:', error)
     return res.status(500).json({ error: error?.message || 'Failed to load home data' })

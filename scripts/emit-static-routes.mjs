@@ -125,16 +125,19 @@ const pages = [
   { path: 'verbora-edu-admin/testimonials', title: 'Admin Testimonials | VERBORA', description: 'VERBORA Admin Portal', noindex: true },
   { path: 'verbora-edu-admin/testimonials/add', title: 'Add Testimonial | VERBORA', description: 'VERBORA Admin Portal', noindex: true },
   { path: 'verbora-edu-admin/courses', title: 'Admin Courses | VERBORA', description: 'VERBORA Admin Portal', noindex: true },
+  { path: 'verbora-edu-admin/trainer', title: 'Admin Trainer Profile | VERBORA', description: 'VERBORA Admin Portal', noindex: true },
   { path: 'shivam-admin', title: 'Admin Portal | VERBORA', description: 'VERBORA Admin Portal', noindex: true },
   { path: 'shivam-admin/leads', title: 'Admin Leads | VERBORA', description: 'VERBORA Admin Portal', noindex: true },
   { path: 'shivam-admin/testimonials', title: 'Admin Testimonials | VERBORA', description: 'VERBORA Admin Portal', noindex: true },
   { path: 'shivam-admin/testimonials/add', title: 'Add Testimonial | VERBORA', description: 'VERBORA Admin Portal', noindex: true },
   { path: 'shivam-admin/courses', title: 'Admin Courses | VERBORA', description: 'VERBORA Admin Portal', noindex: true },
+  { path: 'shivam-admin/trainer', title: 'Admin Trainer Profile | VERBORA', description: 'VERBORA Admin Portal', noindex: true },
   { path: 'admin', title: 'Admin Portal | VERBORA', description: 'VERBORA Admin Portal', noindex: true },
   { path: 'admin/leads', title: 'Admin Leads | VERBORA', description: 'VERBORA Admin Portal', noindex: true },
   { path: 'admin/testimonials', title: 'Admin Testimonials | VERBORA', description: 'VERBORA Admin Portal', noindex: true },
   { path: 'admin/testimonials/add', title: 'Add Testimonial | VERBORA', description: 'VERBORA Admin Portal', noindex: true },
   { path: 'admin/courses', title: 'Admin Courses | VERBORA', description: 'VERBORA Admin Portal', noindex: true },
+  { path: 'admin/trainer', title: 'Admin Trainer Profile | VERBORA', description: 'VERBORA Admin Portal', noindex: true },
 ]
 
 for (const page of pages) {

@@ -25,7 +25,7 @@ import {
   Quote, HeartHandshake, Target, Award, BadgeCheck, ShieldCheck,
   MapPin, Send, Lock, KeyRound, RefreshCw, Trash2, Download, LogOut,
   Eye, EyeOff, Database, Inbox, Calendar, AlertCircle, FileText,
-  Plus, Edit3, Image, Upload, Video, ExternalLink, ArrowLeft, HardDrive, BookOpen,
+  Plus, Edit3, Image, Upload, Video, ExternalLink, ArrowLeft, HardDrive, BookOpen, UserCheck,
 } from 'lucide-react'
 import './styles.css'
 import './adjustments.css'
@@ -39,11 +39,15 @@ import {
   Testimonial,
   Course,
   CourseId,
+  TrainerStatItem,
 } from './types/database'
 import { sanitizeRichHtml, stripHtmlToText } from './lib/richText'
+import { TrainerListEditor } from './components/TrainerListEditor'
 import {
   readCachedCourses,
   readCachedTestimonials,
+  readCachedTrainerProfile,
+  writeCachedTrainerProfile,
   clearHomeCache,
 } from './lib/homeCache'
 
@@ -643,6 +647,197 @@ const benefits = [
   { icon: Headphones, title: 'Continued Support', text: 'Daily WhatsApp voice note coaching and habit drills to guarantee lasting fluency.' },
 ]
 
+const TRAINER_PILLAR_ICONS = [HeartHandshake, Mic2, Target, Sparkles]
+const TRAINER_SPECIALIZATION_ICONS = [
+  MessageCircle,
+  BriefcaseBusiness,
+  Mic2,
+  Award,
+  UsersRound,
+  ShieldCheck,
+]
+
+function TrainerPortraitBox({
+  name,
+  photoUrl,
+  imgClassName,
+}: {
+  name: string
+  photoUrl?: string | null
+  imgClassName: string
+}) {
+  const resolvedSrc = (photoUrl || '').trim() || api.trainer.DEFAULT_TRAINER_PHOTO_URL
+  return (
+    <img
+      src={resolvedSrc}
+      alt={`${name} - Master Communication Coach`}
+      className={imgClassName}
+      onError={e => {
+        const target = e.currentTarget
+        if (!target.src.endsWith(api.trainer.DEFAULT_TRAINER_PHOTO_URL)) {
+          target.src = api.trainer.DEFAULT_TRAINER_PHOTO_URL
+        }
+      }}
+    />
+  )
+}
+
+function HomeTrainerSection({ onDemo }: { onDemo: () => void }) {
+  const { data: loadedTrainerProfile, isLoading } = useTrainerProfileQuery()
+  const showSkeleton = isLoading && !loadedTrainerProfile
+  const trainerProfile = loadedTrainerProfile || api.trainer.DEFAULT_TRAINER_PROFILE
+  const trainerStats = trainerProfile.stats || []
+
+  if (showSkeleton) {
+    return (
+      <section className="home-row-section home-trainer-section" id="trainer-profile" aria-busy="true">
+        <div className="home-row-header">
+          <div className="skeleton-shimmer" style={{ height: 28, width: 250, borderRadius: 8 }} />
+          <div className="skeleton-shimmer" style={{ height: 16, width: '60%', maxWidth: 460, borderRadius: 6, marginTop: 8 }} />
+        </div>
+
+        <div className="home-trainer-showcase">
+          <div className="home-trainer-top-grid">
+            <div className="home-trainer-photo-col">
+              <div className="skeleton-shimmer" style={{ height: 340, width: '100%', maxWidth: 340, borderRadius: 20 }} />
+            </div>
+            <div className="home-trainer-info-col" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className="skeleton-shimmer" style={{ height: 22, width: 170, borderRadius: 999 }} />
+              <div className="skeleton-shimmer" style={{ height: 36, width: '58%', borderRadius: 8 }} />
+              <div className="skeleton-shimmer" style={{ height: 18, width: '72%', borderRadius: 6 }} />
+              <div className="skeleton-shimmer" style={{ height: 64, width: '100%', borderRadius: 12 }} />
+              <div className="skeleton-shimmer" style={{ height: 76, width: '100%', borderRadius: 10 }} />
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <div className="skeleton-shimmer" style={{ height: 30, width: 140, borderRadius: 999 }} />
+                <div className="skeleton-shimmer" style={{ height: 30, width: 135, borderRadius: 999 }} />
+                <div className="skeleton-shimmer" style={{ height: 30, width: 125, borderRadius: 999 }} />
+              </div>
+              <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+                <div className="skeleton-shimmer" style={{ height: 42, width: 195, borderRadius: 999 }} />
+                <div className="skeleton-shimmer" style={{ height: 42, width: 175, borderRadius: 999 }} />
+              </div>
+            </div>
+          </div>
+
+          <div className="home-trainer-stats-row">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="home-trainer-stat-box" style={{ gap: 8 }}>
+                <div className="skeleton-shimmer" style={{ height: 24, width: '48%', borderRadius: 6 }} />
+                <div className="skeleton-shimmer" style={{ height: 14, width: '75%', borderRadius: 4 }} />
+                <div className="skeleton-shimmer" style={{ height: 12, width: '90%', borderRadius: 4 }} />
+              </div>
+            ))}
+          </div>
+
+          <div className="home-trainer-story-block" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="skeleton-shimmer" style={{ height: 20, width: 180, borderRadius: 999 }} />
+            <div className="skeleton-shimmer" style={{ height: 26, width: '70%', borderRadius: 6 }} />
+            <div className="skeleton-shimmer" style={{ height: 16, width: '100%', borderRadius: 4 }} />
+            <div className="skeleton-shimmer" style={{ height: 16, width: '94%', borderRadius: 4 }} />
+            <div className="skeleton-shimmer" style={{ height: 16, width: '82%', borderRadius: 4 }} />
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  return (
+    <section className="home-row-section home-trainer-section" id="trainer-profile">
+      <div className="home-row-header">
+        <h2 className="home-row-title">{trainerProfile.hero_kicker || 'Meet Your Master Coach'}</h2>
+        <p className="home-row-sub">
+          Guided personally by {trainerProfile.name} — learn proven fluency frameworks, stage confidence, and practical mentorship.
+        </p>
+      </div>
+
+      <div className="home-trainer-showcase">
+        <div className="home-trainer-top-grid">
+          <div className="home-trainer-photo-col">
+            <div className="trainer-photo-card home-trainer-photo-card">
+              <div className="trainer-photo-backdrop" />
+              <TrainerPortraitBox
+                name={trainerProfile.name}
+                photoUrl={trainerProfile.photo_url}
+                imgClassName="trainer-photo-img"
+              />
+              <div className="trainer-photo-overlay-badge">
+                <Star size={17} className="star-fill" />
+                <div>
+                  <strong>{trainerProfile.experience_label}</strong>
+                  <small>{trainerProfile.credential_label}</small>
+                </div>
+              </div>
+              <div className="trainer-photo-floating-chip">
+                <CheckCircle2 size={16} />
+                <span>{trainerProfile.learners_label}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="home-trainer-info-col">
+            <span className="section-kicker">{trainerProfile.hero_kicker || 'Meet Your Master Coach'}</span>
+            <h3 className="home-trainer-name">{trainerProfile.name}</h3>
+            <p className="trainer-title-sub">{trainerProfile.role_title}</p>
+
+            {trainerProfile.quote && (
+              <blockquote className="trainer-hero-quote">
+                <Quote size={18} className="trainer-quote-icon" />
+                <span>“{trainerProfile.quote}”</span>
+              </blockquote>
+            )}
+
+            <div
+              className="trainer-hero-lead trainer-hero-lead-rich"
+              dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(trainerProfile.bio) }}
+            />
+
+            <div className="trainer-quick-chips">
+              <span><BadgeCheck size={15} /> {trainerProfile.credential_label}</span>
+              <span><Clock size={15} /> {trainerProfile.experience_label}</span>
+              <span><UsersRound size={15} /> {trainerProfile.learners_label}</span>
+              <span><Star size={15} /> {trainerProfile.rating_label}</span>
+            </div>
+
+            <div className="trainer-hero-actions">
+              <button type="button" className="primary-button" onClick={onDemo}>
+                <span>Book 1-on-1 Consultation</span>
+                <MoveRight size={16} />
+              </button>
+              <Link to="/trainer" className="secondary-button">
+                <span>View Full Trainer Profile</span>
+                <MoveRight size={15} />
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {trainerStats.length > 0 && (
+          <div className="home-trainer-stats-row">
+            {trainerStats.map((s, idx) => (
+              <div className="home-trainer-stat-box" key={`${s.label}-${idx}`}>
+                <strong>{s.number}</strong>
+                <span>{s.label}</span>
+                <small>{s.sub}</small>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {(trainerProfile.story_heading || trainerProfile.story_body) && (
+          <div className="home-trainer-story-block">
+            <span className="section-kicker">The Story Behind VERBORA</span>
+            <h4>{trainerProfile.story_heading}</h4>
+            <div
+              className="trainer-story-text"
+              dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(trainerProfile.story_body) }}
+            />
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
 function WhySection({ onDemo: _onDemo }: { onDemo?: () => void } = {}) {
   return (
     <section className="home-row-section" id="about">
@@ -982,6 +1177,18 @@ export function useCoursesQuery() {
   })
 }
 
+export function useTrainerProfileQuery() {
+  return useQuery({
+    queryKey: ['trainer-profile'],
+    initialData: () => readCachedTrainerProfile(),
+    initialDataUpdatedAt: 0,
+    queryFn: async () => {
+      const data = await api.home.getPublicHomeData()
+      return data.trainerProfile
+    },
+  })
+}
+
 export function useMergedCourses() {
   const query = useCoursesQuery()
   const merged = useMemo(() => {
@@ -1299,6 +1506,7 @@ function LandingPage() {
           <CoursesSection />
           <PlacementsSection />
           <WhySection onDemo={showDemo} />
+          <HomeTrainerSection onDemo={showDemo} />
           <StoriesSection />
         </div>
       </main>
@@ -1547,36 +1755,34 @@ function AboutPage() {
 
 function TrainerPage() {
   const [modalOpen, setModalOpen] = useState(false)
+  const { data: loadedTrainerProfile, isLoading } = useTrainerProfileQuery()
+  const showTrainerSkeleton = isLoading && !loadedTrainerProfile
+  const trainerProfile = loadedTrainerProfile || api.trainer.DEFAULT_TRAINER_PROFILE
   const showDemo = () => setModalOpen(true)
-
-  const stats = [
-    { number: '10+ Yrs', label: 'Coaching Experience', sub: 'Executive speech & voice mentorship' },
-    { number: '12,000+', label: 'Learners Mentored', sub: 'Engineers, leaders & job seekers' },
-    { number: '96%', label: 'Fluency Breakthrough', sub: 'Overcoming hesitation & stage fear' },
-    { number: '4.9 ★', label: 'Student Rating', sub: 'Across 1,500+ verified alumni reviews' },
-  ]
+  const trainerFirstName = trainerProfile.name.trim().split(/\s+/)[0] || 'Coach'
+  const stats = trainerProfile.stats || []
 
   const pillars = [
     {
-      icon: HeartHandshake,
+      icon: TRAINER_PILLAR_ICONS[0],
       title: 'Hesitation Erasure & Psychological Ease',
       tag: 'Fear-Free Zone',
       desc: 'Most learners know grammar rules in their heads, but fear of judgment freezes their tongue. We first eliminate internal hesitation through psychological ease and patient speaking drills.',
     },
     {
-      icon: Mic2,
+      icon: TRAINER_PILLAR_ICONS[1],
       title: 'Vocal Modulation & Accent Clarity',
       tag: 'Diction & Delivery',
       desc: 'Master breath control, syllable stress, pitch variation, and natural pauses. Learn to project authority and sound engaging without putting on a fake accent.',
     },
     {
-      icon: Target,
+      icon: TRAINER_PILLAR_ICONS[2],
       title: 'Structured Thought-to-Speech Flow',
       tag: 'Stop Translating',
       desc: 'We train your brain to think directly in English using frameworks like PREP (Point, Reason, Example, Point) so you never run out of words during spontaneous discussions.',
     },
     {
-      icon: Sparkles,
+      icon: TRAINER_PILLAR_ICONS[3],
       title: 'Real-World High-Stakes Simulations',
       tag: 'Practical Mastery',
       desc: 'Mock client demos, salary negotiations, leadership standups, and stage keynotes. Live scenario practice ensures you perform seamlessly when the stakes are real.',
@@ -1585,32 +1791,32 @@ function TrainerPage() {
 
   const specializations = [
     {
-      icon: MessageCircle,
+      icon: TRAINER_SPECIALIZATION_ICONS[0],
       title: 'Spoken English & Fluency Acceleration',
       desc: 'Eliminating native language translation, filler words (um, ah, like), and pauses so your thoughts flow smoothly and effortlessly.',
     },
     {
-      icon: BriefcaseBusiness,
+      icon: TRAINER_SPECIALIZATION_ICONS[1],
       title: 'Executive Workplace Communication',
       desc: 'Mastering corporate diplomacy, team meetings, email clarity, client negotiations, and communicating with global stakeholders.',
     },
     {
-      icon: Mic2,
+      icon: TRAINER_SPECIALIZATION_ICONS[2],
       title: 'Public Speaking & Stage Presence',
       desc: 'Conquering stage fright, mastering microphone technique, purposeful stage movement, and captivating audiences of 5 to 500+ people.',
     },
     {
-      icon: Award,
+      icon: TRAINER_SPECIALIZATION_ICONS[3],
       title: 'Job Interview & Leadership Drills',
       desc: 'Behavioral STAR storytelling, cracking tricky situational questions, posture alignment, and negotiating top-bracket compensation.',
     },
     {
-      icon: UsersRound,
+      icon: TRAINER_SPECIALIZATION_ICONS[4],
       title: 'Personality & Executive Presence',
       desc: 'Developing a commanding yet warm aura, confident eye contact, open body language, and professional charismatic demeanor.',
     },
     {
-      icon: ShieldCheck,
+      icon: TRAINER_SPECIALIZATION_ICONS[5],
       title: 'Voice Modulation & Accent Neutralization',
       desc: 'Softening mother-tongue influence (MTI), smoothing harsh vowel transitions, and achieving crystal-clear global articulation.',
     },
@@ -1671,29 +1877,87 @@ function TrainerPage() {
     <>
       <SiteHeader onDemo={showDemo} />
       <main className="trainer-page">
-        {/* 1. Hero Section */}
+        {showTrainerSkeleton ? (
+          <>
+            <section className="trainer-hero" aria-busy="true">
+              <div className="content-shell">
+                <div className="trainer-hero-grid">
+                  <div className="trainer-hero-copy" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <div className="skeleton-shimmer" style={{ height: 24, width: 190, borderRadius: 999 }} />
+                    <div className="skeleton-shimmer" style={{ height: 48, width: '65%', borderRadius: 10 }} />
+                    <div className="skeleton-shimmer" style={{ height: 20, width: '78%', borderRadius: 6 }} />
+                    <div className="skeleton-shimmer" style={{ height: 74, width: '100%', borderRadius: 12 }} />
+                    <div className="skeleton-shimmer" style={{ height: 84, width: '100%', borderRadius: 10 }} />
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      <div className="skeleton-shimmer" style={{ height: 32, width: 150, borderRadius: 999 }} />
+                      <div className="skeleton-shimmer" style={{ height: 32, width: 140, borderRadius: 999 }} />
+                      <div className="skeleton-shimmer" style={{ height: 32, width: 130, borderRadius: 999 }} />
+                      <div className="skeleton-shimmer" style={{ height: 32, width: 110, borderRadius: 999 }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+                      <div className="skeleton-shimmer" style={{ height: 46, width: 215, borderRadius: 999 }} />
+                      <div className="skeleton-shimmer" style={{ height: 46, width: 195, borderRadius: 999 }} />
+                    </div>
+                  </div>
+                  <div className="trainer-photo-wrap">
+                    <div className="skeleton-shimmer" style={{ height: 420, width: '100%', borderRadius: 24 }} />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="trainer-stats-strip">
+              <div className="content-shell">
+                <div className="trainer-stats-grid">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="trainer-stat-card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div className="skeleton-shimmer" style={{ height: 28, width: '50%', borderRadius: 6 }} />
+                      <div className="skeleton-shimmer" style={{ height: 15, width: '72%', borderRadius: 4 }} />
+                      <div className="skeleton-shimmer" style={{ height: 13, width: '88%', borderRadius: 4 }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <div className="content-shell">
+              <section className="trainer-story-section">
+                <div className="trainer-story-card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div className="skeleton-shimmer" style={{ height: 22, width: 200, borderRadius: 999 }} />
+                  <div className="skeleton-shimmer" style={{ height: 34, width: '68%', borderRadius: 8 }} />
+                  <div className="skeleton-shimmer" style={{ height: 16, width: '100%', borderRadius: 4 }} />
+                  <div className="skeleton-shimmer" style={{ height: 16, width: '96%', borderRadius: 4 }} />
+                  <div className="skeleton-shimmer" style={{ height: 16, width: '88%', borderRadius: 4 }} />
+                </div>
+              </section>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* 1. Hero Section */}
         <section className="trainer-hero">
           <div className="content-shell">
             <div className="trainer-hero-grid">
               {/* Left Column: Bio & Intro */}
               <div className="trainer-hero-copy">
-                <span className="section-kicker">Meet Your Master Coach</span>
-                <h1>Shivam</h1>
-                <p className="trainer-title-sub">Founder & Lead Communication Coach at VERBORA</p>
+                <span className="section-kicker">{trainerProfile.hero_kicker || 'Meet Your Master Coach'}</span>
+                <h1>{trainerProfile.name}</h1>
+                <p className="trainer-title-sub">{trainerProfile.role_title}</p>
                 <blockquote className="trainer-hero-quote">
                   <Quote size={20} className="trainer-quote-icon" />
-                  <span>“Fluency isn’t about using complex, difficult words. It’s about calming your mind, organizing your thoughts with clarity, and speaking with unwavering confidence.”</span>
+                  <span>“{trainerProfile.quote}”</span>
                 </blockquote>
-                <p className="trainer-hero-lead">
-                  With over 10 years of intensive speech mentorship and 12,000+ students coached, Bijay Adhikari has helped engineers, managers, founders, and students break through English anxiety, master executive presence, and unlock their full career potential.
-                </p>
+                <div
+                  className="trainer-hero-lead trainer-hero-lead-rich"
+                  dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(trainerProfile.bio) }}
+                />
 
                 {/* Quick Credential Chips */}
                 <div className="trainer-quick-chips">
-                  <span><BadgeCheck size={16} /> Certified TESOL Coach</span>
-                  <span><Clock size={16} /> 10+ Yrs Mentorship</span>
-                  <span><UsersRound size={16} /> 12,000+ Alumni</span>
-                  <span><Star size={16} /> 4.9★ Rated</span>
+                  <span><BadgeCheck size={16} /> {trainerProfile.credential_label}</span>
+                  <span><Clock size={16} /> {trainerProfile.experience_label}</span>
+                  <span><UsersRound size={16} /> {trainerProfile.learners_label}</span>
+                  <span><Star size={16} /> {trainerProfile.rating_label}</span>
                 </div>
 
                 <div className="trainer-hero-actions">
@@ -1711,21 +1975,21 @@ function TrainerPage() {
               <div className="trainer-photo-wrap">
                 <div className="trainer-photo-card">
                   <div className="trainer-photo-backdrop" />
-                  <img
-                    src="/assets/trainer-profile.jpg"
-                    alt="Shivam - Master Communication Coach"
-                    className="trainer-photo-img"
+                  <TrainerPortraitBox
+                    name={trainerProfile.name}
+                    photoUrl={trainerProfile.photo_url}
+                    imgClassName="trainer-photo-img"
                   />
                   <div className="trainer-photo-overlay-badge">
                     <Star size={17} className="star-fill" />
                     <div>
-                      <strong>10+ Years Mentorship</strong>
-                      <small>Master Voice & Speech Coach</small>
+                      <strong>{trainerProfile.experience_label}</strong>
+                      <small>{trainerProfile.credential_label}</small>
                     </div>
                   </div>
                   <div className="trainer-photo-floating-chip">
                     <CheckCircle2 size={16} />
-                    <span>12,000+ Success Stories</span>
+                    <span>{trainerProfile.learners_label}</span>
                   </div>
                 </div>
               </div>
@@ -1734,37 +1998,32 @@ function TrainerPage() {
         </section>
 
         {/* 2. Key Statistics Strip */}
-        <section className="trainer-stats-strip">
-          <div className="content-shell">
-            <div className="trainer-stats-grid">
-              {stats.map(s => (
-                <div className="trainer-stat-card" key={s.label}>
-                  <strong>{s.number}</strong>
-                  <span>{s.label}</span>
-                  <small>{s.sub}</small>
-                </div>
-              ))}
+        {stats.length > 0 && (
+          <section className="trainer-stats-strip">
+            <div className="content-shell">
+              <div className="trainer-stats-grid">
+                {stats.map((s, idx) => (
+                  <div className="trainer-stat-card" key={`${s.label}-${idx}`}>
+                    <strong>{s.number}</strong>
+                    <span>{s.label}</span>
+                    <small>{s.sub}</small>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         <div className="content-shell">
           {/* 3. The Story & Vision Section */}
           <section className="trainer-story-section">
             <div className="trainer-story-card">
               <span className="section-kicker">The Story Behind VERBORA</span>
-              <h2>“I saw brilliant minds silenced by communication fear.”</h2>
-              <div className="trainer-story-text">
-                <p>
-                  Throughout my career coaching professionals across tech, banking, and creative industries, I noticed a heartbreaking pattern: deeply intelligent, hard-working individuals were consistently passed over for promotions, froze in client meetings, or remained quiet in discussions simply because they doubted their English fluency.
-                </p>
-                <p>
-                  Traditional institutes made it worse by treating spoken English like a textbook grammar exam. They forced memorization of tenses and complex vocabulary, which only increased overthinking and hesitation.
-                </p>
-                <p>
-                  I founded VERBORA to rewrite that script. We built a safe, empowering environment where communication is treated as a practical sport—where you speak 80% of the time, receive real-time positive feedback, and build emotional confidence that stays with you for life.
-                </p>
-              </div>
+              <h2>{trainerProfile.story_heading}</h2>
+              <div
+                className="trainer-story-text"
+                dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(trainerProfile.story_body) }}
+              />
             </div>
           </section>
 
@@ -1793,7 +2052,7 @@ function TrainerPage() {
           <section className="trainer-specialties-section">
             <div className="about-section-header">
               <span className="section-kicker">Core Expertise</span>
-              <h2>What You Can <span>Master With Him</span></h2>
+              <h2>What You Can <span>Master With {trainerFirstName}</span></h2>
               <p>Targeted coaching tailored to your specific communication hurdles and career stage.</p>
             </div>
             <div className="trainer-specialties-grid">
@@ -1831,7 +2090,7 @@ function TrainerPage() {
           <section className="trainer-reviews-section">
             <div className="about-section-header">
               <span className="section-kicker">Alumni Feedback</span>
-              <h2>What Students Say About <span>Bijay Sir</span></h2>
+              <h2>What Students Say About <span>{trainerFirstName}</span></h2>
               <p>Real stories from working professionals and students whose careers accelerated with VERBORA.</p>
             </div>
             <div className="trainer-reviews-grid">
@@ -1882,7 +2141,7 @@ function TrainerPage() {
                 <span className="trainer-cta-kicker">Direct Mentorship Consultation</span>
                 <h2>Start Your Speech Transformation Today.</h2>
                 <p>
-                  Book a free 1-on-1 speech diagnostic session directly with Shivam. Discuss your personal goals, receive immediate feedback, and map out your path to effortless fluency.
+                  Book a free 1-on-1 speech diagnostic session directly with {trainerProfile.name}. Discuss your personal goals, receive immediate feedback, and map out your path to effortless fluency.
                 </p>
                 <div className="trainer-cta-actions">
                   <button className="primary-button" onClick={showDemo}>
@@ -1897,6 +2156,8 @@ function TrainerPage() {
             </div>
           </section>
         </div>
+          </>
+        )}
       </main>
       <SiteFooter onDemo={showDemo} />
       <DemoModal open={modalOpen} onClose={() => setModalOpen(false)} />
@@ -2260,6 +2521,7 @@ function StoriesPage() {
 
 function ContactPage() {
   const { courses: dynamicCourses } = useMergedCourses()
+  const { data: trainerProfile = api.trainer.DEFAULT_TRAINER_PROFILE } = useTrainerProfileQuery()
   const [modalOpen, setModalOpen] = useState(false)
   const [showEnergyModal, setShowEnergyModal] = useState(false)
   const [form, setForm] = useState({
@@ -2694,7 +2956,7 @@ function ContactPage() {
                 <span className="banner-kicker">Direct Leadership Access</span>
                 <h2>Prefer To Meet The Master Coach First?</h2>
                 <p>
-                  Explore Bijay Adhikari’s 10+ years of executive coaching experience, the 4-pillar speech methodology, verified student reviews, and global alumni achievements.
+                  Explore {trainerProfile.name}’s coaching experience, the 4-pillar speech methodology, verified student reviews, and global alumni achievements.
                 </p>
                 <div className="trainer-banner-actions">
                   <Link to="/trainer" className="primary-button">
@@ -2707,10 +2969,10 @@ function ContactPage() {
                 </div>
               </div>
               <div className="trainer-banner-img-wrap">
-                <img
-                  src="/assets/trainer-profile.jpg"
-                  alt="Bijay Adhikari"
-                  className="trainer-banner-img"
+                <TrainerPortraitBox
+                  name={trainerProfile.name}
+                  photoUrl={trainerProfile.photo_url}
+                  imgClassName="trainer-banner-img"
                 />
               </div>
             </div>
@@ -2981,7 +3243,7 @@ function downloadCSV(filename: string, rows: (string | number)[][]) {
   document.body.removeChild(link)
 }
 
-function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testimonials' | 'testimonials-add' | 'courses' }) {
+function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testimonials' | 'testimonials-add' | 'courses' | 'trainer' }) {
   const navigate = useNavigate()
   const pathname = useRouterState({ select: state => state.location.pathname })
   const editIdMatch = pathname.match(/\/testimonials\/edit\/([^/?#]+)/)
@@ -3002,9 +3264,16 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const isTestimonialsEditRoute = (pathname.includes('/testimonials/edit/') || (pathname.includes('/testimonials') && !!editId))
   const isTestimonialsFormRoute = isTestimonialsAddRoute || isTestimonialsEditRoute
 
+  const isTrainerRoute = pathname.includes('/trainer') || defaultRoute === 'trainer'
   const isCoursesRoute = pathname.includes('/courses') || defaultRoute === 'courses'
   const isTestimonialsRoute = isTestimonialsFormRoute || pathname.includes('/testimonials') || defaultRoute === 'testimonials'
-  const activeSection: 'leads' | 'testimonials' | 'courses' = isCoursesRoute ? 'courses' : (isTestimonialsRoute ? 'testimonials' : 'leads')
+  const activeSection: 'leads' | 'testimonials' | 'courses' | 'trainer' = isTrainerRoute
+    ? 'trainer'
+    : isCoursesRoute
+      ? 'courses'
+      : isTestimonialsRoute
+        ? 'testimonials'
+        : 'leads'
 
   // Determine base admin path (/verbora-edu-admin, /shivam-admin, /admin)
   const baseAdminPath = pathname.startsWith('/shivam-admin')
@@ -3017,6 +3286,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const testimonialsRoutePath = `${baseAdminPath}/testimonials`
   const addTestimonialRoutePath = `${baseAdminPath}/testimonials/add`
   const coursesRoutePath = `${baseAdminPath}/courses`
+  const trainerRoutePath = `${baseAdminPath}/trainer`
 
   // Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -3025,6 +3295,43 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const [coursesDbError, setCoursesDbError] = useState<string | null>(() =>
     api.courses.getCoursesDbError()
   )
+  const [trainerDbError, setTrainerDbError] = useState<string | null>(() =>
+    api.trainer.getTrainerDbError()
+  )
+  const [trainerForm, setTrainerForm] = useState<{
+    hero_kicker: string
+    name: string
+    role_title: string
+    quote: string
+    bio: string
+    photo_url: string
+    photo_size_bytes: number
+    credential_label: string
+    experience_label: string
+    learners_label: string
+    rating_label: string
+    story_heading: string
+    story_body: string
+    stats: TrainerStatItem[]
+  }>({
+    hero_kicker: api.trainer.DEFAULT_TRAINER_PROFILE.hero_kicker,
+    name: api.trainer.DEFAULT_TRAINER_PROFILE.name,
+    role_title: api.trainer.DEFAULT_TRAINER_PROFILE.role_title,
+    quote: api.trainer.DEFAULT_TRAINER_PROFILE.quote,
+    bio: api.trainer.DEFAULT_TRAINER_PROFILE.bio,
+    photo_url: api.trainer.DEFAULT_TRAINER_PROFILE.photo_url || '',
+    photo_size_bytes: api.trainer.DEFAULT_TRAINER_PROFILE.photo_size_bytes || 0,
+    credential_label: api.trainer.DEFAULT_TRAINER_PROFILE.credential_label,
+    experience_label: api.trainer.DEFAULT_TRAINER_PROFILE.experience_label,
+    learners_label: api.trainer.DEFAULT_TRAINER_PROFILE.learners_label,
+    rating_label: api.trainer.DEFAULT_TRAINER_PROFILE.rating_label,
+    story_heading: api.trainer.DEFAULT_TRAINER_PROFILE.story_heading,
+    story_body: api.trainer.DEFAULT_TRAINER_PROFILE.story_body,
+    stats: api.trainer.DEFAULT_TRAINER_PROFILE.stats,
+  })
+  const [savingTrainer, setSavingTrainer] = useState(false)
+  const [trainerPhotoBusyMode, setTrainerPhotoBusyMode] = useState<'uploading' | 'removing' | null>(null)
+  const [trainerPhotoError, setTrainerPhotoError] = useState<string | null>(null)
   const [leadsDbError, setLeadsDbError] = useState<string | null>(null)
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)
   const [courseForm, setCourseForm] = useState<{
@@ -3192,8 +3499,42 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     },
   })
 
+  const adminTrainerQuery = useQuery({
+    queryKey: ['admin-trainer-profile'],
+    enabled: isAuthenticated,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    queryFn: async () => {
+      const res = await api.trainer.getTrainerProfile()
+      setTrainerDbError(api.trainer.getTrainerDbError())
+      return res.data || api.trainer.DEFAULT_TRAINER_PROFILE
+    },
+  })
+
   const testimonials = adminTestimonialsQuery.data || []
   const adminCourses = adminCoursesQuery.data || []
+  const adminTrainerProfile = adminTrainerQuery.data || api.trainer.DEFAULT_TRAINER_PROFILE
+
+  useEffect(() => {
+    if (!adminTrainerQuery.data) return
+    const p = adminTrainerQuery.data
+    setTrainerForm({
+      hero_kicker: p.hero_kicker,
+      name: p.name,
+      role_title: p.role_title,
+      quote: p.quote,
+      bio: p.bio,
+      photo_url: p.photo_url || '',
+      photo_size_bytes: p.photo_url ? (p.photo_size_bytes || 0) : 0,
+      credential_label: p.credential_label,
+      experience_label: p.experience_label,
+      learners_label: p.learners_label,
+      rating_label: p.rating_label,
+      story_heading: p.story_heading,
+      story_body: p.story_body,
+      stats: p.stats,
+    })
+  }, [adminTrainerQuery.data])
 
   const setTestimonials = (
     updater: Testimonial[] | ((prev: Testimonial[]) => Testimonial[])
@@ -3297,6 +3638,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
         queryClient.invalidateQueries({ queryKey: ['admin-lead-stats'] }),
         queryClient.invalidateQueries({ queryKey: ['admin-testimonials'] }),
         queryClient.invalidateQueries({ queryKey: ['admin-courses'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-trainer-profile'] }),
+        queryClient.invalidateQueries({ queryKey: ['trainer-profile'] }),
       ])
     } catch (err) {
       console.error('Error fetching admin data:', err)
@@ -3310,6 +3653,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     void api.home.getPublicHomeData(true).then(fresh => {
       queryClient.setQueryData(['courses'], fresh.courses)
       queryClient.setQueryData(['testimonials'], fresh.testimonials)
+      queryClient.setQueryData(['trainer-profile'], fresh.trainerProfile)
     })
   }
 
@@ -3413,6 +3757,158 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
       setCourseCoverError(err?.message || 'Failed to remove course image.')
     } finally {
       setCourseCoverBusyMode(null)
+    }
+  }
+
+  const handleUploadTrainerPhotoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+
+    const netUsedBytes = Math.max(0, totalUsedStorageBytes - (adminTrainerProfile.photo_size_bytes || 0))
+    const remainingBytes = Math.max(0, MAX_STORAGE_BYTES - netUsedBytes)
+
+    setTrainerPhotoBusyMode('uploading')
+    setTrainerPhotoError(null)
+    const unsavedDraftPhoto =
+      trainerForm.photo_url && trainerForm.photo_url !== adminTrainerProfile.photo_url
+        ? trainerForm.photo_url
+        : null
+
+    try {
+      saveUploadPreset(customPreset)
+      const result = await uploadImageToCloudinary(
+        file,
+        customPreset,
+        'verbora/trainer',
+        remainingBytes
+      )
+      if (result.url) {
+        if (unsavedDraftPhoto && unsavedDraftPhoto.includes('cloudinary.com')) {
+          deleteMediaFromCloudinary(unsavedDraftPhoto, 'image').catch(() => {})
+        }
+        setTrainerForm(prev => ({
+          ...prev,
+          photo_url: result.url!,
+          photo_size_bytes: result.bytes || file.size,
+        }))
+        showToast('Trainer photo uploaded! Click Save Trainer Profile to publish.')
+      } else {
+        setTrainerPhotoError(result.error || 'Failed to upload trainer photo.')
+      }
+    } catch (err: any) {
+      setTrainerPhotoError(err?.message || 'Error uploading trainer photo.')
+    } finally {
+      setTrainerPhotoBusyMode(null)
+    }
+  }
+
+  const handleRemoveTrainerPhoto = async () => {
+    const currentFormPhoto = trainerForm.photo_url
+    const dbPhoto = adminTrainerProfile.photo_url
+    if (!currentFormPhoto && !dbPhoto) return
+    if (!window.confirm('Remove the trainer profile photo? Any Cloudinary copy will also be deleted.')) {
+      return
+    }
+
+    setTrainerPhotoBusyMode('removing')
+    setTrainerPhotoError(null)
+    try {
+      const urlsToDestroy = Array.from(
+        new Set(
+          [currentFormPhoto, dbPhoto].filter(
+            (u): u is string => Boolean(u && u.includes('cloudinary.com'))
+          )
+        )
+      )
+
+      const [res] = await Promise.all([
+        api.trainer.updateTrainerProfile({
+          photo_url: api.trainer.DEFAULT_TRAINER_PHOTO_URL,
+          photo_size_bytes: 0,
+        }),
+        ...urlsToDestroy.map(u => deleteMediaFromCloudinary(u, 'image').catch(() => null)),
+      ])
+      setTrainerDbError(api.trainer.getTrainerDbError())
+
+      if (res.success && res.data) {
+        writeCachedTrainerProfile(res.data)
+        queryClient.setQueryData(['admin-trainer-profile'], res.data)
+        queryClient.setQueryData(['trainer-profile'], res.data)
+        syncPublicHomeCache()
+        setTrainerForm(prev => ({
+          ...prev,
+          photo_url: res.data!.photo_url || api.trainer.DEFAULT_TRAINER_PHOTO_URL,
+          photo_size_bytes: 0,
+        }))
+        showToast('Custom photo removed. Restored default local portrait!')
+      } else {
+        setTrainerPhotoError(res.error || 'Failed to reset trainer photo in database.')
+      }
+    } catch (err: any) {
+      setTrainerPhotoError(err?.message || 'Failed to remove trainer photo.')
+    } finally {
+      setTrainerPhotoBusyMode(null)
+    }
+  }
+
+  const handleSaveTrainerProfile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!trainerForm.name.trim()) {
+      alert('Trainer name cannot be empty.')
+      return
+    }
+    if (!trainerForm.role_title.trim()) {
+      alert('Role title cannot be empty.')
+      return
+    }
+    if (!stripHtmlToText(trainerForm.bio).trim()) {
+      alert('Trainer bio cannot be empty.')
+      return
+    }
+
+    setSavingTrainer(true)
+    const previousPhoto = adminTrainerProfile.photo_url
+    try {
+      const cleanPhotoUrl = trainerForm.photo_url.trim()
+      const res = await api.trainer.updateTrainerProfile({
+        hero_kicker: trainerForm.hero_kicker.trim(),
+        name: trainerForm.name.trim(),
+        role_title: trainerForm.role_title.trim(),
+        quote: trainerForm.quote.trim(),
+        bio: trainerForm.bio.trim(),
+        photo_url: cleanPhotoUrl,
+        photo_size_bytes: cleanPhotoUrl ? trainerForm.photo_size_bytes : 0,
+        credential_label: trainerForm.credential_label.trim(),
+        experience_label: trainerForm.experience_label.trim(),
+        learners_label: trainerForm.learners_label.trim(),
+        rating_label: trainerForm.rating_label.trim(),
+        story_heading: trainerForm.story_heading.trim(),
+        story_body: trainerForm.story_body.trim(),
+        stats: trainerForm.stats,
+      })
+      setTrainerDbError(api.trainer.getTrainerDbError())
+
+      if (res.success && res.data) {
+        if (
+          previousPhoto &&
+          previousPhoto !== res.data.photo_url &&
+          previousPhoto.includes('cloudinary.com')
+        ) {
+          deleteMediaFromCloudinary(previousPhoto, 'image').catch(() => {})
+        }
+        writeCachedTrainerProfile(res.data)
+        queryClient.setQueryData(['admin-trainer-profile'], res.data)
+        queryClient.setQueryData(['trainer-profile'], res.data)
+        syncPublicHomeCache()
+        showToast('Trainer profile updated successfully!')
+      } else {
+        alert(`Error saving trainer profile: ${res.error || 'Could not save changes to Supabase.'}`)
+      }
+    } catch (err: any) {
+      alert(`Error saving trainer profile: ${err?.message || 'Unknown error'}`)
+    } finally {
+      setSavingTrainer(false)
     }
   }
 
@@ -3912,7 +4408,12 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     return acc + (c.cover_size_bytes || 0)
   }, 0)
 
-  const totalUsedStorageBytes = testimonialStorageBytes + courseStorageBytes
+  const trainerStorageBytes =
+    adminTrainerProfile.photo_url && adminTrainerProfile.photo_url.includes('cloudinary.com')
+      ? adminTrainerProfile.photo_size_bytes || 0
+      : 0
+
+  const totalUsedStorageBytes = testimonialStorageBytes + courseStorageBytes + trainerStorageBytes
 
   const usedStorageMB = (totalUsedStorageBytes / (1024 * 1024)).toFixed(1)
   const maxStorageMB = MAX_STORAGE_MB
@@ -4026,6 +4527,15 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                 {adminCourses.length || api.courses.DEFAULT_INITIAL_COURSES.length}
               </span>
             </Link>
+
+            <Link
+              to={trainerRoutePath}
+              className={`admin-sidebar-link ${activeSection === 'trainer' ? 'active' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            >
+              <UserCheck size={18} />
+              <span className="admin-sidebar-link-text">Trainer Profile</span>
+            </Link>
           </nav>
 
           <div className="admin-sidebar-footer">
@@ -4075,7 +4585,13 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                   </>
                 ) : (
                   <span className="admin-breadcrumb-active">
-                    {activeSection === 'leads' ? 'Leads & Inquiries' : activeSection === 'courses' ? 'Courses Management' : 'Home Testimonials'}
+                    {activeSection === 'leads'
+                      ? 'Leads & Inquiries'
+                      : activeSection === 'courses'
+                        ? 'Courses Management'
+                        : activeSection === 'trainer'
+                          ? 'Trainer Profile'
+                          : 'Home Testimonials'}
                   </span>
                 )}
               </div>
@@ -5274,6 +5790,315 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                 )}
               </>
             )}
+
+            {activeSection === 'trainer' && (
+              <>
+                <div className="admin-section-header">
+                  <div>
+                    <h2 className="admin-section-title">Master Trainer Profile</h2>
+                    <p className="admin-section-subtitle">
+                      Customize trainer details, portrait photo, credentials, and coaching philosophy shown on the Trainer & Contact pages.
+                    </p>
+                  </div>
+                </div>
+
+                {trainerDbError && (
+                  <div className="admin-trainer-db-alert" role="alert">
+                    <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <div>
+                      <strong>Supabase Table Notice:</strong> {trainerDbError} — Make sure{' '}
+                      <code>public.trainer_profile</code> is created from <code>supabase/schema.sql</code>.
+                    </div>
+                  </div>
+                )}
+
+                <div className="admin-trainer-card">
+                  {adminTrainerQuery.isLoading && !adminTrainerQuery.data ? (
+                    <div className="admin-trainer-form" aria-busy="true">
+                      <div className="skeleton-shimmer" style={{ height: 68, width: '100%', borderRadius: 10 }} />
+                      <div className="admin-trainer-2col">
+                        <div className="skeleton-shimmer" style={{ height: 42, borderRadius: 8 }} />
+                        <div className="skeleton-shimmer" style={{ height: 42, borderRadius: 8 }} />
+                      </div>
+                      <div className="skeleton-shimmer" style={{ height: 42, borderRadius: 8 }} />
+                      <div className="skeleton-shimmer" style={{ height: 150, borderRadius: 10 }} />
+                      <div className="skeleton-shimmer" style={{ height: 54, borderRadius: 10 }} />
+                    </div>
+                  ) : (
+                  <form className="admin-trainer-form" onSubmit={handleSaveTrainerProfile}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                        Trainer Portrait Photo
+                      </label>
+                      {(() => {
+                        const resolvedAdminPhoto =
+                          (trainerForm.photo_url || '').trim() || api.trainer.DEFAULT_TRAINER_PHOTO_URL
+                        const isCustomPhoto =
+                          resolvedAdminPhoto !== api.trainer.DEFAULT_TRAINER_PHOTO_URL
+                        return (
+                          <div className="admin-course-cover-row">
+                            <div className="admin-course-cover-left">
+                              <img
+                                src={resolvedAdminPhoto}
+                                alt={trainerForm.name || 'Trainer portrait'}
+                                className="admin-course-cover-thumb"
+                              />
+                              <div className="admin-course-cover-meta">
+                                <strong>
+                                  {isCustomPhoto ? 'Custom Portrait Uploaded' : 'Default Local Photo'}
+                                </strong>
+                                <span>
+                                  {isCustomPhoto
+                                    ? trainerForm.photo_size_bytes > 0
+                                      ? `${(trainerForm.photo_size_bytes / (1024 * 1024)).toFixed(2)} MB`
+                                      : 'Cloudinary Hosted'
+                                    : '0 MB · Local Asset'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="admin-course-cover-btns">
+                              <label className="admin-course-cover-upload-btn">
+                                <Upload size={13} />
+                                <span>{isCustomPhoto ? 'Change' : 'Upload Custom'}</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  disabled={trainerPhotoBusyMode !== null || savingTrainer}
+                                  onChange={handleUploadTrainerPhotoFile}
+                                  style={{ display: 'none' }}
+                                />
+                              </label>
+                              {isCustomPhoto && (
+                                <button
+                                  type="button"
+                                  className="admin-course-cover-remove-btn"
+                                  disabled={trainerPhotoBusyMode !== null || savingTrainer}
+                                  onClick={handleRemoveTrainerPhoto}
+                                >
+                                  <Trash2 size={12} />
+                                  <span>Remove</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })()}
+                      {trainerPhotoError && (
+                        <span style={{ display: 'block', marginTop: 4, fontSize: 11.5, color: '#dc2626', fontWeight: 600 }}>
+                          {trainerPhotoError}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="admin-trainer-2col">
+                      <div className="admin-trainer-field">
+                        <label htmlFor="trainer-kicker-input">Hero Kicker Badge</label>
+                        <input
+                          id="trainer-kicker-input"
+                          type="text"
+                          value={trainerForm.hero_kicker}
+                          onChange={e => setTrainerForm(prev => ({ ...prev, hero_kicker: e.target.value }))}
+                          placeholder="e.g. Meet Your Master Coach"
+                        />
+                      </div>
+
+                      <div className="admin-trainer-field">
+                        <label htmlFor="trainer-name-input">
+                          Trainer Name <span style={{ color: '#ef4444' }}>*</span>
+                        </label>
+                        <input
+                          id="trainer-name-input"
+                          type="text"
+                          required
+                          value={trainerForm.name}
+                          onChange={e => setTrainerForm(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="e.g. Bijay Adhikari"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="admin-trainer-field">
+                      <label htmlFor="trainer-role-input">
+                        Role / Title <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
+                      <input
+                        id="trainer-role-input"
+                        type="text"
+                        required
+                        value={trainerForm.role_title}
+                        onChange={e => setTrainerForm(prev => ({ ...prev, role_title: e.target.value }))}
+                        placeholder="e.g. Lead Spoken English Coach & Founder"
+                      />
+                    </div>
+
+                    <div className="admin-trainer-field">
+                      <label htmlFor="trainer-quote-input">Signature Quote</label>
+                      <input
+                        id="trainer-quote-input"
+                        type="text"
+                        value={trainerForm.quote}
+                        onChange={e => setTrainerForm(prev => ({ ...prev, quote: e.target.value }))}
+                        placeholder="Inspirational coaching quote displayed on hero"
+                      />
+                    </div>
+
+                    <div className="admin-trainer-field">
+                      <label>
+                        Short Bio / Hero Introduction <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
+                      <Suspense
+                        fallback={
+                          <div className="tiptap-editor-wrap">
+                            <div className="tiptap-editor-content" style={{ minHeight: 140, color: '#94a3b8', fontSize: 13 }}>
+                              Loading rich text editor...
+                            </div>
+                          </div>
+                        }
+                      >
+                        <LazyRichTextEditor
+                          key={`bio-${adminTrainerQuery.dataUpdatedAt || 'initial'}`}
+                          value={trainerForm.bio}
+                          onChange={html => setTrainerForm(prev => ({ ...prev, bio: html }))}
+                        />
+                      </Suspense>
+                    </div>
+
+                    <div className="admin-trainer-section-divider">
+                      <h3 className="admin-trainer-section-title">Highlight Chips & Credentials</h3>
+                      <div className="admin-trainer-2col">
+                        <div className="admin-trainer-field">
+                          <label htmlFor="trainer-credential-input">Credential Badge</label>
+                          <input
+                            id="trainer-credential-input"
+                            type="text"
+                            value={trainerForm.credential_label}
+                            onChange={e => setTrainerForm(prev => ({ ...prev, credential_label: e.target.value }))}
+                            placeholder="e.g. TESOL Certified Trainer"
+                          />
+                        </div>
+
+                        <div className="admin-trainer-field">
+                          <label htmlFor="trainer-experience-input">Experience Chip</label>
+                          <input
+                            id="trainer-experience-input"
+                            type="text"
+                            value={trainerForm.experience_label}
+                            onChange={e => setTrainerForm(prev => ({ ...prev, experience_label: e.target.value }))}
+                            placeholder="e.g. 10+ Years Experience"
+                          />
+                        </div>
+
+                        <div className="admin-trainer-field">
+                          <label htmlFor="trainer-learners-input">Learners Highlight</label>
+                          <input
+                            id="trainer-learners-input"
+                            type="text"
+                            value={trainerForm.learners_label}
+                            onChange={e => setTrainerForm(prev => ({ ...prev, learners_label: e.target.value }))}
+                            placeholder="e.g. 12,000+ Professionals Trained"
+                          />
+                        </div>
+
+                        <div className="admin-trainer-field">
+                          <label htmlFor="trainer-rating-input">Rating Chip</label>
+                          <input
+                            id="trainer-rating-input"
+                            type="text"
+                            value={trainerForm.rating_label}
+                            onChange={e => setTrainerForm(prev => ({ ...prev, rating_label: e.target.value }))}
+                            placeholder="e.g. 4.9/5 Student Rating"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="admin-trainer-section-divider">
+                      <h3 className="admin-trainer-section-title">Coaching Philosophy & Story</h3>
+                      <div className="admin-trainer-form" style={{ gap: 12 }}>
+                        <div className="admin-trainer-field">
+                          <label htmlFor="trainer-story-heading-input">Story Section Heading</label>
+                          <input
+                            id="trainer-story-heading-input"
+                            type="text"
+                            value={trainerForm.story_heading}
+                            onChange={e => setTrainerForm(prev => ({ ...prev, story_heading: e.target.value }))}
+                            placeholder="e.g. Why Most People Know English, Yet Still Freeze"
+                          />
+                        </div>
+
+                        <div className="admin-trainer-field">
+                          <label>The Story Behind VERBORA (Story Body)</label>
+                          <Suspense
+                            fallback={
+                              <div className="tiptap-editor-wrap">
+                                <div className="tiptap-editor-content" style={{ minHeight: 140, color: '#94a3b8', fontSize: 13 }}>
+                                  Loading rich text editor...
+                                </div>
+                              </div>
+                            }
+                          >
+                            <LazyRichTextEditor
+                              key={`story-${adminTrainerQuery.dataUpdatedAt || 'initial'}`}
+                              value={trainerForm.story_body}
+                              onChange={html => setTrainerForm(prev => ({ ...prev, story_body: html }))}
+                            />
+                          </Suspense>
+                        </div>
+                      </div>
+                    </div>
+
+                    <TrainerListEditor<TrainerStatItem>
+                      title="Key Statistics Strip"
+                      subtitle="Shown on the Home page Trainer showcase and the /trainer stats bar."
+                      items={trainerForm.stats}
+                      allowAddRemove={false}
+                      itemPrefix="Stat Card"
+                      collapsible
+                      defaultExpanded={false}
+                      onChange={stats => setTrainerForm(prev => ({ ...prev, stats }))}
+                      fields={[
+                        { key: 'number', label: 'Stat Value', placeholder: 'e.g. 10+ Yrs' },
+                        { key: 'label', label: 'Stat Label', placeholder: 'e.g. Coaching Experience' },
+                        { key: 'sub', label: 'Subtitle', placeholder: 'e.g. Executive speech & voice mentorship', fullWidth: true },
+                      ]}
+                    />
+
+                    <div className="admin-trainer-footer">
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <a
+                          href="/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="admin-trainer-preview-link"
+                        >
+                          <ExternalLink size={14} />
+                          <span>Preview Home Page</span>
+                        </a>
+                        <a
+                          href="/trainer"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="admin-trainer-preview-link"
+                        >
+                          <ExternalLink size={14} />
+                          <span>Preview Trainer Page</span>
+                        </a>
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="admin-trainer-save-btn"
+                        disabled={savingTrainer || trainerPhotoBusyMode !== null}
+                      >
+                        {savingTrainer ? 'Saving Trainer Profile...' : 'Save Trainer Profile'}
+                      </button>
+                    </div>
+                  </form>
+                  )}
+                </div>
+              </>
+            )}
       </main>
     </div>
   </div>
@@ -5566,8 +6391,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
         </div>
       )}
 
-      {/* Full-Page Loader for Course Cover Upload / Removal */}
-      {courseCoverBusyMode && (
+      {/* Full-Page Loader for Course Cover / Trainer Photo Upload or Removal */}
+      {(courseCoverBusyMode || trainerPhotoBusyMode) && (
         <div className="admin-fullscreen-loader-overlay" role="status" aria-live="polite">
           <div className="admin-fullscreen-loader-card">
             <div className="admin-loader-spinner-wrap" aria-hidden="true">
@@ -5576,7 +6401,11 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
             <strong>
               {courseCoverBusyMode === 'uploading'
                 ? 'Uploading Course Cover Image...'
-                : 'Removing Course Cover Image...'}
+                : courseCoverBusyMode === 'removing'
+                  ? 'Removing Course Cover Image...'
+                  : trainerPhotoBusyMode === 'uploading'
+                    ? 'Uploading Trainer Profile Photo...'
+                    : 'Removing Trainer Profile Photo...'}
             </strong>
             <span>Please wait while Cloudinary and database update.</span>
             <div className="admin-loader-progress-track" aria-hidden="true">
@@ -6116,7 +6945,7 @@ const successStoriesRoute = createRoute({ getParentRoute: () => rootRoute, path:
 const contactRoute = createRoute({ getParentRoute: () => rootRoute, path: '/contact', component: ContactPage })
 const contactUsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/contact-us', component: ContactPage })
 
-// Admin Routes (Main portal, Leads, Testimonials, Add & Edit, Courses)
+// Admin Routes (Main portal, Leads, Testimonials, Add & Edit, Courses, Trainer)
 const verboraEduAdminRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
 const verboraEduAdminLeadsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin/leads', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
 const verboraEduAdminTestimonialsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin/testimonials', component: () => <VerboraEduAdminPage defaultRoute="testimonials" /> })
@@ -6127,6 +6956,7 @@ const verboraEduAdminTestimonialsEditRoute = createRoute({
   component: () => <VerboraEduAdminPage defaultRoute="testimonials" />,
 })
 const verboraEduAdminCoursesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin/courses', component: () => <VerboraEduAdminPage defaultRoute="courses" /> })
+const verboraEduAdminTrainerRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin/trainer', component: () => <VerboraEduAdminPage defaultRoute="trainer" /> })
 
 // Shivam-admin Aliases
 const shivamAdminRoute = createRoute({ getParentRoute: () => rootRoute, path: '/shivam-admin', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
@@ -6139,6 +6969,7 @@ const shivamAdminTestimonialsEditRoute = createRoute({
   component: () => <VerboraEduAdminPage defaultRoute="testimonials" />,
 })
 const shivamAdminCoursesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/shivam-admin/courses', component: () => <VerboraEduAdminPage defaultRoute="courses" /> })
+const shivamAdminTrainerRoute = createRoute({ getParentRoute: () => rootRoute, path: '/shivam-admin/trainer', component: () => <VerboraEduAdminPage defaultRoute="trainer" /> })
 
 // General admin Aliases
 const adminRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admin', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
@@ -6151,6 +6982,7 @@ const adminTestimonialsEditRoute = createRoute({
   component: () => <VerboraEduAdminPage defaultRoute="testimonials" />,
 })
 const adminCoursesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admin/courses', component: () => <VerboraEduAdminPage defaultRoute="courses" /> })
+const adminTrainerRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admin/trainer', component: () => <VerboraEduAdminPage defaultRoute="trainer" /> })
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -6169,18 +7001,21 @@ const routeTree = rootRoute.addChildren([
   verboraEduAdminTestimonialsAddRoute,
   verboraEduAdminTestimonialsEditRoute,
   verboraEduAdminCoursesRoute,
+  verboraEduAdminTrainerRoute,
   shivamAdminRoute,
   shivamAdminLeadsRoute,
   shivamAdminTestimonialsRoute,
   shivamAdminTestimonialsAddRoute,
   shivamAdminTestimonialsEditRoute,
   shivamAdminCoursesRoute,
+  shivamAdminTrainerRoute,
   adminRoute,
   adminLeadsRoute,
   adminTestimonialsRoute,
   adminTestimonialsAddRoute,
   adminTestimonialsEditRoute,
   adminCoursesRoute,
+  adminTrainerRoute,
 ])
 const router = createRouter({ routeTree })
 
@@ -6206,6 +7041,13 @@ if (!isInitialAdminPath) {
     queryFn: async () => {
       const data = await api.home.getPublicHomeData()
       return data.testimonials
+    },
+  })
+  void queryClient.prefetchQuery({
+    queryKey: ['trainer-profile'],
+    queryFn: async () => {
+      const data = await api.home.getPublicHomeData()
+      return data.trainerProfile
     },
   })
 }
