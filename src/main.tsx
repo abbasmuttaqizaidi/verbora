@@ -3353,7 +3353,15 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   }, [isAuthenticated])
 
   // Status Handlers
-  const handleUpdateLeadStatus = async (id: string, newStatus: LeadStatus) => {
+  const handleUpdateLeadStatus = async (
+    id: string,
+    newStatus: LeadStatus,
+    currentStatus?: LeadStatus
+  ) => {
+    if (newStatus === 'new' && currentStatus !== 'new') {
+      showToast('Once changed, a lead cannot be reassigned back to New Lead.')
+      return
+    }
     setUpdatingId(id)
     const res = await api.leads.updateLeadStatus(id, newStatus)
     if (res.success) {
@@ -3373,6 +3381,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
       queryClient.invalidateQueries({ queryKey: ['admin-leads'] })
       queryClient.invalidateQueries({ queryKey: ['admin-lead-stats'] })
       showToast(`Lead status updated to "${newStatus}"`)
+    } else if (res.error) {
+      showToast(res.error)
     }
     setUpdatingId(null)
   }
@@ -3941,9 +3951,11 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                               className={`admin-status-select status-${lead.status}`}
                               value={lead.status}
                               disabled={updatingId === lead.id}
-                              onChange={e => handleUpdateLeadStatus(lead.id, e.target.value as LeadStatus)}
+                              onChange={e =>
+                                handleUpdateLeadStatus(lead.id, e.target.value as LeadStatus, lead.status)
+                              }
                             >
-                              <option value="new">● New Lead</option>
+                              {lead.status === 'new' && <option value="new">● New Lead</option>}
                               <option value="contacted">● Contacted</option>
                               <option value="scheduled">● Scheduled</option>
                               <option value="completed">● Completed</option>
@@ -4750,12 +4762,9 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                     {Array.from({ length: 5 }).map((_, idx) => (
                       <div key={idx} className="admin-course-skeleton">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flex: 1 }}>
-                            <div className="skeleton-shimmer" style={{ width: 44, height: 44, borderRadius: 12 }} />
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-                              <div className="skeleton-shimmer" style={{ height: 16, width: '65%', borderRadius: 4 }} />
-                              <div className="skeleton-shimmer" style={{ height: 12, width: '80%', borderRadius: 4 }} />
-                            </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+                            <div className="skeleton-shimmer" style={{ height: 16, width: '65%', borderRadius: 4 }} />
+                            <div className="skeleton-shimmer" style={{ height: 12, width: '80%', borderRadius: 4 }} />
                           </div>
                           <div className="skeleton-shimmer" style={{ height: 22, width: 84, borderRadius: 6 }} />
                         </div>
@@ -4771,20 +4780,14 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                 ) : (
                   <div className="admin-courses-grid">
                     {(adminCourses.length > 0 ? adminCourses : api.courses.DEFAULT_INITIAL_COURSES).map(c => {
-                      const CourseIcon = courseIconMap[c.id] || BookOpen
                       const discountedPrice = Math.round((c.fee_amount || 0) * (1 - (c.discount_percent || 0) / 100))
 
                       return (
                         <div key={c.id} className="admin-course-card">
                           <div className="admin-course-card-header">
-                            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                              <div className={`admin-course-icon-badge ${c.iconClass || 'aqua'}`}>
-                                <CourseIcon size={22} />
-                              </div>
-                              <div>
-                                <h3 className="admin-course-title">{c.title}</h3>
-                                <p className="admin-course-tagline">{c.tagline}</p>
-                              </div>
+                            <div>
+                              <h3 className="admin-course-title">{c.title}</h3>
+                              <p className="admin-course-tagline">{c.tagline}</p>
                             </div>
                             <span
                               style={{

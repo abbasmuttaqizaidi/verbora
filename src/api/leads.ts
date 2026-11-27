@@ -230,6 +230,14 @@ export async function updateLeadStatus(
   id: string,
   status: LeadStatus
 ): Promise<ApiResponse<boolean>> {
+  if (status === 'new') {
+    return {
+      data: false,
+      error: 'A lead cannot be reassigned back to New Lead once its status has changed.',
+      success: false,
+    }
+  }
+
   return executeQuery(async () => {
     const { error } = await supabase
       .from('leads')
