@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import {
   QueryClient,
   QueryClientProvider,
+  keepPreviousData,
   useQuery,
 } from '@tanstack/react-query'
 import {
@@ -20,16 +21,25 @@ import {
   CheckCircle2, ChevronDown, CirclePlay, Clock, GraduationCap, Handshake,
   Headphones, Mail, Menu, MessageCircle, Mic2, MonitorPlay, Phone,
   Rocket, Search, Sparkles, Star, TrendingUp, UsersRound,
-  X, MoveRight, ChevronRight, Instagram, Youtube, Linkedin,
+  X, MoveRight, ChevronLeft, ChevronRight, Instagram, Youtube, Linkedin,
   Quote, HeartHandshake, Target, Award, BadgeCheck, ShieldCheck,
   MapPin, Send, Lock, KeyRound, RefreshCw, Trash2, Download, LogOut,
-  Eye, EyeOff, Database, Inbox, Calendar, AlertCircle,
+  Eye, EyeOff, Database, Inbox, Calendar, AlertCircle, FileText,
   Plus, Edit3, Image, Upload, Video, ExternalLink, ArrowLeft, HardDrive, BookOpen,
 } from 'lucide-react'
 import './styles.css'
 import './adjustments.css'
 import { api } from './api'
-import { DemoBooking, ContactMessage, Testimonial, Course, CourseId } from './types/database'
+import {
+  Lead,
+  LeadStats,
+  LeadStatus,
+  LeadSummary,
+  LeadsPageResult,
+  Testimonial,
+  Course,
+  CourseId,
+} from './types/database'
 import { sanitizeRichHtml, stripHtmlToText } from './lib/richText'
 import {
   readCachedCourses,
@@ -203,7 +213,7 @@ function DemoForm({ inModal = false, defaultCourse }: { inModal?: boolean; defau
     if (values.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
       return setError('Please enter a valid email address.')
     }
-    if (values.phone.trim() && values.phone.replace(/\D/g, '').length < 10) {
+    if (values.phone.replace(/\D/g, '').length < 10) {
       return setError('Please enter a valid 10-digit phone number.')
     }
 
@@ -222,13 +232,20 @@ function DemoForm({ inModal = false, defaultCourse }: { inModal?: boolean; defau
     const cleanNumber = WHATSAPP_PHONE_NUMBER.replace(/\D/g, '')
     const waUrl = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(messageLines)}`
 
-    // Save lead record into Supabase (non-blocking)
-    api.bookings.createDemoBooking({
+    // Save lead record into unified Supabase leads table (non-blocking)
+    api.leads.createLead({
+      lead_type: 'demo-booking',
       name: values.name.trim(),
       email: values.email.trim() || undefined,
-      phone: values.phone.trim() || undefined,
+      phone: values.phone.trim(),
       course: selectedCourse,
       source: inModal ? 'popup-modal' : 'floating-card',
+      status: 'new',
+    }).then(res => {
+      if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ['admin-leads'] })
+        queryClient.invalidateQueries({ queryKey: ['admin-lead-stats'] })
+      }
     }).catch(err => {
       console.warn('[DemoForm] Non-blocking Supabase save notice:', err)
     })
@@ -316,7 +333,7 @@ function DemoForm({ inModal = false, defaultCourse }: { inModal?: boolean; defau
 
           <div className="form-row-2col">
             <div className="form-field-group">
-              <label className="field-label">Number <span className="opt">(Optional)</span></label>
+              <label className="field-label">Phone Number <span className="req">*</span></label>
               <div className="modern-input-field">
                 <Phone size={16} />
                 <input
@@ -326,6 +343,7 @@ function DemoForm({ inModal = false, defaultCourse }: { inModal?: boolean; defau
                   placeholder="e.g. 98765 43210"
                   value={values.phone}
                   onChange={e => update('phone', e.target.value)}
+                  required
                 />
               </div>
             </div>
@@ -2032,6 +2050,10 @@ function ContactPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (form.phone.replace(/\D/g, '').length < 10) {
+      alert('Please enter a valid 10-digit WhatsApp / phone number.')
+      return
+    }
     setLoading(true)
 
     const selectedCourseTitle = courseTitles[form.course] || form.course
@@ -2055,28 +2077,23 @@ function ContactPage() {
     const waUrl = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(messageLines)}`
     setLastWaUrl(waUrl)
 
-    // 2. Save simultaneously to Supabase (demo_bookings AND contact_messages)
+    // 2. Save to unified Supabase leads table
     try {
-      await Promise.all([
-        api.bookings.createDemoBooking({
-          name: form.name.trim(),
-          email: form.email.trim(),
-          phone: form.phone.trim(),
-          course: selectedCourseTitle,
-          source: 'direct-enquiry-diagnostic-form',
-          notes: `Hurdle: ${selectedGoalTitle}${form.message.trim() ? ` | Details: ${form.message.trim()}` : ''}`,
-          status: 'new',
-        }),
-        api.contact.submitContactMessage({
-          name: form.name.trim(),
-          email: form.email.trim(),
-          phone: form.phone.trim(),
-          course: selectedCourseTitle,
-          goal: selectedGoalTitle,
-          message: form.message.trim() || 'Direct Enquiry: Book a Free 1-on-1 Diagnostic Call',
-          status: 'unread',
-        }),
-      ])
+      const res = await api.leads.createLead({
+        lead_type: 'contact-enquiry',
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        course: selectedCourseTitle,
+        goal: selectedGoalTitle,
+        message: form.message.trim() || 'Direct Enquiry: Book a Free 1-on-1 Diagnostic Call',
+        source: 'contact-page',
+        status: 'new',
+      })
+      if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ['admin-leads'] })
+        queryClient.invalidateQueries({ queryKey: ['admin-lead-stats'] })
+      }
     } catch (err) {
       console.error('Failed to save diagnostic enquiry to Supabase:', err)
     } finally {
@@ -2765,11 +2782,10 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Data states
-  const [bookings, setBookings] = useState<DemoBooking[]>([])
-  const [contacts, setContacts] = useState<ContactMessage[]>([])
   const [testimonials, setTestimonials] = useState<Testimonial[]>([])
   const [adminCourses, setAdminCourses] = useState<Course[]>([])
   const [coursesDbError, setCoursesDbError] = useState<string | null>(null)
+  const [leadsDbError, setLeadsDbError] = useState<string | null>(null)
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)
   const [courseForm, setCourseForm] = useState<{
     title: string
@@ -2789,7 +2805,11 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const [savingCourse, setSavingCourse] = useState(false)
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [leadsPage, setLeadsPage] = useState(1)
+  const [selectedLeadForDesc, setSelectedLeadForDesc] = useState<LeadSummary | null>(null)
+  const [exportingCsv, setExportingCsv] = useState(false)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
@@ -2884,17 +2904,106 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     setPasskeyInput('')
   }
 
+  // Debounce search query and reset pagination when filters change
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      setLeadsPage(1)
+    }, 280)
+    return () => window.clearTimeout(t)
+  }, [searchQuery])
+
+  useEffect(() => {
+    setLeadsPage(1)
+  }, [statusFilter])
+
+  // Cached TanStack Query for paginated leads (only table columns, 20 per page)
+  const leadsQuery = useQuery({
+    queryKey: ['admin-leads', leadsPage, debouncedSearch, statusFilter],
+    enabled: isAuthenticated,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: 'always',
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const res = await api.leads.getLeadsPage({
+        page: leadsPage,
+        pageSize: api.leads.LEADS_PAGE_SIZE,
+        search: debouncedSearch,
+        status: statusFilter,
+      })
+      if (!res.success && res.error) {
+        setLeadsDbError(res.error)
+      } else {
+        setLeadsDbError(null)
+      }
+      return (
+        res.data || {
+          items: [],
+          totalCount: 0,
+          page: leadsPage,
+          pageSize: api.leads.LEADS_PAGE_SIZE,
+        }
+      )
+    },
+  })
+
+  // Cached TanStack Query for lightweight KPI stats (zero-row-payload counts)
+  const leadStatsQuery = useQuery({
+    queryKey: ['admin-lead-stats'],
+    enabled: isAuthenticated,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: 'always',
+    queryFn: async () => {
+      const res = await api.leads.getLeadStats()
+      return (
+        res.data || {
+          totalLeads: 0,
+          totalBookings: 0,
+          totalContacts: 0,
+          newLeadsCount: 0,
+          newBookingsCount: 0,
+          newContactsCount: 0,
+          contactedLeadsCount: 0,
+          leadActionRate: 0,
+        }
+      )
+    },
+  })
+
+  // Cached TanStack Query for single lead description (fetched ONLY when clicking View Description)
+  const leadDetailQuery = useQuery({
+    queryKey: ['admin-lead-detail', selectedLeadForDesc?.id],
+    enabled: isAuthenticated && !!selectedLeadForDesc?.id,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      if (!selectedLeadForDesc) return null
+      const res = await api.leads.getLeadDetails(selectedLeadForDesc.id)
+      return res.data
+    },
+  })
+
+  const paginatedLeads = leadsQuery.data?.items || []
+  const totalFilteredLeads = leadsQuery.data?.totalCount ?? 0
+  const totalLeadPages = Math.max(1, Math.ceil(totalFilteredLeads / api.leads.LEADS_PAGE_SIZE))
+  const isLeadsTableLoading = leadsQuery.isLoading || (leadsQuery.isFetching && paginatedLeads.length === 0)
+
+  useEffect(() => {
+    if (leadsPage > totalLeadPages) {
+      setLeadsPage(totalLeadPages)
+    }
+  }, [leadsPage, totalLeadPages])
+
   const loadData = async () => {
     setLoading(true)
     try {
-      const [bRes, cRes, tRes, crRes] = await Promise.all([
-        api.bookings.getDemoBookings(),
-        api.contact.getContactMessages(),
+      const [, , tRes, crRes] = await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin-leads'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-lead-stats'] }),
         api.testimonials.getTestimonials(),
         api.courses.getCourses(),
       ])
-      if (bRes.data) setBookings(bRes.data)
-      if (cRes.data) setContacts(cRes.data)
       if (tRes.data) setTestimonials(tRes.data)
       if (crRes.data) setAdminCourses(crRes.data)
       setCoursesDbError(api.courses.getCoursesDbError())
@@ -3263,44 +3372,51 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   }, [isAuthenticated])
 
   // Status Handlers
-  const handleUpdateBookingStatus = async (id: string, newStatus: DemoBooking['status']) => {
+  const handleUpdateLeadStatus = async (id: string, newStatus: LeadStatus) => {
     setUpdatingId(id)
-    const res = await api.bookings.updateBookingStatus(id, newStatus)
+    const res = await api.leads.updateLeadStatus(id, newStatus)
     if (res.success) {
-      setBookings(prev => prev.map(b => b.id === id ? { ...b, status: newStatus } : b))
-      showToast(`Booking status updated to "${newStatus}"`)
+      queryClient.setQueryData<LeadsPageResult>(
+        ['admin-leads', leadsPage, debouncedSearch, statusFilter],
+        old =>
+          old
+            ? {
+                ...old,
+                items: old.items.map(l => (l.id === id ? { ...l, status: newStatus } : l)),
+              }
+            : old
+      )
+      queryClient.setQueryData<Lead | null>(['admin-lead-detail', id], old =>
+        old ? { ...old, status: newStatus } : old
+      )
+      queryClient.invalidateQueries({ queryKey: ['admin-leads'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-lead-stats'] })
+      showToast(`Lead status updated to "${newStatus}"`)
     }
     setUpdatingId(null)
   }
 
-  const handleDeleteBooking = async (id: string, name: string) => {
-    if (!window.confirm(`Delete booking lead for "${name}"?`)) return
+  const handleDeleteLead = async (id: string, name: string) => {
+    if (!window.confirm(`Delete lead entry for "${name}"?`)) return
     setUpdatingId(id)
-    const res = await api.bookings.deleteBooking(id)
+    const res = await api.leads.deleteLead(id)
     if (res.success) {
-      setBookings(prev => prev.filter(b => b.id !== id))
-      showToast(`Booking for "${name}" deleted.`)
-    }
-    setUpdatingId(null)
-  }
-
-  const handleUpdateContactStatus = async (id: string, newStatus: ContactMessage['status']) => {
-    setUpdatingId(id)
-    const res = await api.contact.updateContactStatus(id, newStatus)
-    if (res.success) {
-      setContacts(prev => prev.map(c => c.id === id ? { ...c, status: newStatus } : c))
-      showToast(`Contact status updated to "${newStatus}"`)
-    }
-    setUpdatingId(null)
-  }
-
-  const handleDeleteContact = async (id: string, name: string) => {
-    if (!window.confirm(`Delete inquiry message from "${name}"?`)) return
-    setUpdatingId(id)
-    const res = await api.contact.deleteContactMessage(id)
-    if (res.success) {
-      setContacts(prev => prev.filter(c => c.id !== id))
-      showToast(`Inquiry from "${name}" deleted.`)
+      queryClient.setQueryData<LeadsPageResult>(
+        ['admin-leads', leadsPage, debouncedSearch, statusFilter],
+        old =>
+          old
+            ? {
+                ...old,
+                items: old.items.filter(l => l.id !== id),
+                totalCount: Math.max(0, old.totalCount - 1),
+              }
+            : old
+      )
+      queryClient.removeQueries({ queryKey: ['admin-lead-detail', id] })
+      queryClient.invalidateQueries({ queryKey: ['admin-leads'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-lead-stats'] })
+      if (selectedLeadForDesc?.id === id) setSelectedLeadForDesc(null)
+      showToast(`Lead for "${name}" deleted.`)
     }
     setUpdatingId(null)
   }
@@ -3358,17 +3474,27 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     )
   }
 
-  // Calculate Leads Metrics
-  const totalBookings = bookings.length
-  const totalContacts = contacts.length
-  const totalLeads = totalBookings + totalContacts
-  const newBookingsCount = bookings.filter(b => b.status === 'new').length
-  const unreadContactsCount = contacts.filter(c => c.status === 'unread').length
-  const newLeadsCount = newBookingsCount + unreadContactsCount
-  const contactedLeadsCount =
-    bookings.filter(b => b.status !== 'new').length +
-    contacts.filter(c => c.status !== 'unread').length
-  const leadActionRate = totalLeads > 0 ? Math.round((contactedLeadsCount / totalLeads) * 100) : 0
+  // KPI Metrics from cached zero-row-payload stats query
+  const leadStats: LeadStats = leadStatsQuery.data || {
+    totalLeads: 0,
+    totalBookings: 0,
+    totalContacts: 0,
+    newLeadsCount: 0,
+    newBookingsCount: 0,
+    newContactsCount: 0,
+    contactedLeadsCount: 0,
+    leadActionRate: 0,
+  }
+  const {
+    totalLeads,
+    totalBookings,
+    totalContacts,
+    newLeadsCount,
+    newBookingsCount,
+    newContactsCount: unreadContactsCount,
+    contactedLeadsCount,
+    leadActionRate,
+  } = leadStats
 
   // Calculate Testimonials Metrics & Storage Usage
   const totalTestimonials = testimonials.length
@@ -3376,15 +3502,10 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const hiddenTestimonialsCount = totalTestimonials - activeTestimonialsCount
   const videoTestimonialsCount = testimonials.filter(t => !!t.video).length
 
-  // Calculate used storage bytes across testimonials (only real uploaded media)
   const totalUsedStorageBytes = testimonials.reduce((acc, t) => {
     let bytes = 0
-    if (t.video_size_bytes) {
-      bytes += t.video_size_bytes
-    }
-    if (t.image_size_bytes) {
-      bytes += t.image_size_bytes
-    }
+    if (t.video_size_bytes) bytes += t.video_size_bytes
+    if (t.image_size_bytes) bytes += t.image_size_bytes
     return acc + bytes
   }, 0)
 
@@ -3392,80 +3513,6 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const maxStorageMB = 100
   const storageUsagePercent = Math.min(100, Math.round((totalUsedStorageBytes / MAX_STORAGE_BYTES) * 100))
   const isStorageQuotaExceeded = totalUsedStorageBytes >= MAX_STORAGE_BYTES
-
-  // Construct Unified Leads list
-  type UnifiedLeadType = 'booking' | 'contact'
-  interface UnifiedLead {
-    id: string
-    type: UnifiedLeadType
-    name: string
-    email?: string | null
-    phone?: string | null
-    course: string
-    details: string
-    timeSlot?: string | null
-    notes?: string | null
-    message?: string | null
-    goal?: string | null
-    status: string
-    created_at: string
-  }
-
-  const unifiedLeads: UnifiedLead[] = [
-    ...bookings.map(b => ({
-      id: b.id,
-      type: 'booking' as const,
-      name: b.name,
-      email: b.email,
-      phone: b.phone,
-      course: b.course,
-      details: b.time_slot ? `Slot: ${b.time_slot}` : 'Anytime slot',
-      timeSlot: b.time_slot,
-      notes: b.notes,
-      status: b.status,
-      created_at: b.created_at,
-    })),
-    ...contacts.map(c => ({
-      id: c.id,
-      type: 'contact' as const,
-      name: c.name,
-      email: c.email,
-      phone: c.phone,
-      course: c.course || 'General Coaching',
-      details: c.message || 'No written message',
-      goal: c.goal,
-      message: c.message,
-      status: c.status,
-      created_at: c.created_at,
-    })),
-  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-
-  // Filter lists
-  const filteredLeads = unifiedLeads.filter(l => {
-    const q = searchQuery.toLowerCase().trim()
-    const matchesSearch =
-      !q ||
-      l.name.toLowerCase().includes(q) ||
-      (l.phone && l.phone.includes(q)) ||
-      (l.email && l.email.toLowerCase().includes(q)) ||
-      l.course.toLowerCase().includes(q) ||
-      (l.details && l.details.toLowerCase().includes(q))
-    let matchesStatus = true
-    if (statusFilter !== 'all') {
-      if (statusFilter === 'new') {
-        matchesStatus = l.status === 'new' || l.status === 'unread'
-      } else if (statusFilter === 'contacted') {
-        matchesStatus = l.status === 'contacted' || l.status === 'replied' || l.status === 'scheduled'
-      } else if (statusFilter === 'completed') {
-        matchesStatus = l.status === 'completed' || l.status === 'read'
-      } else if (statusFilter === 'cancelled') {
-        matchesStatus = l.status === 'cancelled' || l.status === 'archived'
-      } else {
-        matchesStatus = l.status === statusFilter
-      }
-    }
-    return matchesSearch && matchesStatus
-  })
 
   const filteredTestimonials = testimonials.filter(t => {
     const q = searchQuery.toLowerCase().trim()
@@ -3478,20 +3525,36 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     )
   })
 
-  const handleExportAllLeads = () => {
-    const headers = ['Lead Type', 'ID', 'Date', 'Name', 'Phone', 'Email', 'Course', 'Status', 'Inquiry Details']
-    const rows = filteredLeads.map(l => [
-      l.type === 'booking' ? 'Demo Booking' : 'Contact Message',
-      l.id,
-      `"${new Date(l.created_at).toLocaleString()}"`,
-      `"${l.name || ''}"`,
-      `"${l.phone || ''}"`,
-      `"${l.email || ''}"`,
-      `"${l.course || ''}"`,
-      `"${l.status}"`,
-      `"${(l.details || '').replace(/"/g, '""')}"`
-    ])
-    downloadCSV(`verbora-all-leads-${new Date().toISOString().split('T')[0]}.csv`, [headers, ...rows])
+  const handleExportAllLeads = async () => {
+    setExportingCsv(true)
+    try {
+      const res = await api.leads.getAllLeadsForExport({
+        search: debouncedSearch,
+        status: statusFilter,
+      })
+      const rowsData = res.data || []
+      const headers = ['Lead Type', 'ID', 'Date', 'Name', 'Phone', 'Email', 'Course', 'Status', 'Inquiry Details']
+      const rows = rowsData.map(l => {
+        const details =
+          l.lead_type === 'demo-booking'
+            ? `${l.time_slot ? `Slot: ${l.time_slot}` : 'Anytime slot'}${l.notes ? ` | ${l.notes}` : ''}`
+            : `${l.goal ? `Goal: ${l.goal} | ` : ''}${l.message || 'No written message'}`
+        return [
+          l.lead_type === 'demo-booking' ? 'Demo Booking' : 'Contact Message',
+          l.id,
+          `"${new Date(l.created_at).toLocaleString()}"`,
+          `"${l.name || ''}"`,
+          `"${l.phone || ''}"`,
+          `"${l.email || ''}"`,
+          `"${l.course || ''}"`,
+          `"${l.status}"`,
+          `"${details.replace(/"/g, '""')}"`,
+        ]
+      })
+      downloadCSV(`verbora-all-leads-${new Date().toISOString().split('T')[0]}.csv`, [headers, ...rows])
+    } finally {
+      setExportingCsv(false)
+    }
   }
 
   return (
@@ -3522,13 +3585,13 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
             >
               <UsersRound size={18} />
               <span className="admin-sidebar-link-text">Leads & Inquiries</span>
-              {newBookingsCount + unreadContactsCount > 0 ? (
+              {newLeadsCount > 0 ? (
                 <span className="admin-sidebar-pill">
-                  {newBookingsCount + unreadContactsCount}
+                  {newLeadsCount}
                 </span>
               ) : (
                 <span className="admin-sidebar-pill-subtle">
-                  {totalBookings + totalContacts}
+                  {totalLeads}
                 </span>
               )}
             </Link>
@@ -3677,7 +3740,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
             </div>
             <div className="admin-stat-value">{totalContacts}</div>
             <div className="admin-stat-sub">
-              <span className="admin-stat-sub-badge">{unreadContactsCount} Unread</span>
+              <span className="admin-stat-sub-badge">{unreadContactsCount} New</span>
               <span>contact queries</span>
             </div>
           </div>
@@ -3711,9 +3774,14 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
 
             <div className="admin-status-filters">
               {/* Export All Leads CSV */}
-              <button type="button" className="admin-icon-btn" onClick={handleExportAllLeads}>
+              <button
+                type="button"
+                className="admin-icon-btn"
+                onClick={handleExportAllLeads}
+                disabled={exportingCsv}
+              >
                 <Download size={14} />
-                <span>Export All Leads CSV</span>
+                <span>{exportingCsv ? 'Exporting...' : 'Export All Leads CSV'}</span>
               </button>
 
               {/* Status Dropdown Filter */}
@@ -3723,33 +3791,94 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                 onChange={e => setStatusFilter(e.target.value)}
               >
                 <option value="all">All Statuses</option>
-                <option value="new">● New / Unread ({newLeadsCount})</option>
-                <option value="contacted">● Contacted / In Progress</option>
-                <option value="completed">● Completed / Replied</option>
-                <option value="cancelled">● Cancelled / Archived</option>
+                <option value="new">● New ({newLeadsCount})</option>
+                <option value="contacted">● Contacted</option>
+                <option value="scheduled">● Scheduled</option>
+                <option value="completed">● Completed</option>
+                <option value="cancelled">● Cancelled</option>
               </select>
             </div>
           </div>
         </div>
 
         {/* Unified Leads Table */}
+        {leadsDbError && (
+          <div className="admin-db-warning-banner">
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: 1 }}>
+              <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 2, color: '#d97706' }} />
+              <div>
+                <strong style={{ display: 'block', marginBottom: 2 }}>
+                  Supabase <code>public.leads</code> query error ({leadsDbError})
+                </strong>
+                <span>
+                  Run the unified <code>public.leads</code> SQL in <code>supabase/schema.sql</code> inside Supabase Dashboard SQL Editor so leads from <code>demo_bookings</code> and <code>contact_messages</code> migrate into <code>public.leads</code>.
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="admin-icon-btn"
+              onClick={loadData}
+              disabled={loading}
+            >
+              <RefreshCw size={13} className={loading ? 'spin' : ''} />
+              <span>Retry</span>
+            </button>
+          </div>
+        )}
+
         <div className="admin-table-card">
             <div className="admin-table-responsive">
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>Lead Info</th>
-                    <th>Type & Program</th>
-                    <th>Inquiry Details</th>
+                    <th className="admin-lead-info-col">Lead Info</th>
+                    <th>Type</th>
+                    <th className="admin-lead-course-col">Course</th>
+                    <th className="admin-lead-details-col">Inquiry Details</th>
                     <th>Status</th>
                     <th>Date Received</th>
                     <th>Quick Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredLeads.length === 0 ? (
+                  {isLeadsTableLoading ? (
+                    Array.from({ length: 8 }).map((_, idx) => (
+                      <tr key={`lead-skel-${idx}`} className="admin-lead-skeleton-row">
+                        <td>
+                          <div className="admin-user-cell" style={{ gap: 6 }}>
+                            <div className="skeleton-shimmer" style={{ height: 14, width: 120, borderRadius: 4 }} />
+                            <div className="skeleton-shimmer" style={{ height: 11, width: 98, borderRadius: 4 }} />
+                            <div className="skeleton-shimmer" style={{ height: 11, width: 142, borderRadius: 4 }} />
+                          </div>
+                        </td>
+                        <td>
+                          <div className="skeleton-shimmer" style={{ height: 24, width: 102, borderRadius: 999 }} />
+                        </td>
+                        <td>
+                          <div className="skeleton-shimmer" style={{ height: 14, width: 118, borderRadius: 4 }} />
+                        </td>
+                        <td>
+                          <div className="skeleton-shimmer" style={{ height: 16, width: 106, borderRadius: 4 }} />
+                        </td>
+                        <td>
+                          <div className="skeleton-shimmer" style={{ height: 30, width: 116, borderRadius: 8 }} />
+                        </td>
+                        <td>
+                          <div className="skeleton-shimmer" style={{ height: 13, width: 112, borderRadius: 4 }} />
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <div className="skeleton-shimmer" style={{ height: 28, width: 88, borderRadius: 8 }} />
+                            <div className="skeleton-shimmer" style={{ height: 28, width: 30, borderRadius: 8 }} />
+                            <div className="skeleton-shimmer" style={{ height: 28, width: 30, borderRadius: 8 }} />
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : paginatedLeads.length === 0 ? (
                     <tr>
-                      <td colSpan={6}>
+                      <td colSpan={7}>
                         <div className="admin-empty-state">
                           <Database size={40} className="admin-empty-icon" />
                           <p>No leads found matching your search or filters.</p>
@@ -3757,30 +3886,36 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                       </td>
                     </tr>
                   ) : (
-                    filteredLeads.map(lead => {
+                    paginatedLeads.map(lead => {
                       const cleanPhone = (lead.phone || '').replace(/[^0-9]/g, '')
                       const waUrl = cleanPhone
                         ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(
-                            lead.type === 'booking'
+                            lead.lead_type === 'demo-booking'
                               ? `Hi ${lead.name}, thank you for booking your Free Diagnostic Session with Verbora for ${lead.course}. When would be a good time to connect?`
                               : `Hi ${lead.name}, thank you for reaching out to Verbora regarding ${lead.course}. How can we assist you?`
                           )}`
                         : null
+                      const isUnreadNew = lead.status === 'new'
 
                       return (
-                        <tr key={`${lead.type}-${lead.id}`}>
+                        <tr
+                          key={lead.id}
+                          className={isUnreadNew ? 'admin-lead-row-unread' : undefined}
+                        >
                           <td>
                             <div className="admin-user-cell">
                               <span className="admin-user-name">{lead.name}</span>
-                              <div className="admin-user-meta">
+                              <div className="admin-user-meta-vertical">
                                 {lead.phone && (
                                   <a href={`tel:${lead.phone}`} title="Call phone">
-                                    {lead.phone}
+                                    <Phone size={11} />
+                                    <span>{lead.phone}</span>
                                   </a>
                                 )}
                                 {lead.email && (
                                   <a href={`mailto:${lead.email}`} title="Email student">
-                                    {lead.email}
+                                    <Mail size={11} />
+                                    <span>{lead.email}</span>
                                   </a>
                                 )}
                               </div>
@@ -3788,88 +3923,54 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                           </td>
 
                           <td>
-                            <div className="admin-user-cell">
-                              <span
-                                className={`admin-lead-type-badge ${
-                                  lead.type === 'booking' ? 'badge-booking' : 'badge-contact'
-                                }`}
-                              >
-                                {lead.type === 'booking' ? (
-                                  <>
-                                    <Calendar size={11} />
-                                    <span>Demo Booking</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Inbox size={11} />
-                                    <span>Contact Query</span>
-                                  </>
-                                )}
-                              </span>
-                              <span style={{ fontWeight: 600, color: '#f1f5f9', marginTop: 4 }}>
-                                {lead.course}
-                              </span>
-                            </div>
-                          </td>
-
-                          <td style={{ maxWidth: 320 }}>
-                            <div style={{ fontSize: 12.5, color: '#cbd5e1', lineHeight: 1.45 }}>
-                              {lead.type === 'booking' ? (
+                            <span className="admin-lead-type-pill-black">
+                              {lead.lead_type === 'demo-booking' ? (
                                 <>
-                                  <span style={{ color: '#38bdf8', fontWeight: 600, display: 'block', fontSize: 11.5 }}>
-                                    {lead.details}
-                                  </span>
-                                  {lead.notes && (
-                                    <span style={{ color: '#94a3b8', fontSize: 11.5, marginTop: 2, display: 'block' }}>
-                                      Note: {lead.notes}
-                                    </span>
-                                  )}
+                                  <Calendar size={11} />
+                                  <span>Demo Booking</span>
                                 </>
                               ) : (
                                 <>
-                                  {lead.goal && (
-                                    <span style={{ color: '#a78bfa', fontWeight: 600, display: 'block', fontSize: 11.5, marginBottom: 2 }}>
-                                      Goal: {lead.goal}
-                                    </span>
-                                  )}
-                                  <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                                    {lead.message || 'No written message provided.'}
-                                  </p>
+                                  <Inbox size={11} />
+                                  <span>Contact Query</span>
                                 </>
                               )}
-                            </div>
+                            </span>
                           </td>
 
                           <td>
-                            {lead.type === 'booking' ? (
-                              <select
-                                className={`admin-status-select status-${lead.status}`}
-                                value={lead.status}
-                                disabled={updatingId === lead.id}
-                                onChange={e => handleUpdateBookingStatus(lead.id, e.target.value as DemoBooking['status'])}
-                              >
-                                <option value="new">● New Lead</option>
-                                <option value="contacted">● Contacted</option>
-                                <option value="scheduled">● Scheduled</option>
-                                <option value="completed">● Completed</option>
-                                <option value="cancelled">● Cancelled</option>
-                              </select>
-                            ) : (
-                              <select
-                                className={`admin-status-select status-${lead.status}`}
-                                value={lead.status}
-                                disabled={updatingId === lead.id}
-                                onChange={e => handleUpdateContactStatus(lead.id, e.target.value as ContactMessage['status'])}
-                              >
-                                <option value="unread">● Unread</option>
-                                <option value="read">● Read</option>
-                                <option value="replied">● Replied</option>
-                                <option value="archived">● Archived</option>
-                              </select>
-                            )}
+                            <span className="admin-lead-course-name">
+                              {lead.course}
+                            </span>
                           </td>
 
-                          <td style={{ color: '#94a3b8', fontSize: 12, whiteSpace: 'nowrap' }}>
+                          <td>
+                            <button
+                              type="button"
+                              className="admin-desc-link-btn"
+                              onClick={() => setSelectedLeadForDesc(lead)}
+                            >
+                              <FileText size={13} />
+                              <span>View Description</span>
+                            </button>
+                          </td>
+
+                          <td>
+                            <select
+                              className={`admin-status-select status-${lead.status}`}
+                              value={lead.status}
+                              disabled={updatingId === lead.id}
+                              onChange={e => handleUpdateLeadStatus(lead.id, e.target.value as LeadStatus)}
+                            >
+                              <option value="new">● New Lead</option>
+                              <option value="contacted">● Contacted</option>
+                              <option value="scheduled">● Scheduled</option>
+                              <option value="completed">● Completed</option>
+                              <option value="cancelled">● Cancelled</option>
+                            </select>
+                          </td>
+
+                          <td style={{ color: '#64748b', fontSize: 12, whiteSpace: 'nowrap' }}>
                             {new Date(lead.created_at).toLocaleString('en-US', {
                               month: 'short',
                               day: 'numeric',
@@ -3920,11 +4021,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                                 className="admin-action-btn admin-action-delete"
                                 title="Delete lead entry"
                                 disabled={updatingId === lead.id}
-                                onClick={() =>
-                                  lead.type === 'booking'
-                                    ? handleDeleteBooking(lead.id, lead.name)
-                                    : handleDeleteContact(lead.id, lead.name)
-                                }
+                                onClick={() => handleDeleteLead(lead.id, lead.name)}
                               >
                                 <Trash2 size={13} />
                               </button>
@@ -3937,6 +4034,65 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                 </tbody>
               </table>
             </div>
+
+            {totalFilteredLeads > 0 && (
+              <div className="admin-pagination-bar">
+                <span className="admin-pagination-info">
+                  Showing{' '}
+                  <strong>{(leadsPage - 1) * api.leads.LEADS_PAGE_SIZE + 1}</strong>
+                  –
+                  <strong>
+                    {Math.min(leadsPage * api.leads.LEADS_PAGE_SIZE, totalFilteredLeads)}
+                  </strong>{' '}
+                  of <strong>{totalFilteredLeads}</strong> leads
+                </span>
+
+                <div className="admin-pagination-controls">
+                  <button
+                    type="button"
+                    className="admin-page-btn"
+                    disabled={leadsPage <= 1 || leadsQuery.isFetching}
+                    onClick={() => setLeadsPage(p => Math.max(1, p - 1))}
+                  >
+                    <ChevronLeft size={14} />
+                    <span>Prev</span>
+                  </button>
+
+                  {Array.from({ length: totalLeadPages }, (_, i) => i + 1)
+                    .filter(
+                      p =>
+                        p === 1 ||
+                        p === totalLeadPages ||
+                        Math.abs(p - leadsPage) <= 1
+                    )
+                    .map((p, idx, arr) => (
+                      <span key={p} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        {idx > 0 && arr[idx - 1] !== p - 1 && (
+                          <span className="admin-page-ellipsis">...</span>
+                        )}
+                        <button
+                          type="button"
+                          className={`admin-page-btn ${p === leadsPage ? 'is-active' : ''}`}
+                          onClick={() => setLeadsPage(p)}
+                          disabled={leadsQuery.isFetching}
+                        >
+                          {p}
+                        </button>
+                      </span>
+                    ))}
+
+                  <button
+                    type="button"
+                    className="admin-page-btn"
+                    disabled={leadsPage >= totalLeadPages || leadsQuery.isFetching}
+                    onClick={() => setLeadsPage(p => Math.min(totalLeadPages, p + 1))}
+                  >
+                    <span>Next</span>
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}
@@ -4957,6 +5113,85 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Lead Description Modal (Minimal, Cached On-Demand Fetch) */}
+      {selectedLeadForDesc && (
+        <div
+          className="admin-modal-overlay"
+          onClick={() => setSelectedLeadForDesc(null)}
+        >
+          <div
+            className="admin-modal-dialog admin-lead-desc-modal"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="admin-modal-header">
+              <div className="admin-modal-title-group">
+                <div>
+                  <h3 className="admin-modal-title" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
+                    {selectedLeadForDesc.name}
+                  </h3>
+                  <p className="admin-modal-sub" style={{ margin: '3px 0 0 0', fontSize: 12, color: '#64748b' }}>
+                    {selectedLeadForDesc.course}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="admin-modal-close-btn"
+                onClick={() => setSelectedLeadForDesc(null)}
+                aria-label="Close description"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {leadDetailQuery.isLoading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0' }}>
+                <div className="skeleton-shimmer" style={{ height: 14, width: '48%', borderRadius: 4 }} />
+                <div className="skeleton-shimmer" style={{ height: 68, width: '100%', borderRadius: 8 }} />
+              </div>
+            ) : (
+              <div className="admin-lead-desc-body">
+                {(() => {
+                  const detail = leadDetailQuery.data
+                  if (!detail) {
+                    return <p className="admin-lead-desc-empty">No description available.</p>
+                  }
+                  const hasGoal = !!detail.goal
+                  const hasSlot = !!detail.time_slot
+                  const text =
+                    detail.lead_type === 'demo-booking'
+                      ? detail.notes || 'Free demo session requested via website.'
+                      : detail.message || 'No written message provided.'
+                  return (
+                    <>
+                      {(hasGoal || hasSlot) && (
+                        <div className="admin-lead-desc-meta">
+                          {hasGoal && <span><strong>Goal:</strong> {detail.goal}</span>}
+                          {hasSlot && <span><strong>Slot:</strong> {detail.time_slot}</span>}
+                        </div>
+                      )}
+                      <p className="admin-lead-desc-text">{text}</p>
+                    </>
+                  )
+                })()}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+              <button
+                type="button"
+                className="admin-btn-secondary"
+                style={{ padding: '6px 14px', fontSize: 12.5, borderRadius: 6 }}
+                onClick={() => setSelectedLeadForDesc(null)}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,118 +1,116 @@
 -- ==============================================================================
--- VERBORA Supabase Database Schema
+-- VERBORA Supabase Database Schema (Unified 3-Table Architecture)
+-- Tables: public.leads, public.testimonials, public.courses
 -- Run this script in the Supabase SQL Editor (Dashboard -> SQL Editor -> New Query)
 -- ==============================================================================
 
--- 1. Create Demo Bookings Table
-CREATE TABLE IF NOT EXISTS public.demo_bookings (
+-- 1. Create Unified Leads Table (Demo Bookings + Contact Enquiries)
+CREATE TABLE IF NOT EXISTS public.leads (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  lead_type TEXT NOT NULL DEFAULT 'demo-booking' CHECK (lead_type IN ('demo-booking', 'contact-enquiry')),
   name TEXT NOT NULL,
   email TEXT,
   phone TEXT,
-  course TEXT NOT NULL,
+  course TEXT NOT NULL DEFAULT 'General Coaching',
   time_slot TEXT,
-  source TEXT DEFAULT 'website-demo-form',
+  goal TEXT,
+  message TEXT,
+  source TEXT DEFAULT 'website',
   notes TEXT,
   status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'contacted', 'scheduled', 'completed', 'cancelled'))
 );
 
--- Indexing for fast queries
-CREATE INDEX IF NOT EXISTS idx_demo_bookings_created_at ON public.demo_bookings(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_demo_bookings_status ON public.demo_bookings(status);
+CREATE INDEX IF NOT EXISTS idx_leads_created_at ON public.leads(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_leads_status ON public.leads(status);
+CREATE INDEX IF NOT EXISTS idx_leads_lead_type ON public.leads(lead_type);
 
--- Enable Row Level Security (RLS)
-ALTER TABLE public.demo_bookings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
 
--- Allow anonymous visitors on website to insert new demo booking requests
-DROP POLICY IF EXISTS "Allow public anon insert to demo_bookings" ON public.demo_bookings;
-CREATE POLICY "Allow public anon insert to demo_bookings"
-  ON public.demo_bookings
+DROP POLICY IF EXISTS "Allow public anon insert to leads" ON public.leads;
+CREATE POLICY "Allow public anon insert to leads"
+  ON public.leads
   FOR INSERT
   TO anon, authenticated
   WITH CHECK (true);
 
--- Allow authenticated users (Admins / Staff) to view and manage demo bookings
-DROP POLICY IF EXISTS "Allow authenticated read and manage demo_bookings" ON public.demo_bookings;
-CREATE POLICY "Allow authenticated read and manage demo_bookings"
-  ON public.demo_bookings
+DROP POLICY IF EXISTS "Allow anon and auth manage leads" ON public.leads;
+CREATE POLICY "Allow anon and auth manage leads"
+  ON public.leads
   FOR ALL
-  TO authenticated
-  USING (true)
-  WITH CHECK (true);
-
-
--- 2. Create Contact Messages Table
-CREATE TABLE IF NOT EXISTS public.contact_messages (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
-  name TEXT NOT NULL,
-  email TEXT NOT NULL,
-  phone TEXT,
-  course TEXT,
-  goal TEXT,
-  message TEXT,
-  status TEXT NOT NULL DEFAULT 'unread' CHECK (status IN ('unread', 'read', 'replied', 'archived'))
-);
-
--- Indexing
-CREATE INDEX IF NOT EXISTS idx_contact_messages_created_at ON public.contact_messages(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_contact_messages_status ON public.contact_messages(status);
-
--- Enable RLS
-ALTER TABLE public.contact_messages ENABLE ROW LEVEL SECURITY;
-
--- Allow anonymous visitors to submit contact messages
-DROP POLICY IF EXISTS "Allow public anon insert to contact_messages" ON public.contact_messages;
-CREATE POLICY "Allow public anon insert to contact_messages"
-  ON public.contact_messages
-  FOR INSERT
   TO anon, authenticated
-  WITH CHECK (true);
-
--- Allow authenticated users to view and update contact messages
-DROP POLICY IF EXISTS "Allow authenticated read and manage contact_messages" ON public.contact_messages;
-CREATE POLICY "Allow authenticated read and manage contact_messages"
-  ON public.contact_messages
-  FOR ALL
-  TO authenticated
   USING (true)
   WITH CHECK (true);
 
 
--- 3. Create Newsletter Subscribers Table
-CREATE TABLE IF NOT EXISTS public.newsletter_subscribers (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
-  email TEXT NOT NULL UNIQUE,
-  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'unsubscribed'))
-);
+-- 2. Migrate any existing rows from legacy tables & drop unused/duplicate tables
+DO $$
+BEGIN
+  IF to_regclass('public.contact_messages') IS NOT NULL THEN
+    INSERT INTO public.leads (
+      id, created_at, lead_type, name, email, phone, course, goal, message, source, status
+    )
+    SELECT
+      c.id,
+      c.created_at,
+      'contact-enquiry',
+      c.name,
+      c.email,
+      c.phone,
+      COALESCE(c.course, 'General Coaching'),
+      c.goal,
+      c.message,
+      'contact-page',
+      CASE c.status
+        WHEN 'unread' THEN 'new'
+        WHEN 'replied' THEN 'contacted'
+        WHEN 'read' THEN 'completed'
+        WHEN 'archived' THEN 'cancelled'
+        ELSE 'new'
+      END
+    FROM public.contact_messages c
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
 
--- Indexing
-CREATE INDEX IF NOT EXISTS idx_newsletter_subscribers_email ON public.newsletter_subscribers(email);
+  IF to_regclass('public.demo_bookings') IS NOT NULL THEN
+    INSERT INTO public.leads (
+      id, created_at, lead_type, name, email, phone, course, time_slot, source, notes, status
+    )
+    SELECT
+      b.id,
+      b.created_at,
+      'demo-booking',
+      b.name,
+      b.email,
+      b.phone,
+      b.course,
+      b.time_slot,
+      b.source,
+      b.notes,
+      b.status
+    FROM public.demo_bookings b
+    WHERE NOT (
+      b.source = 'direct-enquiry-diagnostic-form'
+      AND EXISTS (
+        SELECT 1 FROM public.leads l
+        WHERE l.lead_type = 'contact-enquiry'
+          AND (
+            (b.email IS NOT NULL AND l.email IS NOT NULL AND lower(trim(b.email)) = lower(trim(l.email)))
+            OR (b.phone IS NOT NULL AND l.phone IS NOT NULL AND regexp_replace(b.phone, '\D', '', 'g') = regexp_replace(l.phone, '\D', '', 'g'))
+          )
+          AND abs(extract(epoch FROM (b.created_at - l.created_at))) <= 120
+      )
+    )
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+END $$;
 
--- Enable RLS
-ALTER TABLE public.newsletter_subscribers ENABLE ROW LEVEL SECURITY;
-
--- Allow public insertion
-DROP POLICY IF EXISTS "Allow public anon insert to newsletter_subscribers" ON public.newsletter_subscribers;
-CREATE POLICY "Allow public anon insert to newsletter_subscribers"
-  ON public.newsletter_subscribers
-  FOR INSERT
-  TO anon, authenticated
-  WITH CHECK (true);
-
--- Allow authenticated management
-DROP POLICY IF EXISTS "Allow authenticated read and manage newsletter_subscribers" ON public.newsletter_subscribers;
-CREATE POLICY "Allow authenticated read and manage newsletter_subscribers"
-  ON public.newsletter_subscribers
-  FOR ALL
-  TO authenticated
-  USING (true)
-  WITH CHECK (true);
+DROP TABLE IF EXISTS public.demo_bookings CASCADE;
+DROP TABLE IF EXISTS public.contact_messages CASCADE;
+DROP TABLE IF EXISTS public.newsletter_subscribers CASCADE;
 
 
--- 4. Create Testimonials Table
+-- 3. Create Testimonials Table
 CREATE TABLE IF NOT EXISTS public.testimonials (
   id TEXT PRIMARY KEY,
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
@@ -125,17 +123,15 @@ CREATE TABLE IF NOT EXISTS public.testimonials (
   text TEXT NOT NULL,
   badge TEXT,
   is_active BOOLEAN NOT NULL DEFAULT true,
+  is_spotlight BOOLEAN NOT NULL DEFAULT false,
   display_order INT DEFAULT 0
 );
 
--- Indexing
 CREATE INDEX IF NOT EXISTS idx_testimonials_display_order ON public.testimonials(display_order);
 CREATE INDEX IF NOT EXISTS idx_testimonials_is_active ON public.testimonials(is_active);
 
--- Enable RLS
 ALTER TABLE public.testimonials ENABLE ROW LEVEL SECURITY;
 
--- Allow public anonymous read
 DROP POLICY IF EXISTS "Allow public read testimonials" ON public.testimonials;
 CREATE POLICY "Allow public read testimonials"
   ON public.testimonials
@@ -143,7 +139,6 @@ CREATE POLICY "Allow public read testimonials"
   TO anon, authenticated
   USING (true);
 
--- Allow anonymous & authenticated insert/update/delete for admin operations
 DROP POLICY IF EXISTS "Allow anon and auth manage testimonials" ON public.testimonials;
 CREATE POLICY "Allow anon and auth manage testimonials"
   ON public.testimonials
@@ -153,7 +148,7 @@ CREATE POLICY "Allow anon and auth manage testimonials"
   WITH CHECK (true);
 
 
--- 5. Create Courses Table
+-- 4. Create Courses Table
 CREATE TABLE IF NOT EXISTS public.courses (
   id TEXT PRIMARY KEY,
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
@@ -167,13 +162,10 @@ CREATE TABLE IF NOT EXISTS public.courses (
   display_order INT DEFAULT 0
 );
 
--- Indexing
 CREATE INDEX IF NOT EXISTS idx_courses_display_order ON public.courses(display_order);
 
--- Enable RLS
 ALTER TABLE public.courses ENABLE ROW LEVEL SECURITY;
 
--- Allow public anonymous read
 DROP POLICY IF EXISTS "Allow public read courses" ON public.courses;
 CREATE POLICY "Allow public read courses"
   ON public.courses
@@ -181,7 +173,6 @@ CREATE POLICY "Allow public read courses"
   TO anon, authenticated
   USING (true);
 
--- Allow anonymous & authenticated insert/update/delete for admin operations
 DROP POLICY IF EXISTS "Allow anon and auth manage courses" ON public.courses;
 CREATE POLICY "Allow anon and auth manage courses"
   ON public.courses
@@ -246,14 +237,12 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 
--- 6. Schema-level grants for anon and authenticated roles
+-- 5. Schema-level grants for anon and authenticated roles
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
-GRANT ALL ON TABLE public.demo_bookings TO anon, authenticated;
-GRANT ALL ON TABLE public.contact_messages TO anon, authenticated;
-GRANT ALL ON TABLE public.newsletter_subscribers TO anon, authenticated;
+GRANT ALL ON TABLE public.leads TO anon, authenticated;
 GRANT ALL ON TABLE public.testimonials TO anon, authenticated;
 GRANT ALL ON TABLE public.courses TO anon, authenticated, service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 
--- 7. Reload PostgREST schema cache so /rest/v1/courses is immediately available
+-- 6. Reload PostgREST schema cache
 NOTIFY pgrst, 'reload schema';

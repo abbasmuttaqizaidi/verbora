@@ -4,57 +4,58 @@ export interface ApiResponse<T> {
   success: boolean
 }
 
-export interface DemoBooking {
+export type LeadType = 'demo-booking' | 'contact-enquiry'
+export type LeadStatus = 'new' | 'contacted' | 'scheduled' | 'completed' | 'cancelled'
+
+export interface LeadSummary {
   id: string
   created_at: string
+  lead_type: LeadType
+  name: string
+  email?: string | null
+  phone?: string | null
+  course: string
+  status: LeadStatus
+}
+
+export interface Lead extends LeadSummary {
+  time_slot?: string | null
+  goal?: string | null
+  message?: string | null
+  source?: string | null
+  notes?: string | null
+}
+
+export interface LeadsPageResult {
+  items: LeadSummary[]
+  totalCount: number
+  page: number
+  pageSize: number
+}
+
+export interface LeadStats {
+  totalLeads: number
+  totalBookings: number
+  totalContacts: number
+  newLeadsCount: number
+  newBookingsCount: number
+  newContactsCount: number
+  contactedLeadsCount: number
+  leadActionRate: number
+}
+
+export type CreateLeadInput = {
+  lead_type: LeadType
   name: string
   email?: string | null
   phone?: string | null
   course: string
   time_slot?: string | null
-  status: 'new' | 'contacted' | 'scheduled' | 'completed' | 'cancelled'
-  source?: string
-  notes?: string | null
-}
-
-export type CreateDemoBookingInput = {
-  name: string
-  email?: string | null
-  phone?: string | null
-  course: string
-  time_slot?: string | null
-  source?: string
-  notes?: string | null
-  status?: DemoBooking['status']
-}
-
-export interface ContactMessage {
-  id: string
-  created_at: string
-  name: string
-  email: string
-  phone?: string | null
-  course?: string | null
   goal?: string | null
   message?: string | null
-  status: 'unread' | 'read' | 'replied' | 'archived'
-}
-
-export type CreateContactMessageInput = {
-  name: string
-  email: string
-  phone?: string | null
-  course?: string | null
-  goal?: string | null
-  message?: string | null
-  status?: ContactMessage['status']
-}
-
-export interface NewsletterSubscriber {
-  id: string
-  created_at: string
-  email: string
-  status: 'active' | 'unsubscribed'
+  source?: string | null
+  notes?: string | null
+  status?: LeadStatus
 }
 
 export interface Testimonial {
@@ -124,4 +125,3 @@ export type UpdateCourseInput = {
   fee_amount?: number
   discount_percent?: number
 }
-

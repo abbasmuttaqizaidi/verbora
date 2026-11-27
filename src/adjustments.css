@@ -6403,6 +6403,204 @@ footer.site-footer::before {
   gap: 8px;
 }
 
+.admin-lead-info-col {
+  min-width: 260px;
+}
+
+.admin-lead-course-col {
+  min-width: 170px;
+  white-space: nowrap;
+}
+
+.admin-lead-details-col {
+  min-width: 145px;
+  white-space: nowrap;
+}
+
+.admin-user-meta-vertical {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  margin-top: 3px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.admin-user-meta-vertical a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #0369a1;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.admin-user-meta-vertical a:hover {
+  text-decoration: underline;
+}
+
+.admin-lead-type-pill-black {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.admin-lead-course-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.admin-desc-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #0284c7;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.admin-desc-link-btn:hover {
+  color: #0369a1;
+}
+
+.admin-lead-row-unread td {
+  background: #fffbeb;
+}
+
+.admin-lead-row-unread td:first-child {
+  box-shadow: inset 3px 0 0 #f59e0b;
+}
+
+.admin-table tr.admin-lead-row-unread:hover td {
+  background: #fef3c7;
+}
+
+.admin-pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 20px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.admin-pagination-info {
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.admin-pagination-info strong {
+  color: #0f172a;
+}
+
+.admin-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-page-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 11px;
+  border-radius: 7px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-page-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.admin-page-btn.is-active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #ffffff;
+}
+
+.admin-page-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.admin-page-ellipsis {
+  font-size: 12px;
+  color: #94a3b8;
+  padding: 0 4px;
+}
+
+.admin-modal-dialog.admin-lead-desc-modal {
+  max-width: 420px;
+  padding: 16px 18px;
+  border-radius: 12px;
+}
+
+.admin-lead-desc-modal .admin-modal-header {
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.admin-lead-desc-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-lead-desc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.admin-lead-desc-text {
+  margin: 0;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #1e293b;
+  white-space: pre-wrap;
+}
+
+.admin-lead-desc-empty {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
 .admin-user-meta a {
   color: #0284c7;
   text-decoration: none;
@@ -6458,29 +6656,33 @@ footer.site-footer::before {
 }
 
 .admin-status-select.status-new {
-  border-color: #0f172a;
-  color: #0f172a;
-  background: #f8fafc;
+  border-color: #f59e0b;
+  color: #92400e;
+  background-color: #fef3c7;
 }
 
 .admin-status-select.status-contacted {
-  border-color: #64748b;
-  color: #334155;
+  border-color: #0284c7;
+  color: #0369a1;
+  background-color: #e0f2fe;
 }
 
 .admin-status-select.status-scheduled {
   border-color: #a855f7;
-  color: #c084fc;
+  color: #7e22ce;
+  background-color: #f3e8ff;
 }
 
 .admin-status-select.status-completed {
   border-color: #22c55e;
-  color: #4ade80;
+  color: #15803d;
+  background-color: #dcfce7;
 }
 
 .admin-status-select.status-cancelled {
   border-color: #ef4444;
-  color: #f87171;
+  color: #b91c1c;
+  background-color: #fee2e2;
 }
 
 .admin-status-select.status-unread {
