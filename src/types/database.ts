@@ -100,6 +100,7 @@ export type CourseId =
   | 'public-speaking'
   | 'interview-preparation'
   | 'personality-development'
+  | 'executive-communication'
 
 export interface Course {
   id: CourseId
@@ -112,9 +113,12 @@ export interface Course {
   topics?: string[]
   iconClass: string
   cover: string
+  cover_size_bytes?: number | null
   fee_amount: number // e.g. 4999 (original base price in INR)
   discount_percent: number // e.g. 20 (20% OFF)
   display_order?: number
+  is_visible?: boolean
+  is_upcoming?: boolean
 }
 
 export type UpdateCourseInput = {
@@ -122,6 +126,10 @@ export type UpdateCourseInput = {
   summary?: string
   tagline?: string
   short?: string
+  cover?: string
+  cover_size_bytes?: number | null
   fee_amount?: number
   discount_percent?: number
+  is_visible?: boolean
+  is_upcoming?: boolean
 }

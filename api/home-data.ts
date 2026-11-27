@@ -8,6 +8,8 @@ const SUPABASE_ANON_KEY =
   process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_nIVc7DMCydkRh3jDWP0OPA_tMfbK1Zj'
 
 const COURSE_COLUMNS =
+  'id,title,tagline,short,summary,cover,fee_amount,discount_percent,display_order,is_visible,is_upcoming,created_at,updated_at'
+const LEGACY_COURSE_COLUMNS =
   'id,title,tagline,short,summary,fee_amount,discount_percent,display_order,created_at,updated_at'
 const TESTIMONIAL_COLUMNS =
   'id,name,role,image,video,text,badge,is_active,is_spotlight,display_order,created_at'
@@ -23,10 +25,31 @@ async function fetchSupabaseTable(pathAndQuery: string) {
 
   if (!response.ok) {
     const text = await response.text().catch(() => '')
-    throw new Error(`Supabase REST ${response.status}: ${text}`)
+    const error: any = new Error(`Supabase REST ${response.status}: ${text}`)
+    error.status = response.status
+    error.body = text
+    throw error
   }
 
   return response.json()
+}
+
+async function fetchVisibleCourses() {
+  try {
+    return await fetchSupabaseTable(
+      `courses?select=${COURSE_COLUMNS}&is_visible=eq.true&order=display_order.asc`
+    )
+  } catch (err: any) {
+    // Graceful fallback if is_visible/is_upcoming/cover columns have not been added on remote DB yet
+    const body = String(err?.body || '')
+    if (
+      err?.status === 400 &&
+      (body.includes('is_visible') || body.includes('is_upcoming') || body.includes('cover'))
+    ) {
+      return await fetchSupabaseTable(`courses?select=${LEGACY_COURSE_COLUMNS}&order=display_order.asc`)
+    }
+    throw err
+  }
 }
 
 export default async function handler(req: any, res: any) {
@@ -37,7 +60,7 @@ export default async function handler(req: any, res: any) {
   try {
     const fresh = req.query?.fresh === '1'
     const [courses, testimonials] = await Promise.all([
-      fetchSupabaseTable(`courses?select=${COURSE_COLUMNS}&order=display_order.asc`),
+      fetchVisibleCourses(),
       fetchSupabaseTable(
         `testimonials?select=${TESTIMONIAL_COLUMNS}&is_active=eq.true&order=display_order.asc,created_at.desc`
       ),

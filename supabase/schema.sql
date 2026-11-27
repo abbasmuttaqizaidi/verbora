@@ -157,12 +157,22 @@ CREATE TABLE IF NOT EXISTS public.courses (
   tagline TEXT NOT NULL,
   short TEXT NOT NULL,
   summary TEXT NOT NULL,
+  cover TEXT,
+  cover_size_bytes BIGINT DEFAULT 0,
   fee_amount NUMERIC NOT NULL DEFAULT 4999,
   discount_percent NUMERIC NOT NULL DEFAULT 0,
-  display_order INT DEFAULT 0
+  display_order INT DEFAULT 0,
+  is_visible BOOLEAN NOT NULL DEFAULT true,
+  is_upcoming BOOLEAN NOT NULL DEFAULT false
 );
 
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS cover TEXT;
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS cover_size_bytes BIGINT DEFAULT 0;
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS is_visible BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS is_upcoming BOOLEAN NOT NULL DEFAULT false;
+
 CREATE INDEX IF NOT EXISTS idx_courses_display_order ON public.courses(display_order);
+CREATE INDEX IF NOT EXISTS idx_courses_is_visible ON public.courses(is_visible);
 
 ALTER TABLE public.courses ENABLE ROW LEVEL SECURITY;
 
@@ -181,8 +191,8 @@ CREATE POLICY "Allow anon and auth manage courses"
   USING (true)
   WITH CHECK (true);
 
--- Seed the 5 official VERBORA courses (idempotent)
-INSERT INTO public.courses (id, title, tagline, short, summary, fee_amount, discount_percent, display_order)
+-- Seed the 6 official VERBORA courses (idempotent)
+INSERT INTO public.courses (id, title, tagline, short, summary, cover, cover_size_bytes, fee_amount, discount_percent, display_order, is_visible, is_upcoming)
 VALUES
   (
     'spoken-english',
@@ -190,9 +200,13 @@ VALUES
     'Speak fluently. Connect naturally.',
     'Speak fluently. Be confident.',
     'Build the confidence to express yourself clearly in everyday conversations, discussions, and new situations.',
+    'https://res.cloudinary.com/mtjv4nu9/image/upload/v1795809123/verbora/courses/spoken-english.png',
+    1951266,
     4999,
     20,
-    1
+    1,
+    true,
+    false
   ),
   (
     'business-english',
@@ -200,9 +214,13 @@ VALUES
     'Sound clear. Work confidently.',
     'Excel professionally.',
     'Communicate with clarity at work, from professional emails and meetings to presenting your ideas with confidence.',
+    'https://res.cloudinary.com/mtjv4nu9/image/upload/v1795809124/verbora/courses/business-english.png',
+    1772573,
     6999,
     25,
-    2
+    2,
+    true,
+    false
   ),
   (
     'public-speaking',
@@ -210,9 +228,13 @@ VALUES
     'Find your voice. Own the room.',
     'Speak with impact.',
     'Learn to organize your thoughts, speak with presence, and deliver a message that people remember.',
+    'https://res.cloudinary.com/mtjv4nu9/image/upload/v1795809125/verbora/courses/public-speaking.png',
+    1959697,
     5999,
     15,
-    3
+    3,
+    true,
+    false
   ),
   (
     'interview-preparation',
@@ -220,9 +242,13 @@ VALUES
     'Show your strengths. Get ready.',
     'Get Hired.',
     'Practice answering questions, communicating your strengths, and approaching important interviews with greater confidence.',
+    'https://res.cloudinary.com/mtjv4nu9/image/upload/v1795809126/verbora/courses/interview-preparation.png',
+    2007908,
     4499,
     20,
-    4
+    4,
+    true,
+    false
   ),
   (
     'personality-development',
@@ -230,9 +256,27 @@ VALUES
     'Unlock your potential. Be your best.',
     'Be Your Best.',
     'Develop personal presence, emotional intelligence, body language, and the mindset to succeed in personal and professional life.',
+    'https://res.cloudinary.com/mtjv4nu9/image/upload/v1795809128/verbora/courses/personality-development.png',
+    1853331,
     5499,
     30,
-    5
+    5,
+    true,
+    false
+  ),
+  (
+    'executive-communication',
+    'Executive Communication',
+    'Lead conversations. Influence rooms.',
+    'Lead with presence.',
+    'Master high-stakes stakeholder conversations, strategic persuasion, leadership presence, and crisp executive storytelling.',
+    'https://res.cloudinary.com/mtjv4nu9/image/upload/v1795809129/verbora/courses/executive-communication.png',
+    1499167,
+    7999,
+    20,
+    6,
+    true,
+    false
   )
 ON CONFLICT (id) DO NOTHING;
 

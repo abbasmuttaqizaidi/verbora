@@ -1,5 +1,5 @@
 import { Course, Testimonial } from '../types/database'
-import { mergeCourseRows, getCourses } from './courses'
+import { mergeVisibleCourseRows, getVisibleCourses } from './courses'
 import { getActiveTestimonials } from './testimonials'
 import { writeCachedCourses, writeCachedTestimonials } from '../lib/homeCache'
 
@@ -11,9 +11,8 @@ export interface PublicHomeData {
 let inflightHomeRequest: Promise<PublicHomeData> | null = null
 
 /**
- * Fetches both Home courses and active testimonials in a single edge-cached
- * /api/home-data request, falling back seamlessly to direct Supabase queries
- * if /api/home-data is unavailable (e.g. pure static preview).
+ * Fetches visible Home courses (is_visible=true) and active testimonials in a single
+ * edge-cached /api/home-data request, falling back seamlessly to direct Supabase queries.
  */
 export async function getPublicHomeData(bypassCache = false): Promise<PublicHomeData> {
   if (!bypassCache && inflightHomeRequest) {
@@ -28,17 +27,17 @@ export async function getPublicHomeData(bypassCache = false): Promise<PublicHome
 
       if (res.ok && contentType.includes('application/json')) {
         const json = await res.json()
-        const rawCourses = Array.isArray(json?.courses) ? json.courses : []
+        const rawCourses = Array.isArray(json?.courses) ? json.courses : null
         const rawTestimonials = Array.isArray(json?.testimonials) ? json.testimonials : []
 
-        if (rawCourses.length > 0 && rawTestimonials.length >= 0) {
-          const mergedCourses = mergeCourseRows(rawCourses)
-          writeCachedCourses(mergedCourses)
+        if (rawCourses !== null) {
+          const visibleCourses = mergeVisibleCourseRows(rawCourses)
+          writeCachedCourses(visibleCourses)
           if (rawTestimonials.length > 0) {
             writeCachedTestimonials(rawTestimonials)
           }
           return {
-            courses: mergedCourses,
+            courses: visibleCourses,
             testimonials: rawTestimonials,
           }
         }
@@ -48,14 +47,14 @@ export async function getPublicHomeData(bypassCache = false): Promise<PublicHome
     }
 
     const [coursesRes, testiRes] = await Promise.all([
-      getCourses(),
+      getVisibleCourses(),
       getActiveTestimonials(),
     ])
 
     const courses = coursesRes.data || []
     const testimonials = testiRes.data || []
 
-    if (courses.length > 0) writeCachedCourses(courses)
+    writeCachedCourses(courses)
     if (testimonials.length > 0) writeCachedTestimonials(testimonials)
 
     return { courses, testimonials }

@@ -113,11 +113,85 @@ export async function uploadVideoToCloudinary(
 }
 
 /**
+ * Resizes & compresses heavy photos client-side into WebP before uploading
+ * so multi-megabyte images upload in fractions of a second and consume less quota.
+ */
+async function optimizeImageForUpload(
+  file: File,
+  maxDimension: number = 1000
+): Promise<File> {
+  if (
+    typeof document === 'undefined' ||
+    file.type === 'image/gif' ||
+    file.type === 'image/svg+xml' ||
+    file.size <= 140 * 1024
+  ) {
+    return file
+  }
+
+  try {
+    const bitmap =
+      typeof createImageBitmap === 'function'
+        ? await createImageBitmap(file)
+        : await new Promise<HTMLImageElement>((resolve, reject) => {
+            const img = new Image()
+            const objectUrl = URL.createObjectURL(file)
+            img.onload = () => {
+              URL.revokeObjectURL(objectUrl)
+              resolve(img)
+            }
+            img.onerror = err => {
+              URL.revokeObjectURL(objectUrl)
+              reject(err)
+            }
+            img.src = objectUrl
+          })
+
+    const srcWidth = 'width' in bitmap ? bitmap.width : 0
+    const srcHeight = 'height' in bitmap ? bitmap.height : 0
+    if (!srcWidth || !srcHeight) {
+      if ('close' in bitmap && typeof bitmap.close === 'function') bitmap.close()
+      return file
+    }
+
+    const scale = Math.min(1, maxDimension / Math.max(srcWidth, srcHeight))
+    const targetWidth = Math.max(1, Math.round(srcWidth * scale))
+    const targetHeight = Math.max(1, Math.round(srcHeight * scale))
+
+    const canvas = document.createElement('canvas')
+    canvas.width = targetWidth
+    canvas.height = targetHeight
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      if ('close' in bitmap && typeof bitmap.close === 'function') bitmap.close()
+      return file
+    }
+
+    ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight)
+    if ('close' in bitmap && typeof bitmap.close === 'function') bitmap.close()
+
+    const blob = await new Promise<Blob | null>(resolve =>
+      canvas.toBlob(resolve, 'image/webp', 0.84)
+    )
+    if (!blob || blob.size >= file.size) {
+      return file
+    }
+
+    const baseName = file.name.replace(/\.[^/.]+$/, '') || 'image'
+    return new File([blob], `${baseName}.webp`, { type: 'image/webp' })
+  } catch {
+    return file
+  }
+}
+
+/**
  * Upload an image file directly to Cloudinary using an unsigned upload preset.
  */
 export async function uploadImageToCloudinary(
   file: File,
-  presetOverride?: string
+  presetOverride?: string,
+  folder: string = 'verbora/testimonials',
+  maxRemainingBytes?: number
 ): Promise<CloudinaryUploadResult> {
   const preset = (presetOverride || getSavedUploadPreset()).trim()
 
@@ -130,15 +204,31 @@ export async function uploadImageToCloudinary(
     return { url: null, error: 'Selected file is not an image (expected JPG, PNG, WEBP, etc).' }
   }
 
-  // Limit size to 10MB
-  if (file.size > 10 * 1024 * 1024) {
+  // Guard extreme raw file sizes above 20MB before decoding
+  if (file.size > 20 * 1024 * 1024) {
+    return { url: null, error: 'Image size exceeds 20MB limit.' }
+  }
+
+  const maxDimension = folder.includes('courses') ? 1000 : 640
+  const uploadFile = await optimizeImageForUpload(file, maxDimension)
+
+  if (uploadFile.size > 10 * 1024 * 1024) {
     return { url: null, error: 'Image size exceeds 10MB limit.' }
   }
 
+  if (maxRemainingBytes !== undefined && uploadFile.size > maxRemainingBytes) {
+    const freeMB = (Math.max(0, maxRemainingBytes) / (1024 * 1024)).toFixed(1)
+    const fileMB = (uploadFile.size / (1024 * 1024)).toFixed(1)
+    return {
+      url: null,
+      error: `Storage Quota Exceeded! Compressed image is ${fileMB} MB, only ${freeMB} MB remaining.`,
+    }
+  }
+
   const formData = new FormData()
-  formData.append('file', file)
+  formData.append('file', uploadFile)
   formData.append('upload_preset', preset)
-  formData.append('folder', 'verbora/testimonials')
+  formData.append('folder', folder)
 
   const uploadEndpoint = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`
 
@@ -165,7 +255,7 @@ export async function uploadImageToCloudinary(
     return {
       url: data.secure_url || data.url,
       publicId: data.public_id,
-      bytes: data.bytes || file.size,
+      bytes: data.bytes || uploadFile.size,
       error: null,
     }
   } catch (err: any) {

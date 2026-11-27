@@ -22,6 +22,8 @@ export default defineConfig({
               process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_nIVc7DMCydkRh3jDWP0OPA_tMfbK1Zj'
 
             const courseCols =
+              'id,title,tagline,short,summary,cover,fee_amount,discount_percent,display_order,is_visible,is_upcoming,created_at,updated_at'
+            const legacyCourseCols =
               'id,title,tagline,short,summary,fee_amount,discount_percent,display_order,created_at,updated_at'
             const testiCols =
               'id,name,role,image,video,text,badge,is_active,is_spotlight,display_order,created_at'
@@ -31,13 +33,20 @@ export default defineConfig({
               Accept: 'application/json',
             }
 
-            const [coursesRes, testimonialsRes] = await Promise.all([
-              fetch(`${supabaseUrl}/rest/v1/courses?select=${courseCols}&order=display_order.asc`, { headers }),
+            let [coursesRes, testimonialsRes] = await Promise.all([
+              fetch(`${supabaseUrl}/rest/v1/courses?select=${courseCols}&is_visible=eq.true&order=display_order.asc`, { headers }),
               fetch(
                 `${supabaseUrl}/rest/v1/testimonials?select=${testiCols}&is_active=eq.true&order=display_order.asc,created_at.desc`,
                 { headers }
               ),
             ])
+
+            if (coursesRes.status === 400) {
+              coursesRes = await fetch(
+                `${supabaseUrl}/rest/v1/courses?select=${legacyCourseCols}&order=display_order.asc`,
+                { headers }
+              )
+            }
 
             if (!coursesRes.ok || !testimonialsRes.ok) {
               res.statusCode = !coursesRes.ok ? coursesRes.status : testimonialsRes.status

@@ -73,6 +73,7 @@ export const courseIconMap: Record<CourseId, any> = {
   'public-speaking': Mic2,
   'interview-preparation': UsersRound,
   'personality-development': Sparkles,
+  'executive-communication': Target,
 }
 
 const courses = [
@@ -84,7 +85,7 @@ const courses = [
     summary: 'Build the confidence to express yourself clearly in everyday conversations, discussions, and new situations.',
     icon: MessageCircle,
     iconClass: 'aqua',
-    cover: '/assets/courses-cover/spoken-english.png',
+    cover: 'https://res.cloudinary.com/mtjv4nu9/image/upload/v1795809123/verbora/courses/spoken-english.png',
     topics: ['Everyday conversation practice', 'Pronunciation and clarity', 'Vocabulary in real situations', 'Building fluency without hesitation'],
   },
   {
@@ -95,7 +96,7 @@ const courses = [
     summary: 'Communicate with clarity at work, from professional emails and meetings to presenting your ideas with confidence.',
     icon: BriefcaseBusiness,
     iconClass: 'purple',
-    cover: '/assets/courses-cover/business-english.png',
+    cover: 'https://res.cloudinary.com/mtjv4nu9/image/upload/v1795809124/verbora/courses/business-english.png',
     topics: ['Professional conversations', 'Meetings and workplace vocabulary', 'Email and written communication', 'Confident presentations'],
   },
   {
@@ -106,7 +107,7 @@ const courses = [
     summary: 'Learn to organize your thoughts, speak with presence, and deliver a message that people remember.',
     icon: Mic2,
     iconClass: 'mint',
-    cover: '/assets/courses-cover/public-speaking.png',
+    cover: 'https://res.cloudinary.com/mtjv4nu9/image/upload/v1795809125/verbora/courses/public-speaking.png',
     topics: ['Structuring a compelling talk', 'Voice and body language', 'Handling nerves and questions', 'Storytelling and audience connection'],
   },
   {
@@ -117,7 +118,7 @@ const courses = [
     summary: 'Practice answering questions, communicating your strengths, and approaching important interviews with greater confidence.',
     icon: UsersRound,
     iconClass: 'amber',
-    cover: '/assets/courses-cover/interview-preparation.png',
+    cover: 'https://res.cloudinary.com/mtjv4nu9/image/upload/v1795809126/verbora/courses/interview-preparation.png',
     topics: ['Introducing yourself effectively', 'Common interview scenarios', 'Answer structure and delivery', 'Mock interviews and feedback'],
   },
   {
@@ -128,8 +129,19 @@ const courses = [
     summary: 'Develop personal presence, emotional intelligence, body language, and the mindset to succeed in personal and professional life.',
     icon: Sparkles,
     iconClass: 'teal',
-    cover: '/assets/courses-cover/personality-development.png',
+    cover: 'https://res.cloudinary.com/mtjv4nu9/image/upload/v1795809128/verbora/courses/personality-development.png',
     topics: ['Body language and self-presence', 'Active listening and emotional intelligence', 'Overcoming self-doubt and hesitation', 'Etiquette and professional demeanor'],
+  },
+  {
+    id: 'executive-communication' as CourseId,
+    title: 'Executive Communication',
+    tagline: 'Lead conversations. Influence rooms.',
+    short: 'Lead with presence.',
+    summary: 'Master high-stakes stakeholder conversations, strategic persuasion, leadership presence, and crisp executive storytelling.',
+    icon: Target,
+    iconClass: 'aqua',
+    cover: 'https://res.cloudinary.com/mtjv4nu9/image/upload/v1795809129/verbora/courses/executive-communication.png',
+    topics: ['Boardroom & stakeholder pitching', 'Persuasive framing & conciseness', 'Handling tough Q&A with poise', 'Cross-cultural leadership fluency'],
   },
 ]
 
@@ -517,7 +529,33 @@ function Hero() {
       </div>
       <div className="hero-light-orb" aria-hidden="true" />
       <div className="hero-copy">
-        <h1>Speak Confidently.<br />Communicate <span>Professionally.</span></h1>
+        <h1>
+          Speak Confidently.<br />Communicate{' '}
+          <span className="hero-highlight-word">
+            <span className="hero-highlight-text">Professionally.</span>
+            <svg
+              className="hero-word-underline"
+              viewBox="0 0 240 16"
+              fill="none"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              <defs>
+                <linearGradient id="heroWordUnderlineGrad" x1="0" y1="0" x2="240" y2="0" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#38bdf8" />
+                  <stop offset="55%" stopColor="#bae6fd" />
+                  <stop offset="100%" stopColor="#0ea5e9" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M3 11.5C68 3.5 162 2.5 237 9.5"
+                stroke="url(#heroWordUnderlineGrad)"
+                strokeWidth="3.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </span>
+        </h1>
         <p className="hero-description">VERBORA helps you build essential communication skills with practical learning, expert guidance, and the confidence to express yourself.</p>
         <div className="hero-buttons"><a href="/#courses" className="primary-button hero-primary">Explore Courses</a><a href="/#about" className="secondary-button"><CirclePlay size={19} fill="#0966bf" color="white" />How It Works</a></div>
         <div className="hero-highlights">
@@ -531,8 +569,44 @@ function Hero() {
   )
 }
 
+function CourseGridCard({ course }: { course: ReturnType<typeof useMergedCourses>['courses'][number] }) {
+  if (course.is_upcoming) {
+    return (
+      <div className="course-card is-upcoming" aria-label={`${course.title} — Coming Soon`}>
+        <div className="course-card-upcoming-body">
+          <strong className="course-card-upcoming-title">{course.title}</strong>
+          <span className="course-card-upcoming-badge">Coming Soon</span>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <Link
+      to="/courses/$courseSlug"
+      params={{ courseSlug: course.id }}
+      className="course-card"
+    >
+      {course.cover && <img src={course.cover} alt={course.title} className="course-card-img" />}
+      <div className="course-card-overlay">
+        <span className="course-card-icon-wrap">
+          <course.icon size={19} strokeWidth={2.4} />
+        </span>
+        <strong className="course-card-heading">{course.title}</strong>
+        <span className="course-card-subheading">{course.short}</span>
+      </div>
+    </Link>
+  )
+}
+
 function CoursesSection() {
   const { courses: displayCourses, isLoading } = useMergedCourses()
+
+  if (!isLoading && displayCourses.length === 0) {
+    return null
+  }
+
+  const gridCount = isLoading ? 6 : displayCourses.length
 
   return (
     <section className="courses-section" id="courses">
@@ -541,9 +615,12 @@ function CoursesSection() {
         <p className="home-row-sub">Choose a structured program designed to build fluent, confident, and professional speech.</p>
       </div>
 
-      <div className="course-grid">
+      <div
+        className="course-grid"
+        style={{ '--course-count': Math.max(1, gridCount) } as React.CSSProperties}
+      >
         {isLoading
-          ? Array.from({ length: 5 }).map((_, i) => (
+          ? Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="course-card course-card-skeleton skeleton-shimmer-dark">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
                   <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'rgba(255,255,255,0.16)' }} />
@@ -552,23 +629,7 @@ function CoursesSection() {
                 </div>
               </div>
             ))
-          : displayCourses.map(course => (
-              <Link
-                to="/courses/$courseSlug"
-                params={{ courseSlug: course.id }}
-                key={course.id}
-                className="course-card"
-              >
-                <img src={course.cover} alt={course.title} className="course-card-img" />
-                <div className="course-card-overlay">
-                  <span className="course-card-icon-wrap">
-                    <course.icon size={19} strokeWidth={2.4} />
-                  </span>
-                  <strong className="course-card-heading">{course.title}</strong>
-                  <span className="course-card-subheading">{course.short}</span>
-                </div>
-              </Link>
-            ))}
+          : displayCourses.map(course => <CourseGridCard key={course.id} course={course} />)}
       </div>
     </section>
   )
@@ -737,20 +798,38 @@ export function useCoursesQuery() {
 export function useMergedCourses() {
   const query = useCoursesQuery()
   const merged = useMemo(() => {
-    const dbList = query.data || []
-    return courses.map(staticCourse => {
-      const dynamic = dbList.find(c => c.id === staticCourse.id)
-      return {
-        ...staticCourse,
-        title: dynamic?.title || staticCourse.title,
-        summary: dynamic?.summary || staticCourse.summary,
-        tagline: dynamic?.tagline || staticCourse.tagline,
-        short: dynamic?.short || staticCourse.short,
-        fee_amount: dynamic?.fee_amount ?? 4999,
-        discount_percent: dynamic?.discount_percent ?? 0,
-        display_order: dynamic?.display_order ?? 0,
-      }
-    })
+    if (Array.isArray(query.data)) {
+      return query.data
+        .filter(dynamic => dynamic.is_visible !== false)
+        .map(dynamic => {
+          const staticCourse = courses.find(c => c.id === dynamic.id)
+          return {
+            id: dynamic.id,
+            title: dynamic.title || staticCourse?.title || dynamic.id,
+            summary: dynamic.summary || staticCourse?.summary || '',
+            tagline: dynamic.tagline || staticCourse?.tagline || '',
+            short: dynamic.short || staticCourse?.short || '',
+            icon: staticCourse?.icon || courseIconMap[dynamic.id] || BookOpen,
+            iconClass: staticCourse?.iconClass || dynamic.iconClass || 'aqua',
+            cover: dynamic.cover === undefined ? (staticCourse?.cover || '') : (dynamic.cover || ''),
+            topics: staticCourse?.topics || dynamic.topics || [],
+            fee_amount: dynamic.fee_amount ?? 4999,
+            discount_percent: dynamic.discount_percent ?? 0,
+            display_order: dynamic.display_order ?? 0,
+            is_visible: dynamic.is_visible !== false,
+            is_upcoming: Boolean(dynamic.is_upcoming),
+          }
+        })
+    }
+
+    return courses.map((staticCourse, index) => ({
+      ...staticCourse,
+      fee_amount: 4999,
+      discount_percent: 0,
+      display_order: index + 1,
+      is_visible: true,
+      is_upcoming: false,
+    }))
   }, [query.data])
 
   return { ...query, courses: merged }
@@ -2644,30 +2723,21 @@ function CourseDetail() {
           </div>
         </div>
 
-        <div className="detail-other">
-          <h2>Explore more programs</h2>
-          <div className="course-grid">
-            {mergedCourses
-              .filter(entry => entry.id !== course.id)
-              .map(entry => (
-                <Link
-                  key={entry.id}
-                  to="/courses/$courseSlug"
-                  params={{ courseSlug: entry.id }}
-                  className="course-card"
-                >
-                  <img src={entry.cover} alt={entry.title} className="course-card-img" />
-                  <div className="course-card-overlay">
-                    <span className="course-card-icon-wrap">
-                      <entry.icon size={19} strokeWidth={2.4} />
-                    </span>
-                    <strong className="course-card-heading">{entry.title}</strong>
-                    <span className="course-card-subheading">{entry.short}</span>
-                  </div>
-                </Link>
-              ))}
-          </div>
-        </div>
+        {(() => {
+          const otherCourses = mergedCourses.filter(entry => entry.id !== course.id)
+          if (otherCourses.length === 0) return null
+          return (
+            <div className="detail-other">
+              <h2>Explore more programs</h2>
+              <div
+                className="course-grid"
+                style={{ '--course-count': otherCourses.length } as React.CSSProperties}
+              >
+                {otherCourses.map(entry => <CourseGridCard key={entry.id} course={entry} />)}
+              </div>
+            </div>
+          )
+        })()}
       </main>
       <SiteFooter onDemo={() => setModalOpen(true)} />
       <DemoModal open={modalOpen} onClose={() => setModalOpen(false)} defaultCourse={course.id} />
@@ -2774,17 +2844,28 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     summary: string
     tagline: string
     short: string
+    cover: string
+    cover_size_bytes: number
     fee_amount: number
     discount_percent: number
+    is_visible: boolean
+    is_upcoming: boolean
   }>({
     title: '',
     summary: '',
     tagline: '',
     short: '',
+    cover: '',
+    cover_size_bytes: 0,
     fee_amount: 4999,
     discount_percent: 0,
+    is_visible: true,
+    is_upcoming: false,
   })
   const [savingCourse, setSavingCourse] = useState(false)
+  const [courseCoverBusyMode, setCourseCoverBusyMode] = useState<'uploading' | 'removing' | null>(null)
+  const uploadingCourseCover = courseCoverBusyMode !== null
+  const [courseCoverError, setCourseCoverError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -3039,21 +3120,112 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const syncPublicHomeCache = () => {
     clearHomeCache()
     void api.home.getPublicHomeData(true).then(fresh => {
-      if (fresh.courses.length > 0) queryClient.setQueryData(['courses'], fresh.courses)
+      queryClient.setQueryData(['courses'], fresh.courses)
       queryClient.setQueryData(['testimonials'], fresh.testimonials)
     })
   }
 
   const handleEditCourse = (course: Course) => {
     setEditingCourse(course)
+    setCourseCoverError(null)
     setCourseForm({
       title: course.title,
       summary: course.summary,
       tagline: course.tagline,
       short: course.short,
+      cover: course.cover || '',
+      cover_size_bytes: course.cover ? (course.cover_size_bytes || 0) : 0,
       fee_amount: course.fee_amount,
       discount_percent: course.discount_percent,
+      is_visible: course.is_visible !== false,
+      is_upcoming: Boolean(course.is_upcoming),
     })
+  }
+
+  const handleUploadCourseCoverFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !editingCourse) return
+
+    const netUsedBytes = Math.max(0, totalUsedStorageBytes - (editingCourse.cover_size_bytes || 0))
+    const remainingBytes = Math.max(0, MAX_STORAGE_BYTES - netUsedBytes)
+
+    setCourseCoverBusyMode('uploading')
+    setCourseCoverError(null)
+    const unsavedDraftCover =
+      courseForm.cover && courseForm.cover !== editingCourse.cover ? courseForm.cover : null
+
+    try {
+      saveUploadPreset(customPreset)
+      const result = await uploadImageToCloudinary(
+        file,
+        customPreset,
+        'verbora/courses',
+        remainingBytes
+      )
+      if (result.url) {
+        if (unsavedDraftCover && unsavedDraftCover.includes('cloudinary.com')) {
+          deleteMediaFromCloudinary(unsavedDraftCover, 'image').catch(() => {})
+        }
+        setCourseForm(prev => ({
+          ...prev,
+          cover: result.url!,
+          cover_size_bytes: result.bytes || file.size,
+        }))
+        showToast('Course cover image uploaded!')
+      } else {
+        setCourseCoverError(result.error || 'Failed to upload cover image.')
+      }
+    } catch (err: any) {
+      setCourseCoverError(err?.message || 'Error uploading cover image.')
+    } finally {
+      setCourseCoverBusyMode(null)
+    }
+  }
+
+  const handleRemoveCourseCover = async () => {
+    if (!editingCourse) return
+    const currentFormCover = courseForm.cover
+    const dbCover = editingCourse.cover
+    if (!currentFormCover && !dbCover) return
+    if (!window.confirm(`Remove cover image from "${editingCourse.title}"? This will also delete it from Cloudinary.`)) {
+      return
+    }
+
+    setCourseCoverBusyMode('removing')
+    setCourseCoverError(null)
+    try {
+      const urlsToDestroy = Array.from(
+        new Set(
+          [currentFormCover, dbCover].filter(
+            (u): u is string => Boolean(u && u.includes('cloudinary.com'))
+          )
+        )
+      )
+
+      const [res] = await Promise.all([
+        api.courses.updateCourse(editingCourse.id, {
+          cover: '',
+          cover_size_bytes: 0,
+        }),
+        ...urlsToDestroy.map(u => deleteMediaFromCloudinary(u, 'image').catch(() => null)),
+      ])
+      setCoursesDbError(api.courses.getCoursesDbError())
+
+      if (res.success && res.data) {
+        setEditingCourse(res.data)
+        setCourseForm(prev => ({ ...prev, cover: '', cover_size_bytes: 0 }))
+        setAdminCourses(prev => prev.map(c => (c.id === editingCourse.id ? res.data! : c)))
+        syncPublicHomeCache()
+        showToast(`Cover image removed from "${editingCourse.title}"!`)
+      } else {
+        setCourseCoverError(res.error || 'Failed to clear course image in database.')
+      }
+    } catch (err: any) {
+      setCourseCoverError(err?.message || 'Failed to remove course image.')
+    } finally {
+      setCourseCoverBusyMode(null)
+    }
   }
 
   const handleSaveCourse = async () => {
@@ -3067,18 +3239,30 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
       return
     }
     setSavingCourse(true)
+    const previousCover = editingCourse.cover
     try {
       const res = await api.courses.updateCourse(editingCourse.id, {
         title: courseForm.title,
         summary: courseForm.summary,
         tagline: courseForm.tagline,
         short: courseForm.short,
+        cover: courseForm.cover.trim(),
+        cover_size_bytes: courseForm.cover.trim() ? courseForm.cover_size_bytes : 0,
         fee_amount: courseForm.fee_amount,
         discount_percent: courseForm.discount_percent,
+        is_visible: courseForm.is_visible,
+        is_upcoming: courseForm.is_upcoming,
       })
       setCoursesDbError(api.courses.getCoursesDbError())
 
       if (res.success && res.data) {
+        if (
+          previousCover &&
+          previousCover !== res.data.cover &&
+          previousCover.includes('cloudinary.com')
+        ) {
+          deleteMediaFromCloudinary(previousCover, 'image').catch(() => {})
+        }
         setAdminCourses(prev =>
           prev.map(c => (c.id === editingCourse.id ? res.data! : c))
         )
@@ -3528,12 +3712,19 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const hiddenTestimonialsCount = totalTestimonials - activeTestimonialsCount
   const videoTestimonialsCount = testimonials.filter(t => !!t.video).length
 
-  const totalUsedStorageBytes = testimonials.reduce((acc, t) => {
+  const testimonialStorageBytes = testimonials.reduce((acc, t) => {
     let bytes = 0
     if (t.video_size_bytes) bytes += t.video_size_bytes
     if (t.image_size_bytes) bytes += t.image_size_bytes
     return acc + bytes
   }, 0)
+
+  const courseStorageBytes = adminCourses.reduce((acc, c) => {
+    if (!c.cover || !c.cover.includes('cloudinary.com')) return acc
+    return acc + (c.cover_size_bytes || 0)
+  }, 0)
+
+  const totalUsedStorageBytes = testimonialStorageBytes + courseStorageBytes
 
   const usedStorageMB = (totalUsedStorageBytes / (1024 * 1024)).toFixed(1)
   const maxStorageMB = MAX_STORAGE_MB
@@ -3640,9 +3831,11 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
               onClick={() => setSidebarOpen(false)}
             >
               <BookOpen size={18} />
-              <span className="admin-sidebar-link-text">Courses (5)</span>
+              <span className="admin-sidebar-link-text">
+                Courses ({adminCourses.length || api.courses.DEFAULT_INITIAL_COURSES.length})
+              </span>
               <span className="admin-sidebar-pill admin-sidebar-pill-secondary">
-                5
+                {adminCourses.length || api.courses.DEFAULT_INITIAL_COURSES.length}
               </span>
             </Link>
           </nav>
@@ -4782,7 +4975,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
 
                 {adminCoursesQuery.isLoading && adminCourses.length === 0 ? (
                   <div className="admin-courses-grid">
-                    {Array.from({ length: 5 }).map((_, idx) => (
+                    {Array.from({ length: 6 }).map((_, idx) => (
                       <div key={idx} className="admin-course-skeleton">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
@@ -4804,9 +4997,10 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                   <div className="admin-courses-grid">
                     {(adminCourses.length > 0 ? adminCourses : api.courses.DEFAULT_INITIAL_COURSES).map(c => {
                       const discountedPrice = Math.round((c.fee_amount || 0) * (1 - (c.discount_percent || 0) / 100))
+                      const isCourseVisible = c.is_visible !== false
 
                       return (
-                        <div key={c.id} className="admin-course-card">
+                        <div key={c.id} className={`admin-course-card ${isCourseVisible ? '' : 'is-hidden'}`}>
                           <div className="admin-course-card-header">
                             <div>
                               <h3 className="admin-course-title">{c.title}</h3>
@@ -4861,9 +5055,19 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                           </div>
 
                           <div className="admin-course-actions">
-                            <span style={{ fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <ShieldCheck size={14} color="#16a34a" /> Official 1-of-5 Course
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <span
+                                className={`admin-course-visibility-badge ${isCourseVisible ? 'is-visible' : 'is-hidden'}`}
+                              >
+                                {isCourseVisible ? <Eye size={12} /> : <EyeOff size={12} />}
+                                <span>{isCourseVisible ? 'Visible on Site' : 'Hidden from Site'}</span>
+                              </span>
+                              {c.is_upcoming && (
+                                <span className="admin-course-visibility-badge is-upcoming-admin">
+                                  <span>Upcoming</span>
+                                </span>
+                              )}
+                            </div>
 
                             <button
                               type="button"
@@ -4888,19 +5092,19 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
 
       {/* Edit Course Modal */}
       {editingCourse && (
-        <div className="admin-modal-overlay">
-          <div className="admin-modal-dialog" style={{ maxWidth: 640, padding: 24, borderRadius: 12 }}>
-            <div className="admin-modal-header" style={{ marginBottom: 16, paddingBottom: 12 }}>
+        <div className="admin-modal-overlay" onClick={() => setEditingCourse(null)}>
+          <div
+            className="admin-modal-dialog admin-course-edit-modal"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="admin-modal-header admin-course-edit-header">
               <div className="admin-modal-title-group">
-                <div className={`admin-course-icon-badge ${editingCourse.iconClass || 'aqua'}`} style={{ width: 38, height: 38 }}>
-                  <BookOpen size={18} />
-                </div>
                 <div>
                   <h3 className="admin-modal-title" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
                     Edit {editingCourse.title}
                   </h3>
-                  <p className="admin-modal-sub" style={{ margin: '3px 0 0 0', fontSize: 12, color: '#64748b' }}>
-                    Update course name, description, fee amount, and discount %.
+                  <p className="admin-modal-sub" style={{ margin: '2px 0 0 0', fontSize: 12, color: '#64748b' }}>
+                    Update course name, description, visibility, fee amount, and discount %.
                   </p>
                 </div>
               </div>
@@ -4909,183 +5113,233 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                 type="button"
                 className="admin-modal-close-btn"
                 onClick={() => setEditingCourse(null)}
+                aria-label="Close edit course modal"
               >
                 <X size={18} />
               </button>
             </div>
 
             <form
+              className="admin-course-edit-form"
               onSubmit={e => {
                 e.preventDefault()
                 handleSaveCourse()
               }}
-              style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
             >
-              <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
-                  Course Name <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={courseForm.title}
-                  onChange={e => setCourseForm(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="e.g. Spoken English"
-                  style={{
-                    width: '100%',
-                    padding: '9px 12px',
-                    borderRadius: 8,
-                    border: '1px solid #cbd5e1',
-                    background: '#ffffff',
-                    color: '#0f172a',
-                    fontSize: 13.5,
-                    fontWeight: 700,
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
+              <div className="admin-course-edit-grid">
+                {/* Left Column: Rich Text Description + Course Cover Image */}
+                <div className="admin-course-edit-col">
+                  <div className="admin-course-edit-field">
+                    <label>
+                      Course Description / Summary <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <Suspense
+                      fallback={
+                        <div className="tiptap-editor-wrap">
+                          <div className="tiptap-editor-content" style={{ minHeight: 140, color: '#94a3b8', fontSize: 13 }}>
+                            Loading rich text editor...
+                          </div>
+                        </div>
+                      }
+                    >
+                      <LazyRichTextEditor
+                        key={editingCourse.id}
+                        value={courseForm.summary}
+                        onChange={html => setCourseForm(prev => ({ ...prev, summary: html }))}
+                      />
+                    </Suspense>
+                  </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
-                  Course Description / Summary <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <Suspense
-                  fallback={
-                    <div className="tiptap-editor-wrap">
-                      <div className="tiptap-editor-content" style={{ minHeight: 165, color: '#94a3b8', fontSize: 13 }}>
-                        Loading rich text editor...
+                  <div className="admin-course-edit-field admin-course-cover-field">
+                    <label>Course Cover Image</label>
+                    <div className="admin-course-cover-row">
+                      <div className="admin-course-cover-left">
+                        {courseForm.cover ? (
+                          <img
+                            src={courseForm.cover}
+                            alt={courseForm.title || editingCourse.title}
+                            className="admin-course-cover-thumb"
+                          />
+                        ) : (
+                          <div className="admin-course-cover-empty" title="No cover image">
+                            <Image size={17} />
+                          </div>
+                        )}
+                        <div className="admin-course-cover-meta">
+                          <strong>{courseForm.cover ? 'Cover Image Ready' : 'No Cover Image'}</strong>
+                          <span>
+                            {courseForm.cover
+                              ? courseForm.cover_size_bytes > 0
+                                ? `${(courseForm.cover_size_bytes / (1024 * 1024)).toFixed(2)} MB`
+                                : 'Attached'
+                              : 'Upload JPG, PNG or WEBP'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="admin-course-cover-btns">
+                        <label className="admin-course-cover-upload-btn">
+                          <Upload size={13} />
+                          <span>{courseForm.cover ? 'Change' : 'Upload'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            disabled={uploadingCourseCover}
+                            onChange={handleUploadCourseCoverFile}
+                            style={{ display: 'none' }}
+                          />
+                        </label>
+                        {courseForm.cover && (
+                          <button
+                            type="button"
+                            className="admin-course-cover-remove-btn"
+                            disabled={uploadingCourseCover}
+                            onClick={handleRemoveCourseCover}
+                          >
+                            <Trash2 size={12} />
+                            <span>Remove</span>
+                          </button>
+                        )}
                       </div>
                     </div>
-                  }
-                >
-                  <LazyRichTextEditor
-                    key={editingCourse.id}
-                    value={courseForm.summary}
-                    onChange={html => setCourseForm(prev => ({ ...prev, summary: html }))}
-                  />
-                </Suspense>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
-                    Tagline (Banner)
-                  </label>
-                  <input
-                    type="text"
-                    value={courseForm.tagline}
-                    onChange={e => setCourseForm(prev => ({ ...prev, tagline: e.target.value }))}
-                    placeholder="e.g. Speak fluently. Connect naturally."
-                    style={{
-                      width: '100%',
-                      padding: '9px 12px',
-                      borderRadius: 8,
-                      border: '1px solid #cbd5e1',
-                      fontSize: 13,
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
-                    Short Subtitle (Card)
-                  </label>
-                  <input
-                    type="text"
-                    value={courseForm.short}
-                    onChange={e => setCourseForm(prev => ({ ...prev, short: e.target.value }))}
-                    placeholder="e.g. Speak fluently. Be confident."
-                    style={{
-                      width: '100%',
-                      padding: '9px 12px',
-                      borderRadius: 8,
-                      border: '1px solid #cbd5e1',
-                      fontSize: 13,
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
-                    Fee Amount (₹) <span style={{ color: '#ef4444' }}>*</span>
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={1}
-                    required
-                    value={courseForm.fee_amount}
-                    onChange={e => setCourseForm(prev => ({ ...prev, fee_amount: Math.max(0, Number(e.target.value) || 0) }))}
-                    placeholder="4999"
-                    style={{
-                      width: '100%',
-                      padding: '9px 12px',
-                      borderRadius: 8,
-                      border: '1px solid #cbd5e1',
-                      fontSize: 13.5,
-                      fontWeight: 600,
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
-                    Discount Percentage (%)
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={1}
-                    value={courseForm.discount_percent}
-                    onChange={e => setCourseForm(prev => ({ ...prev, discount_percent: Math.min(100, Math.max(0, Number(e.target.value) || 0)) }))}
-                    placeholder="0"
-                    style={{
-                      width: '100%',
-                      padding: '9px 12px',
-                      borderRadius: 8,
-                      border: '1px solid #cbd5e1',
-                      fontSize: 13.5,
-                      fontWeight: 600,
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Live Preview Box */}
-              <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Live Price Preview:
-                </span>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 20, fontWeight: 800, color: '#15803d' }}>
-                    ₹{Math.round(courseForm.fee_amount * (1 - courseForm.discount_percent / 100)).toLocaleString('en-IN')}
-                  </span>
-                  {courseForm.discount_percent > 0 && (
-                    <>
-                      <span style={{ fontSize: 13, color: '#94a3b8', textDecoration: 'line-through' }}>
-                        ₹{courseForm.fee_amount.toLocaleString('en-IN')}
+                    {courseCoverError && (
+                      <span style={{ display: 'block', marginTop: 4, fontSize: 11, color: '#dc2626', fontWeight: 600 }}>
+                        {courseCoverError}
                       </span>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#16a34a' }}>
-                        ({courseForm.discount_percent}% OFF • Save ₹{(courseForm.fee_amount - Math.round(courseForm.fee_amount * (1 - courseForm.discount_percent / 100))).toLocaleString('en-IN')})
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Column: Title, Meta, Pricing & Visibility */}
+                <div className="admin-course-edit-col">
+                  <div className="admin-course-edit-field">
+                    <label>
+                      Course Name <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={courseForm.title}
+                      onChange={e => setCourseForm(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="e.g. Spoken English"
+                      style={{ fontWeight: 700 }}
+                    />
+                  </div>
+
+                  <div className="admin-course-edit-2col">
+                    <div className="admin-course-edit-field">
+                      <label>Tagline (Banner)</label>
+                      <input
+                        type="text"
+                        value={courseForm.tagline}
+                        onChange={e => setCourseForm(prev => ({ ...prev, tagline: e.target.value }))}
+                        placeholder="e.g. Speak fluently."
+                      />
+                    </div>
+
+                    <div className="admin-course-edit-field">
+                      <label>Short Subtitle (Card)</label>
+                      <input
+                        type="text"
+                        value={courseForm.short}
+                        onChange={e => setCourseForm(prev => ({ ...prev, short: e.target.value }))}
+                        placeholder="e.g. Lead with presence."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-course-edit-2col">
+                    <div className="admin-course-edit-field">
+                      <label>
+                        Fee Amount (₹) <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        required
+                        value={courseForm.fee_amount}
+                        onChange={e => setCourseForm(prev => ({ ...prev, fee_amount: Math.max(0, Number(e.target.value) || 0) }))}
+                        placeholder="4999"
+                        style={{ fontWeight: 600 }}
+                      />
+                    </div>
+
+                    <div className="admin-course-edit-field">
+                      <label>Discount Percentage (%)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={courseForm.discount_percent}
+                        onChange={e => setCourseForm(prev => ({ ...prev, discount_percent: Math.min(100, Math.max(0, Number(e.target.value) || 0)) }))}
+                        placeholder="0"
+                        style={{ fontWeight: 600 }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Visibility & Pre-Launch Toggles */}
+                  <div className="admin-course-edit-2col">
+                    <label className="admin-course-visibility-toggle">
+                      <div>
+                        <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#0f172a' }}>
+                          Visible on Website
+                        </span>
+                        <span style={{ display: 'block', fontSize: 11, color: '#64748b', marginTop: 1 }}>
+                          Fetch &amp; show on public site.
+                        </span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={courseForm.is_visible}
+                        onChange={e => setCourseForm(prev => ({ ...prev, is_visible: e.target.checked }))}
+                      />
+                    </label>
+
+                    <label className="admin-course-visibility-toggle">
+                      <div>
+                        <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#0f172a' }}>
+                          Pre-Launch / Upcoming
+                        </span>
+                        <span style={{ display: 'block', fontSize: 11, color: '#64748b', marginTop: 1 }}>
+                          Hide photo, show teaser only.
+                        </span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={courseForm.is_upcoming}
+                        onChange={e => setCourseForm(prev => ({ ...prev, is_upcoming: e.target.checked }))}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Live Preview Box */}
+                  <div className="admin-course-price-preview">
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Live Price Preview
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 2, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 18, fontWeight: 800, color: '#15803d' }}>
+                        ₹{Math.round(courseForm.fee_amount * (1 - courseForm.discount_percent / 100)).toLocaleString('en-IN')}
                       </span>
-                    </>
-                  )}
+                      {courseForm.discount_percent > 0 && (
+                        <>
+                          <span style={{ fontSize: 12.5, color: '#94a3b8', textDecoration: 'line-through' }}>
+                            ₹{courseForm.fee_amount.toLocaleString('en-IN')}
+                          </span>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: '#16a34a' }}>
+                            ({courseForm.discount_percent}% OFF • Save ₹{(courseForm.fee_amount - Math.round(courseForm.fee_amount * (1 - courseForm.discount_percent / 100))).toLocaleString('en-IN')})
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 6 }}>
+              <div className="admin-course-edit-footer">
                 <button
                   type="button"
                   onClick={() => setEditingCourse(null)}
@@ -5120,6 +5374,26 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Full-Page Loader for Course Cover Upload / Removal */}
+      {courseCoverBusyMode && (
+        <div className="admin-fullscreen-loader-overlay" role="status" aria-live="polite">
+          <div className="admin-fullscreen-loader-card">
+            <div className="admin-loader-spinner-wrap" aria-hidden="true">
+              <div className="admin-loader-ring" />
+            </div>
+            <strong>
+              {courseCoverBusyMode === 'uploading'
+                ? 'Uploading Course Cover Image...'
+                : 'Removing Course Cover Image...'}
+            </strong>
+            <span>Please wait while Cloudinary and database update.</span>
+            <div className="admin-loader-progress-track" aria-hidden="true">
+              <div className="admin-loader-progress-bar" />
+            </div>
           </div>
         </div>
       )}

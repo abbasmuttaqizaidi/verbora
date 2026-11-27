@@ -1,6 +1,6 @@
 import { Course, Testimonial } from '../types/database'
 
-const COURSES_CACHE_KEY = 'verbora_cache_courses_v1'
+const COURSES_CACHE_KEY = 'verbora_cache_courses_v4'
 const TESTIMONIALS_CACHE_KEY = 'verbora_cache_testimonials_v1'
 const CACHE_TTL_MS = 1000 * 60 * 60 * 12 // 12 hours max client snapshot age
 
@@ -9,7 +9,7 @@ interface CachedEnvelope<T> {
   data: T
 }
 
-function readCache<T>(key: string): T | undefined {
+function readCache<T>(key: string, allowEmpty = false): T | undefined {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return undefined
     const raw = window.localStorage.getItem(key)
@@ -22,15 +22,18 @@ function readCache<T>(key: string): T | undefined {
       window.localStorage.removeItem(key)
       return undefined
     }
-    return parsed.data.length > 0 ? parsed.data : undefined
+    return allowEmpty || parsed.data.length > 0 ? parsed.data : undefined
   } catch {
     return undefined
   }
 }
 
-function writeCache<T>(key: string, data: T[]): void {
+function writeCache<T>(key: string, data: T[], allowEmpty = false): void {
   try {
-    if (typeof window === 'undefined' || !window.localStorage || !Array.isArray(data) || data.length === 0) {
+    if (typeof window === 'undefined' || !window.localStorage || !Array.isArray(data)) {
+      return
+    }
+    if (!allowEmpty && data.length === 0) {
       return
     }
     const payload: CachedEnvelope<T[]> = { ts: Date.now(), data }
@@ -41,11 +44,11 @@ function writeCache<T>(key: string, data: T[]): void {
 }
 
 export function readCachedCourses(): Course[] | undefined {
-  return readCache<Course[]>(COURSES_CACHE_KEY)
+  return readCache<Course[]>(COURSES_CACHE_KEY, true)
 }
 
 export function writeCachedCourses(courses: Course[]): void {
-  writeCache(COURSES_CACHE_KEY, courses)
+  writeCache(COURSES_CACHE_KEY, courses, true)
 }
 
 export function readCachedTestimonials(): Testimonial[] | undefined {

@@ -59,6 +59,11 @@ const courseMeta = [
     title: 'Personality Development Course | VERBORA',
     description: 'Develop executive presence, body language, and self-confidence with VERBORA.',
   },
+  {
+    slug: 'executive-communication',
+    title: 'Executive Communication Course | VERBORA',
+    description: 'Master high-stakes stakeholder conversations, strategic persuasion, and leadership presence with VERBORA.',
+  },
 ]
 
 for (const course of courseMeta) {
