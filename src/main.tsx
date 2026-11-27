@@ -57,6 +57,7 @@ import {
   saveUploadPreset,
   CLOUDINARY_CLOUD_NAME,
   MAX_STORAGE_BYTES,
+  MAX_STORAGE_MB,
 } from './lib/cloudinary'
 import {
   startBackgroundVideoUpload,
@@ -2762,10 +2763,10 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   // Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  // Data states
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([])
-  const [adminCourses, setAdminCourses] = useState<Course[]>([])
-  const [coursesDbError, setCoursesDbError] = useState<string | null>(null)
+  // Data states (backed by TanStack Query cache below)
+  const [coursesDbError, setCoursesDbError] = useState<string | null>(() =>
+    api.courses.getCoursesDbError()
+  )
   const [leadsDbError, setLeadsDbError] = useState<string | null>(null)
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)
   const [courseForm, setCourseForm] = useState<{
@@ -2898,13 +2899,56 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     setLeadsPage(1)
   }, [statusFilter])
 
+  // Cached TanStack Query for Admin Testimonials & Courses across route switches
+  const adminTestimonialsQuery = useQuery({
+    queryKey: ['admin-testimonials'],
+    enabled: isAuthenticated,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    queryFn: async () => {
+      const res = await api.testimonials.getTestimonials()
+      return res.data || []
+    },
+  })
+
+  const adminCoursesQuery = useQuery({
+    queryKey: ['admin-courses'],
+    enabled: isAuthenticated,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    queryFn: async () => {
+      const res = await api.courses.getCourses()
+      setCoursesDbError(api.courses.getCoursesDbError())
+      return res.data || []
+    },
+  })
+
+  const testimonials = adminTestimonialsQuery.data || []
+  const adminCourses = adminCoursesQuery.data || []
+
+  const setTestimonials = (
+    updater: Testimonial[] | ((prev: Testimonial[]) => Testimonial[])
+  ) => {
+    queryClient.setQueryData<Testimonial[]>(['admin-testimonials'], old => {
+      const current = old || []
+      return typeof updater === 'function' ? updater(current) : updater
+    })
+  }
+
+  const setAdminCourses = (updater: Course[] | ((prev: Course[]) => Course[])) => {
+    queryClient.setQueryData<Course[]>(['admin-courses'], old => {
+      const current = old || []
+      return typeof updater === 'function' ? updater(current) : updater
+    })
+  }
+
   // Cached TanStack Query for paginated leads (only table columns, 20 per page)
   const leadsQuery = useQuery({
     queryKey: ['admin-leads', leadsPage, debouncedSearch, statusFilter],
     enabled: isAuthenticated,
-    staleTime: 30_000,
+    staleTime: 2 * 60_000,
+    gcTime: 30 * 60_000,
     refetchOnWindowFocus: true,
-    refetchOnMount: 'always',
     placeholderData: keepPreviousData,
     queryFn: async () => {
       const res = await api.leads.getLeadsPage({
@@ -2933,9 +2977,9 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const leadStatsQuery = useQuery({
     queryKey: ['admin-lead-stats'],
     enabled: isAuthenticated,
-    staleTime: 30_000,
+    staleTime: 2 * 60_000,
+    gcTime: 30 * 60_000,
     refetchOnWindowFocus: true,
-    refetchOnMount: 'always',
     queryFn: async () => {
       const res = await api.leads.getLeadStats()
       return (
@@ -2979,15 +3023,12 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const loadData = async () => {
     setLoading(true)
     try {
-      const [, , tRes, crRes] = await Promise.all([
+      await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['admin-leads'] }),
         queryClient.invalidateQueries({ queryKey: ['admin-lead-stats'] }),
-        api.testimonials.getTestimonials(),
-        api.courses.getCourses(),
+        queryClient.invalidateQueries({ queryKey: ['admin-testimonials'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-courses'] }),
       ])
-      if (tRes.data) setTestimonials(tRes.data)
-      if (crRes.data) setAdminCourses(crRes.data)
-      setCoursesDbError(api.courses.getCoursesDbError())
     } catch (err) {
       console.error('Error fetching admin data:', err)
     } finally {
@@ -3346,12 +3387,6 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     startBackgroundVideoUpload(file, totalUsedStorageBytes, customPreset, testimonialForm.video)
   }
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadData()
-    }
-  }, [isAuthenticated])
-
   // Status Handlers
   const handleUpdateLeadStatus = async (
     id: string,
@@ -3501,7 +3536,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   }, 0)
 
   const usedStorageMB = (totalUsedStorageBytes / (1024 * 1024)).toFixed(1)
-  const maxStorageMB = 100
+  const maxStorageMB = MAX_STORAGE_MB
   const storageUsagePercent = Math.min(100, Math.round((totalUsedStorageBytes / MAX_STORAGE_BYTES) * 100))
   const isStorageQuotaExceeded = totalUsedStorageBytes >= MAX_STORAGE_BYTES
 
@@ -3666,6 +3701,32 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
             </div>
 
             <div className="admin-topbar-right">
+              <div
+                className={`admin-topbar-storage ${isStorageQuotaExceeded ? 'is-danger' : storageUsagePercent > 75 ? 'is-warning' : ''}`}
+                title={`Storage Quota: ${usedStorageMB} MB of ${maxStorageMB} MB used (${storageUsagePercent}%)`}
+              >
+                <div className="admin-topbar-storage-info">
+                  <HardDrive size={13} className="admin-topbar-storage-icon" />
+                  <span className="admin-topbar-storage-text">
+                    <strong>{usedStorageMB}</strong> / {maxStorageMB} MB
+                  </span>
+                  <div className="admin-topbar-storage-bar" aria-hidden="true">
+                    <div
+                      className="admin-topbar-storage-fill"
+                      style={{ width: `${storageUsagePercent}%` }}
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="admin-topbar-upgrade-btn"
+                  onClick={() => setShowUpgradeModal(true)}
+                  title="Upgrade storage to 1 GB (₹150/mo)"
+                >
+                  Upgrade
+                </button>
+              </div>
+
               <div className="admin-live-indicator-desktop" title="Supabase PostgreSQL">
                 <span className="admin-live-dot" />
                 <span>Supabase Live</span>
@@ -4508,44 +4569,6 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                   </div>
                 </div>
 
-                {/* Cloudinary Quota Tracker Banner */}
-                <div className={`admin-cloud-banner ${isStorageQuotaExceeded ? 'admin-cloud-banner-danger' : ''}`}>
-                  <div className="admin-cloud-banner-icon" style={{ background: isStorageQuotaExceeded ? 'rgba(239, 68, 68, 0.2)' : undefined, color: isStorageQuotaExceeded ? '#f87171' : undefined }}>
-                    <HardDrive size={18} />
-                  </div>
-                  <div className="admin-cloud-banner-body">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                      <strong>
-                        Storage Quota: {usedStorageMB} MB of {maxStorageMB} MB Used ({storageUsagePercent}%)
-                      </strong>
-                      <span style={{ fontSize: 11.5, color: isStorageQuotaExceeded ? '#f87171' : '#34d399', fontWeight: 700 }}>
-                        {isStorageQuotaExceeded ? '⚠️ Storage Full (Upgrade Required)' : `● ${(maxStorageMB - Number(usedStorageMB)).toFixed(1)} MB Free remaining`}
-                      </span>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div className="admin-quota-bar-wrap">
-                      <div
-                        className={`admin-quota-bar-fill ${storageUsagePercent > 85 ? 'fill-danger' : storageUsagePercent > 60 ? 'fill-warning' : ''}`}
-                        style={{ width: `${storageUsagePercent}%` }}
-                      />
-                    </div>
-
-                    <p style={{ marginTop: 6, fontSize: 12 }}>
-                      Free plan limit is capped at <strong>100 MB</strong> for video and photo testimonials. Need more space for high-resolution student success videos?
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    className="admin-btn-primary"
-                    onClick={() => setShowUpgradeModal(true)}
-                  >
-                    <HardDrive size={14} />
-                    <span>Upgrade to 1 GB (₹150/mo)</span>
-                  </button>
-                </div>
-
                 {showCloudinarySettings && (
                   <div className="admin-cloud-settings-drawer">
                     <div className="admin-cloud-settings-header">
@@ -4757,7 +4780,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                   </div>
                 )}
 
-                {loading && adminCourses.length === 0 ? (
+                {adminCoursesQuery.isLoading && adminCourses.length === 0 ? (
                   <div className="admin-courses-grid">
                     {Array.from({ length: 5 }).map((_, idx) => (
                       <div key={idx} className="admin-course-skeleton">
@@ -5293,7 +5316,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                 <div>
                   <h3 className="admin-modal-title" style={{ fontSize: 17 }}>Upgrade Video Storage</h3>
                   <p className="admin-modal-sub">
-                    100 MB free quota limit reached for testimonial media.
+                    {maxStorageMB} MB free quota limit reached for testimonial media.
                   </p>
                 </div>
               </div>
@@ -5312,7 +5335,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
               <div style={{ background: '#f8fafc', padding: 14, borderRadius: 8, border: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
                   <span style={{ color: '#64748b' }}>Current Plan:</span>
-                  <strong style={{ color: '#0f172a' }}>100 MB (Free Tier)</strong>
+                  <strong style={{ color: '#0f172a' }}>{maxStorageMB} MB (Free Tier)</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8 }}>
                   <span style={{ color: '#64748b' }}>Used Space:</span>
@@ -5366,7 +5389,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                 </div>
 
                 <ul style={{ margin: 0, paddingLeft: 18, color: '#475569', fontSize: 12.5, lineHeight: 1.5 }}>
-                  <li>Store up to 10x more high quality video testimonials (1,024 MB).</li>
+                  <li>Store up to 1,024 MB of high quality video testimonials.</li>
                   <li>Direct video uploads without size restriction errors.</li>
                   <li>Fast global CDN video streaming with instant load on Home page.</li>
                   <li>Cancel or adjust anytime with zero lock-in.</li>

@@ -25,7 +25,8 @@ export function saveUploadPreset(preset: string): void {
   } catch {}
 }
 
-export const MAX_STORAGE_BYTES = 100 * 1024 * 1024 // 100 MB quota
+export const MAX_STORAGE_MB = 180
+export const MAX_STORAGE_BYTES = MAX_STORAGE_MB * 1024 * 1024 // 180 MB quota
 export const UPGRADE_STORAGE_BYTES = 1024 * 1024 * 1024 // 1 GB upgrade
 
 export interface CloudinaryUploadResult {
@@ -57,7 +58,7 @@ export async function uploadVideoToCloudinary(
     return { url: null, error: 'Selected file is not a supported video (expected MP4, MOV, WEBM, etc).' }
   }
 
-  // Quota check: ensure adding this video does not exceed 100MB limit
+  // Quota check: ensure adding this video does not exceed storage limit
   const projectedBytes = currentUsedBytes + file.size
   if (projectedBytes > MAX_STORAGE_BYTES) {
     const freeBytes = Math.max(0, MAX_STORAGE_BYTES - currentUsedBytes)
@@ -65,7 +66,7 @@ export async function uploadVideoToCloudinary(
     const fileMB = (file.size / (1024 * 1024)).toFixed(1)
     return {
       url: null,
-      error: `Storage Quota Exceeded! Video size is ${fileMB} MB, but only ${freeMB} MB space is remaining in your 100 MB free plan. Please upgrade to 1 GB for ₹150/month.`,
+      error: `Storage Quota Exceeded! Video size is ${fileMB} MB, but only ${freeMB} MB space is remaining in your ${MAX_STORAGE_MB} MB free plan. Please upgrade to 1 GB for ₹150/month.`,
     }
   }
 
