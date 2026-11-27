@@ -1,8 +1,9 @@
-import { Course, Testimonial, TrainerProfile } from '../types/database'
+import { Course, Testimonial, TrainerProfile, ContestConfig } from '../types/database'
 
 const COURSES_CACHE_KEY = 'verbora_cache_courses_v4'
 const TESTIMONIALS_CACHE_KEY = 'verbora_cache_testimonials_v1'
 const TRAINER_CACHE_KEY = 'verbora_cache_trainer_v1'
+const CONTEST_CACHE_KEY = 'verbora_cache_contest_v1'
 const CACHE_TTL_MS = 1000 * 60 * 60 * 12 // 12 hours max client snapshot age
 
 interface CachedEnvelope<T> {
@@ -44,6 +45,37 @@ function writeCache<T>(key: string, data: T[], allowEmpty = false): void {
   }
 }
 
+function readObjectCache<T>(key: string): T | undefined {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return undefined
+    const raw = window.localStorage.getItem(key)
+    if (!raw) return undefined
+    const parsed = JSON.parse(raw) as CachedEnvelope<T>
+    if (!parsed || typeof parsed.ts !== 'number' || !parsed.data || typeof parsed.data !== 'object') {
+      return undefined
+    }
+    if (Date.now() - parsed.ts > CACHE_TTL_MS) {
+      window.localStorage.removeItem(key)
+      return undefined
+    }
+    return parsed.data
+  } catch {
+    return undefined
+  }
+}
+
+function writeObjectCache<T>(key: string, data: T): void {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage || !data) {
+      return
+    }
+    const payload: CachedEnvelope<T> = { ts: Date.now(), data }
+    window.localStorage.setItem(key, JSON.stringify(payload))
+  } catch {
+    // Ignore storage quota or private-mode restrictions
+  }
+}
+
 export function readCachedCourses(): Course[] | undefined {
   return readCache<Course[]>(COURSES_CACHE_KEY, true)
 }
@@ -61,34 +93,19 @@ export function writeCachedTestimonials(testimonials: Testimonial[]): void {
 }
 
 export function readCachedTrainerProfile(): TrainerProfile | undefined {
-  try {
-    if (typeof window === 'undefined' || !window.localStorage) return undefined
-    const raw = window.localStorage.getItem(TRAINER_CACHE_KEY)
-    if (!raw) return undefined
-    const parsed = JSON.parse(raw) as CachedEnvelope<TrainerProfile>
-    if (!parsed || typeof parsed.ts !== 'number' || !parsed.data || typeof parsed.data !== 'object') {
-      return undefined
-    }
-    if (Date.now() - parsed.ts > CACHE_TTL_MS) {
-      window.localStorage.removeItem(TRAINER_CACHE_KEY)
-      return undefined
-    }
-    return parsed.data
-  } catch {
-    return undefined
-  }
+  return readObjectCache<TrainerProfile>(TRAINER_CACHE_KEY)
 }
 
 export function writeCachedTrainerProfile(profile: TrainerProfile): void {
-  try {
-    if (typeof window === 'undefined' || !window.localStorage || !profile) {
-      return
-    }
-    const payload: CachedEnvelope<TrainerProfile> = { ts: Date.now(), data: profile }
-    window.localStorage.setItem(TRAINER_CACHE_KEY, JSON.stringify(payload))
-  } catch {
-    // Ignore storage quota or private-mode restrictions
-  }
+  writeObjectCache(TRAINER_CACHE_KEY, profile)
+}
+
+export function readCachedContestConfig(): ContestConfig | undefined {
+  return readObjectCache<ContestConfig>(CONTEST_CACHE_KEY)
+}
+
+export function writeCachedContestConfig(config: ContestConfig): void {
+  writeObjectCache(CONTEST_CACHE_KEY, config)
 }
 
 export function clearHomeCache(): void {
@@ -97,6 +114,7 @@ export function clearHomeCache(): void {
     window.localStorage.removeItem(COURSES_CACHE_KEY)
     window.localStorage.removeItem(TESTIMONIALS_CACHE_KEY)
     window.localStorage.removeItem(TRAINER_CACHE_KEY)
+    window.localStorage.removeItem(CONTEST_CACHE_KEY)
   } catch {
     // Ignore storage restrictions
   }

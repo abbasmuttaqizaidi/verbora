@@ -25,7 +25,7 @@ import {
   Quote, HeartHandshake, Target, Award, BadgeCheck, ShieldCheck,
   MapPin, Send, Lock, KeyRound, RefreshCw, Trash2, Download, LogOut,
   Eye, EyeOff, Database, Inbox, Calendar, AlertCircle, FileText,
-  Plus, Edit3, Image, Upload, Video, ExternalLink, ArrowLeft, HardDrive, BookOpen, UserCheck,
+  Plus, Edit3, Image, Upload, Video, ExternalLink, ArrowLeft, HardDrive, BookOpen, UserCheck, Trophy,
 } from 'lucide-react'
 import './styles.css'
 import './adjustments.css'
@@ -40,6 +40,8 @@ import {
   Course,
   CourseId,
   TrainerStatItem,
+  ContestPrizeItem,
+  ContestStepItem,
 } from './types/database'
 import { sanitizeRichHtml, stripHtmlToText } from './lib/richText'
 import { TrainerListEditor } from './components/TrainerListEditor'
@@ -48,6 +50,8 @@ import {
   readCachedTestimonials,
   readCachedTrainerProfile,
   writeCachedTrainerProfile,
+  readCachedContestConfig,
+  writeCachedContestConfig,
   clearHomeCache,
 } from './lib/homeCache'
 
@@ -422,8 +426,11 @@ function SiteHeader({ onDemo }: { onDemo: () => void }) {
   const isAbout = location === '/about'
   const isTrainer = location === '/trainer' || location === '/trainers'
   const isStories = location === '/stories' || location === '/success-stories'
+  const isContest = location === '/contest'
   const isContact = location === '/contact' || location === '/contact-us'
   const isCourses = location.startsWith('/courses')
+  const { data: navContestConfig } = useContestConfigQuery()
+  const showContestLink = navContestConfig ? navContestConfig.is_active : true
 
   return (
     <header className={`site-header ${isHome ? 'site-header-home' : 'site-header-subpage'}`}>
@@ -468,6 +475,15 @@ function SiteHeader({ onDemo }: { onDemo: () => void }) {
               </div>
             )}
           </div>
+          {showContestLink && (
+            <Link to="/contest" className={`nav-item nav-contest-link ${isContest ? 'nav-active' : ''}`} onClick={() => setMenuOpen(false)}>
+              <span className="nav-contest-label-wrap">
+                <span className="nav-contest-dot" aria-hidden="true" />
+                <span>Contest</span>
+              </span>
+              <ChevronRight size={15} className="mobile-link-arrow" />
+            </Link>
+          )}
           <Link to="/stories" className={`nav-item ${isStories ? 'nav-active' : ''}`} onClick={() => setMenuOpen(false)}>
             <span>Success Stories</span>
             <ChevronRight size={15} className="mobile-link-arrow" />
@@ -513,6 +529,11 @@ function SiteHeader({ onDemo }: { onDemo: () => void }) {
 }
 
 function Hero() {
+  const { data: contestConfig } = useContestConfigQuery()
+  const showContestCta = contestConfig?.is_active !== false
+  const heroContestBtnText =
+    contestConfig?.hero_pill_text?.trim() || api.contest.DEFAULT_CONTEST_CONFIG.hero_pill_text
+
   return (
     <section className="hero" id="home">
       <div className="hero-video-wrapper" aria-hidden="true">
@@ -561,7 +582,17 @@ function Hero() {
           </span>
         </h1>
         <p className="hero-description">VERBORA helps you build essential communication skills with practical learning, expert guidance, and the confidence to express yourself.</p>
-        <div className="hero-buttons"><a href="/#courses" className="primary-button hero-primary">Explore Courses</a><a href="/#about" className="secondary-button"><CirclePlay size={19} fill="#0966bf" color="white" />How It Works</a></div>
+        <div className="hero-buttons">
+          {showContestCta ? (
+            <Link to="/contest" className="primary-button hero-primary hero-contest-cta">
+              <Trophy size={17} />
+              <span>{heroContestBtnText}</span>
+            </Link>
+          ) : (
+            <a href="/#courses" className="primary-button hero-primary">Explore Courses</a>
+          )}
+          <a href="/#about" className="secondary-button"><CirclePlay size={19} fill="#0966bf" color="white" />How It Works</a>
+        </div>
         <div className="hero-highlights">
           <div><UsersRound size={25} /><span><strong>Practical</strong><small>Skill Building</small></span></div>
           <div><Star size={25} className="star-icon" fill="currentColor" /><span><strong>Guided</strong><small>Learning</small></span></div>
@@ -1189,6 +1220,159 @@ export function useTrainerProfileQuery() {
   })
 }
 
+function normalizeExternalUrl(rawUrl?: string | null): string {
+  const trimmed = (rawUrl || '').trim()
+  if (!trimmed) return ''
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+  return `https://${trimmed}`
+}
+
+export function useContestConfigQuery(liveRefresh = false) {
+  return useQuery({
+    queryKey: liveRefresh ? ['contest-config', 'live'] : ['contest-config'],
+    initialData: () => readCachedContestConfig(),
+    initialDataUpdatedAt: 0,
+    staleTime: liveRefresh ? 0 : 60_000,
+    refetchOnMount: liveRefresh ? 'always' : false,
+    refetchOnWindowFocus: liveRefresh,
+    queryFn: async () => {
+      if (liveRefresh) {
+        const res = await api.contest.getContestConfig()
+        const fresh = res.data || api.contest.DEFAULT_CONTEST_CONFIG
+        writeCachedContestConfig(fresh)
+        return fresh
+      }
+      const data = await api.home.getPublicHomeData()
+      return data.contestConfig
+    },
+  })
+}
+
+function HomeContestSection() {
+  const { data: loadedContest, isLoading } = useContestConfigQuery()
+  const showSkeleton = isLoading && !loadedContest
+  const contest = loadedContest || api.contest.DEFAULT_CONTEST_CONFIG
+
+  if (showSkeleton) {
+    return (
+      <section className="home-row-section home-contest-section" id="contest" aria-busy="true">
+        <div className="home-contest-card is-skeleton">
+          <div className="home-contest-grid">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div className="skeleton-shimmer-dark" style={{ height: 24, width: 170, borderRadius: 999 }} />
+              <div className="skeleton-shimmer-dark" style={{ height: 38, width: '88%', borderRadius: 8 }} />
+              <div className="skeleton-shimmer-dark" style={{ height: 42, width: '95%', borderRadius: 8 }} />
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <div className="skeleton-shimmer-dark" style={{ height: 54, width: 170, borderRadius: 12 }} />
+                <div className="skeleton-shimmer-dark" style={{ height: 54, width: 170, borderRadius: 12 }} />
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div className="skeleton-shimmer-dark" style={{ height: 44, width: 175, borderRadius: 999 }} />
+                <div className="skeleton-shimmer-dark" style={{ height: 44, width: 160, borderRadius: 999 }} />
+              </div>
+            </div>
+            <div className="home-contest-steps-glass" style={{ gap: 12 }}>
+              <div className="skeleton-shimmer-dark" style={{ height: 20, width: 150, borderRadius: 6 }} />
+              <div className="skeleton-shimmer-dark" style={{ height: 54, width: '100%', borderRadius: 12 }} />
+              <div className="skeleton-shimmer-dark" style={{ height: 54, width: '100%', borderRadius: 12 }} />
+              <div className="skeleton-shimmer-dark" style={{ height: 54, width: '100%', borderRadius: 12 }} />
+            </div>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  if (!contest.is_active) return null
+
+  const showHomePrizes = contest.show_prizes !== false && contest.prizes.length > 0
+  const showHomeSteps = contest.show_steps !== false && contest.steps.length > 0
+
+  return (
+    <section className="home-row-section home-contest-section" id="contest">
+      <div className="home-contest-card">
+        <div className="home-contest-glow" aria-hidden="true" />
+        <div className={`home-contest-grid ${showHomeSteps ? '' : 'is-single-col'}`}>
+          <div className="home-contest-copy">
+            <div className="home-contest-top-badges">
+              <span className="home-contest-live-badge">
+                <span className="home-contest-live-dot" aria-hidden="true" />
+                <span>{contest.badge_text}</span>
+              </span>
+              <span className="home-contest-fee-pill">{contest.entry_fee_label}</span>
+            </div>
+
+            <h2 className="home-contest-title">{contest.title}</h2>
+            <p className="home-contest-subtitle">{contest.subtitle}</p>
+
+            {contest.topic && (
+              <div className="home-contest-topic-box">
+                <Mic2 size={16} />
+                <div>
+                  <span className="home-contest-topic-label">Speaking Topic</span>
+                  <strong>{contest.topic}</strong>
+                </div>
+              </div>
+            )}
+
+            {showHomePrizes && (
+              <div className="home-contest-prizes-row">
+                {contest.prizes.slice(0, 3).map((prize, idx) => (
+                  <div key={`${prize.rank}-${idx}`} className="home-contest-prize-chip">
+                    <span className="home-contest-prize-rank">{prize.rank}</span>
+                    <strong>{prize.title}</strong>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="home-contest-actions">
+              <Link to="/contest" className="home-contest-cta-btn">
+                <Trophy size={16} />
+                <span>Enter Contest Now</span>
+                <MoveRight size={16} />
+              </Link>
+              <Link to="/contest" className="home-contest-secondary-btn">
+                <span>View Contest Details</span>
+              </Link>
+              <span className="home-contest-deadline">
+                <Clock size={14} />
+                <span>
+                  {api.contest.formatContestSchedule(
+                    contest.start_date,
+                    contest.end_date,
+                    contest.deadline_label
+                  )}
+                </span>
+              </span>
+            </div>
+          </div>
+
+          {showHomeSteps && (
+            <div className="home-contest-steps-glass">
+              <div className="home-contest-steps-head">
+                <Sparkles size={15} />
+                <span>How It Works</span>
+              </div>
+              <div className="home-contest-steps-list">
+                {contest.steps.map((s, idx) => (
+                  <div key={`${s.step}-${idx}`} className="home-contest-step-row">
+                    <span className="home-contest-step-num">{s.step}</span>
+                    <div>
+                      <strong>{s.title}</strong>
+                      <p>{s.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export function useMergedCourses() {
   const query = useCoursesQuery()
   const merged = useMemo(() => {
@@ -1505,6 +1689,7 @@ function LandingPage() {
         <div className="content-shell without-demo">
           <CoursesSection />
           <PlacementsSection />
+          <HomeContestSection />
           <WhySection onDemo={showDemo} />
           <HomeTrainerSection onDemo={showDemo} />
           <StoriesSection />
@@ -3243,7 +3428,405 @@ function downloadCSV(filename: string, rows: (string | number)[][]) {
   document.body.removeChild(link)
 }
 
-function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testimonials' | 'testimonials-add' | 'courses' | 'trainer' }) {
+function ContestPage() {
+  const [modalOpen, setModalOpen] = useState(false)
+  const { data: loadedContest, isLoading } = useContestConfigQuery(true)
+  const showSkeleton = isLoading && !loadedContest
+  const contest = loadedContest || api.contest.DEFAULT_CONTEST_CONFIG
+  const gmeetHref = normalizeExternalUrl(contest.gmeet_url)
+  const hasRichDescription = Boolean(stripHtmlToText(contest.description).trim())
+  const showContestPrizes = contest.show_prizes !== false && contest.prizes.length > 0
+  const showContestSteps = contest.show_steps !== false && contest.steps.length > 0
+  const scheduleDisplay = api.contest.formatContestSchedule(
+    contest.start_date,
+    contest.end_date,
+    contest.deadline_label
+  )
+
+  const [entryForm, setEntryForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    category: 'Student / College Graduate',
+    city_or_role: '',
+    notes: '',
+  })
+  const [submitting, setSubmitting] = useState(false)
+  const [submittedEntry, setSubmittedEntry] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const showDemo = () => setModalOpen(true)
+
+  const handleSubmitEntry = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!entryForm.name.trim() || !entryForm.phone.trim() || !entryForm.email.trim()) {
+      setSubmitError('Please fill in your name, WhatsApp number, and email address.')
+      return
+    }
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      const res = await api.contest.submitContestEntry(entryForm)
+      if (res.success && res.data) {
+        setSubmittedEntry(entryForm.name.trim())
+        setEntryForm({
+          name: '',
+          phone: '',
+          email: '',
+          category: 'Student / College Graduate',
+          city_or_role: '',
+          notes: '',
+        })
+      } else {
+        setSubmitError(res.error || 'Could not complete registration. Please try again.')
+      }
+    } catch (err: any) {
+      setSubmitError(err?.message || 'Registration failed. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <>
+      <SiteHeader onDemo={showDemo} />
+      <main className="contest-page">
+        {showSkeleton ? (
+          <section className="contest-hero-section" aria-busy="true">
+            <div className="content-shell">
+              <div className="contest-hero-skeleton">
+                <div className="skeleton-shimmer" style={{ height: 26, width: 180, borderRadius: 999 }} />
+                <div className="skeleton-shimmer" style={{ height: 48, width: '74%', borderRadius: 10 }} />
+                <div className="skeleton-shimmer" style={{ height: 22, width: '62%', borderRadius: 6 }} />
+                <div className="contest-page-grid" style={{ marginTop: 22 }}>
+                  <div className="skeleton-shimmer" style={{ height: 340, borderRadius: 20 }} />
+                  <div className="skeleton-shimmer" style={{ height: 340, borderRadius: 20 }} />
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : !contest.is_active ? (
+          <section className="contest-closed-section">
+            <div className="content-shell">
+              <div className="contest-closed-card">
+                <span className="section-kicker">VERBORA Contest</span>
+                <h1>Next Speaking Challenge Coming Soon</h1>
+                <p>
+                  Registrations for the current round have closed. Explore our coaching programs or book a free 1-on-1 demo session to stay notified for the upcoming contest.
+                </p>
+                <div className="contest-closed-actions">
+                  <button type="button" className="primary-button" onClick={showDemo}>
+                    <span>Book Free Demo Session</span>
+                    <MoveRight size={16} />
+                  </button>
+                  <Link to="/courses" className="secondary-button">
+                    <span>Explore Courses</span>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <>
+            <section className="contest-hero-section">
+              <div className="content-shell">
+                <div className="contest-hero-banner">
+                  <div className="contest-hero-badges">
+                    <span className="home-contest-live-badge">
+                      <span className="home-contest-live-dot" aria-hidden="true" />
+                      <span>{contest.badge_text}</span>
+                    </span>
+                    <span className="home-contest-fee-pill">
+                      <Clock size={13} /> {scheduleDisplay}
+                    </span>
+                  </div>
+                  <h1>{contest.title}</h1>
+                  <p className="contest-hero-sub">{contest.subtitle}</p>
+                </div>
+              </div>
+            </section>
+
+            <section className="contest-main-section">
+              <div className="content-shell">
+                <div className="contest-page-grid">
+                  <div className="contest-info-col">
+                    <div className="contest-block-card">
+                      <div className="contest-details-strip">
+                        {contest.topic && (
+                          <div className="contest-detail-cell is-wide">
+                            <span className="contest-detail-label">Speaking Topic</span>
+                            <strong>{contest.topic}</strong>
+                          </div>
+                        )}
+                        <div className="contest-detail-cell">
+                          <span className="contest-detail-label">Contest Dates</span>
+                          <strong>{scheduleDisplay}</strong>
+                        </div>
+                        <div className="contest-detail-cell">
+                          <span className="contest-detail-label">Entry Fee</span>
+                          <strong>{contest.entry_fee_label}</strong>
+                        </div>
+                        {gmeetHref && (
+                          <div className="contest-detail-cell is-wide contest-detail-meet">
+                            <div>
+                              <span className="contest-detail-label">Live Google Meet Room</span>
+                              <a
+                                href={gmeetHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="contest-gmeet-url-text"
+                              >
+                                {gmeetHref}
+                              </a>
+                            </div>
+                            <a
+                              href={gmeetHref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="contest-meet-inline-btn"
+                            >
+                              <Video size={15} />
+                              <span>Join Meet</span>
+                            </a>
+                          </div>
+                        )}
+                      </div>
+
+                      {hasRichDescription && (
+                        <div className="contest-card-divider">
+                          <h2 className="contest-section-title-sm">About the Challenge</h2>
+                          <div
+                            className="trainer-story-text"
+                            dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(contest.description) }}
+                          />
+                        </div>
+                      )}
+
+                      {showContestPrizes && (
+                        <div className="contest-card-divider">
+                          <h2 className="contest-section-title-sm">Prizes & Recognition</h2>
+                          <div className="contest-prizes-grid">
+                            {contest.prizes.map((p, idx) => (
+                              <div key={`${p.rank}-${idx}`} className="contest-prize-card">
+                                <span className="contest-prize-badge">
+                                  <Trophy size={13} /> {p.rank}
+                                </span>
+                                <h3>{p.title}</h3>
+                                <p>{p.detail}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {(showContestSteps || contest.rules.length > 0) && (
+                      <div className="contest-block-card">
+                        {showContestSteps && (
+                          <div>
+                            <h2 className="contest-section-title-sm" style={{ marginTop: 0 }}>
+                              How It Works
+                            </h2>
+                            <div className="contest-steps-3col">
+                              {contest.steps.map((s, idx) => (
+                                <div key={`${s.step}-${idx}`} className="contest-step-mini">
+                                  <span className="trainer-step-num">{s.step}</span>
+                                  <h3>{s.title}</h3>
+                                  <p>{s.desc}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {contest.rules.length > 0 && (
+                          <div className={showContestSteps ? 'contest-card-divider' : ''}>
+                            <h2 className="contest-section-title-sm">Eligibility & Guidelines</h2>
+                            <ul className="contest-rules-list">
+                              {contest.rules.map((rule, idx) => (
+                                <li key={idx}>
+                                  <CheckCircle2 size={16} className="contest-rule-check" />
+                                  <span>{rule}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <aside className="contest-form-col">
+                    <div className="contest-register-card">
+                      {submittedEntry ? (
+                        <div className="contest-register-success">
+                          <div className="contest-success-icon">
+                            <CheckCircle2 size={32} />
+                          </div>
+                          <h3>Registration Confirmed!</h3>
+                          <p>
+                            Thank you, <strong>{submittedEntry}</strong>! Your entry for{' '}
+                            <strong>{contest.title}</strong> is recorded.
+                            {gmeetHref
+                              ? ' Join using the Google Meet button below at your slot time.'
+                              : ' Session details will be sent shortly on WhatsApp and email.'}
+                          </p>
+                          {gmeetHref && (
+                            <a
+                              href={gmeetHref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="primary-button"
+                              style={{ width: '100%', justifyContent: 'center' }}
+                            >
+                              <Video size={17} />
+                              <span>Join Google Meet</span>
+                            </a>
+                          )}
+                          <a
+                            href={`https://wa.me/919876543210?text=${encodeURIComponent(
+                              `Hi VERBORA! I just registered for ${contest.title}. Name: ${submittedEntry}`
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={gmeetHref ? 'secondary-button' : 'primary-button'}
+                            style={{ width: '100%', justifyContent: 'center' }}
+                          >
+                            <MessageCircle size={17} />
+                            <span>Confirm on WhatsApp</span>
+                          </a>
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            style={{ width: '100%', justifyContent: 'center' }}
+                            onClick={() => setSubmittedEntry(null)}
+                          >
+                            Register Another Participant
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="contest-register-head">
+                            <span className="contest-register-kicker">
+                              Contest Registration
+                            </span>
+                            <h2>Reserve Your Spot</h2>
+                            <p>Fill out your details to receive your speaking slot.</p>
+                          </div>
+
+                          {submitError && (
+                            <div className="admin-error-box" style={{ marginBottom: 14 }}>
+                              <AlertCircle size={16} />
+                              <span>{submitError}</span>
+                            </div>
+                          )}
+
+                          <form className="contest-register-form" onSubmit={handleSubmitEntry}>
+                            <div className="contest-form-2col">
+                              <div className="contact-field">
+                                <label htmlFor="contest-name">Full Name *</label>
+                                <input
+                                  id="contest-name"
+                                  type="text"
+                                  required
+                                  value={entryForm.name}
+                                  onChange={e => setEntryForm(prev => ({ ...prev, name: e.target.value }))}
+                                  placeholder="Ananya Sharma"
+                                />
+                              </div>
+
+                              <div className="contact-field">
+                                <label htmlFor="contest-phone">WhatsApp Number *</label>
+                                <input
+                                  id="contest-phone"
+                                  type="tel"
+                                  required
+                                  value={entryForm.phone}
+                                  onChange={e => setEntryForm(prev => ({ ...prev, phone: e.target.value }))}
+                                  placeholder="+91 98765 43210"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="contact-field">
+                              <label htmlFor="contest-email">Email Address *</label>
+                              <input
+                                id="contest-email"
+                                type="email"
+                                required
+                                value={entryForm.email}
+                                onChange={e => setEntryForm(prev => ({ ...prev, email: e.target.value }))}
+                                placeholder="you@example.com"
+                              />
+                            </div>
+
+                            <div className="contest-form-2col">
+                              <div className="contact-field">
+                                <label htmlFor="contest-category">Category *</label>
+                                <select
+                                  id="contest-category"
+                                  value={entryForm.category}
+                                  onChange={e => setEntryForm(prev => ({ ...prev, category: e.target.value }))}
+                                >
+                                  <option value="Student / College Graduate">Student / Graduate</option>
+                                  <option value="Working Professional">Working Professional</option>
+                                  <option value="Job Seeker">Job Seeker</option>
+                                  <option value="Entrepreneur / Homemaker">Other / Entrepreneur</option>
+                                </select>
+                              </div>
+
+                              <div className="contact-field">
+                                <label htmlFor="contest-city">City / Role</label>
+                                <input
+                                  id="contest-city"
+                                  type="text"
+                                  value={entryForm.city_or_role}
+                                  onChange={e => setEntryForm(prev => ({ ...prev, city_or_role: e.target.value }))}
+                                  placeholder="Delhi / Engineer"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="contact-field">
+                              <label htmlFor="contest-notes">Goal (Optional)</label>
+                              <input
+                                id="contest-notes"
+                                type="text"
+                                value={entryForm.notes}
+                                onChange={e => setEntryForm(prev => ({ ...prev, notes: e.target.value }))}
+                                placeholder="Stage confidence, fluency, interviews..."
+                              />
+                            </div>
+
+                            <button
+                              type="submit"
+                              className="primary-button"
+                              disabled={submitting}
+                              style={{ width: '100%', justifyContent: 'center' }}
+                            >
+                              <span>
+                                {submitting ? 'Submitting Entry...' : 'Register Now'}
+                              </span>
+                              <MoveRight size={16} />
+                            </button>
+                          </form>
+                        </>
+                      )}
+                    </div>
+                  </aside>
+                </div>
+              </div>
+            </section>
+          </>
+        )}
+      </main>
+      <SiteFooter onDemo={showDemo} />
+      <DemoModal open={modalOpen} onClose={() => setModalOpen(false)} />
+    </>
+  )
+}
+
+function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testimonials' | 'testimonials-add' | 'courses' | 'trainer' | 'contest' }) {
   const navigate = useNavigate()
   const pathname = useRouterState({ select: state => state.location.pathname })
   const editIdMatch = pathname.match(/\/testimonials\/edit\/([^/?#]+)/)
@@ -3264,16 +3847,19 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const isTestimonialsEditRoute = (pathname.includes('/testimonials/edit/') || (pathname.includes('/testimonials') && !!editId))
   const isTestimonialsFormRoute = isTestimonialsAddRoute || isTestimonialsEditRoute
 
+  const isContestRoute = pathname.includes('/contest') || defaultRoute === 'contest'
   const isTrainerRoute = pathname.includes('/trainer') || defaultRoute === 'trainer'
   const isCoursesRoute = pathname.includes('/courses') || defaultRoute === 'courses'
   const isTestimonialsRoute = isTestimonialsFormRoute || pathname.includes('/testimonials') || defaultRoute === 'testimonials'
-  const activeSection: 'leads' | 'testimonials' | 'courses' | 'trainer' = isTrainerRoute
-    ? 'trainer'
-    : isCoursesRoute
-      ? 'courses'
-      : isTestimonialsRoute
-        ? 'testimonials'
-        : 'leads'
+  const activeSection: 'leads' | 'testimonials' | 'courses' | 'trainer' | 'contest' = isContestRoute
+    ? 'contest'
+    : isTrainerRoute
+      ? 'trainer'
+      : isCoursesRoute
+        ? 'courses'
+        : isTestimonialsRoute
+          ? 'testimonials'
+          : 'leads'
 
   // Determine base admin path (/verbora-edu-admin, /shivam-admin, /admin)
   const baseAdminPath = pathname.startsWith('/shivam-admin')
@@ -3287,6 +3873,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const addTestimonialRoutePath = `${baseAdminPath}/testimonials/add`
   const coursesRoutePath = `${baseAdminPath}/courses`
   const trainerRoutePath = `${baseAdminPath}/trainer`
+  const contestRoutePath = `${baseAdminPath}/contest`
 
   // Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -3332,6 +3919,52 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const [savingTrainer, setSavingTrainer] = useState(false)
   const [trainerPhotoBusyMode, setTrainerPhotoBusyMode] = useState<'uploading' | 'removing' | null>(null)
   const [trainerPhotoError, setTrainerPhotoError] = useState<string | null>(null)
+  const [contestDbError, setContestDbError] = useState<string | null>(() =>
+    api.contest.getContestDbError()
+  )
+  const [contestEntriesDbError, setContestEntriesDbError] = useState<string | null>(() =>
+    api.contest.getContestEntriesDbError()
+  )
+  const [contestForm, setContestForm] = useState<{
+    is_active: boolean
+    badge_text: string
+    hero_pill_text: string
+    title: string
+    subtitle: string
+    topic: string
+    gmeet_url: string
+    start_date: string
+    end_date: string
+    description: string
+    deadline_label: string
+    entry_fee_label: string
+    show_prizes: boolean
+    show_steps: boolean
+    prizes: ContestPrizeItem[]
+    steps: ContestStepItem[]
+    rulesText: string
+  }>({
+    is_active: api.contest.DEFAULT_CONTEST_CONFIG.is_active,
+    badge_text: api.contest.DEFAULT_CONTEST_CONFIG.badge_text,
+    hero_pill_text: api.contest.DEFAULT_CONTEST_CONFIG.hero_pill_text,
+    title: api.contest.DEFAULT_CONTEST_CONFIG.title,
+    subtitle: api.contest.DEFAULT_CONTEST_CONFIG.subtitle,
+    topic: api.contest.DEFAULT_CONTEST_CONFIG.topic,
+    gmeet_url: api.contest.DEFAULT_CONTEST_CONFIG.gmeet_url,
+    start_date: api.contest.DEFAULT_CONTEST_CONFIG.start_date,
+    end_date: api.contest.DEFAULT_CONTEST_CONFIG.end_date,
+    description: api.contest.DEFAULT_CONTEST_CONFIG.description,
+    deadline_label: api.contest.DEFAULT_CONTEST_CONFIG.deadline_label,
+    entry_fee_label: api.contest.DEFAULT_CONTEST_CONFIG.entry_fee_label,
+    show_prizes: api.contest.DEFAULT_CONTEST_CONFIG.show_prizes,
+    show_steps: api.contest.DEFAULT_CONTEST_CONFIG.show_steps,
+    prizes: api.contest.DEFAULT_CONTEST_CONFIG.prizes,
+    steps: api.contest.DEFAULT_CONTEST_CONFIG.steps,
+    rulesText: api.contest.DEFAULT_CONTEST_CONFIG.rules.join('\n'),
+  })
+  const [savingContest, setSavingContest] = useState(false)
+  const [contestSearch, setContestSearch] = useState('')
+  const [pendingContestToggle, setPendingContestToggle] = useState<'start' | 'stop' | null>(null)
   const [leadsDbError, setLeadsDbError] = useState<string | null>(null)
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)
   const [courseForm, setCourseForm] = useState<{
@@ -3511,9 +4144,58 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     },
   })
 
+  const adminContestConfigQuery = useQuery({
+    queryKey: ['admin-contest-config'],
+    enabled: isAuthenticated,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    queryFn: async () => {
+      const res = await api.contest.getContestConfig()
+      setContestDbError(api.contest.getContestDbError())
+      return res.data || api.contest.DEFAULT_CONTEST_CONFIG
+    },
+  })
+
+  const adminContestEntriesQuery = useQuery({
+    queryKey: ['admin-contest-entries'],
+    enabled: isAuthenticated && activeSection === 'contest',
+    staleTime: 2 * 60_000,
+    gcTime: 30 * 60_000,
+    queryFn: async () => {
+      const res = await api.contest.getContestEntries()
+      setContestEntriesDbError(api.contest.getContestEntriesDbError())
+      return res.data || []
+    },
+  })
+
   const testimonials = adminTestimonialsQuery.data || []
   const adminCourses = adminCoursesQuery.data || []
   const adminTrainerProfile = adminTrainerQuery.data || api.trainer.DEFAULT_TRAINER_PROFILE
+  const contestEntries = adminContestEntriesQuery.data || []
+
+  useEffect(() => {
+    if (!adminContestConfigQuery.data) return
+    const c = adminContestConfigQuery.data
+    setContestForm({
+      is_active: c.is_active,
+      badge_text: c.badge_text,
+      hero_pill_text: c.hero_pill_text,
+      title: c.title,
+      subtitle: c.subtitle,
+      topic: c.topic,
+      gmeet_url: c.gmeet_url,
+      start_date: c.start_date,
+      end_date: c.end_date,
+      description: c.description,
+      deadline_label: c.deadline_label,
+      entry_fee_label: c.entry_fee_label,
+      show_prizes: c.show_prizes,
+      show_steps: c.show_steps,
+      prizes: c.prizes,
+      steps: c.steps,
+      rulesText: (c.rules || []).join('\n'),
+    })
+  }, [adminContestConfigQuery.data])
 
   useEffect(() => {
     if (!adminTrainerQuery.data) return
@@ -3640,6 +4322,9 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
         queryClient.invalidateQueries({ queryKey: ['admin-courses'] }),
         queryClient.invalidateQueries({ queryKey: ['admin-trainer-profile'] }),
         queryClient.invalidateQueries({ queryKey: ['trainer-profile'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-contest-config'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-contest-entries'] }),
+        queryClient.invalidateQueries({ queryKey: ['contest-config'] }),
       ])
     } catch (err) {
       console.error('Error fetching admin data:', err)
@@ -3654,6 +4339,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
       queryClient.setQueryData(['courses'], fresh.courses)
       queryClient.setQueryData(['testimonials'], fresh.testimonials)
       queryClient.setQueryData(['trainer-profile'], fresh.trainerProfile)
+      queryClient.setQueryData(['contest-config'], fresh.contestConfig)
     })
   }
 
@@ -3910,6 +4596,112 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     } finally {
       setSavingTrainer(false)
     }
+  }
+
+  const handleConfirmToggleContestActive = async () => {
+    if (!pendingContestToggle) return
+    const nextActive = pendingContestToggle === 'start'
+    setSavingContest(true)
+    setContestForm(prev => ({ ...prev, is_active: nextActive }))
+    try {
+      const res = await api.contest.updateContestConfig({ is_active: nextActive })
+      setContestDbError(api.contest.getContestDbError())
+      if (res.success && res.data) {
+        writeCachedContestConfig(res.data)
+        queryClient.setQueryData(['admin-contest-config'], res.data)
+        queryClient.setQueryData(['contest-config'], res.data)
+        queryClient.setQueryData(['contest-config', 'live'], res.data)
+        syncPublicHomeCache()
+        setPendingContestToggle(null)
+        showToast(nextActive ? 'Contest started.' : 'Contest stopped.')
+      } else {
+        setContestForm(prev => ({ ...prev, is_active: !nextActive }))
+        alert(`Failed to update contest status: ${res.error || 'Unknown error'}`)
+      }
+    } catch (err: any) {
+      setContestForm(prev => ({ ...prev, is_active: !nextActive }))
+      alert(`Failed to update contest status: ${err?.message || 'Unknown error'}`)
+    } finally {
+      setSavingContest(false)
+    }
+  }
+
+  const handleSaveContestConfig = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!contestForm.title.trim()) {
+      alert('Contest title cannot be empty.')
+      return
+    }
+    setSavingContest(true)
+    try {
+      const rules = contestForm.rulesText
+        .split('\n')
+        .map(line => line.trim())
+        .filter(Boolean)
+
+      const res = await api.contest.updateContestConfig({
+        is_active: contestForm.is_active,
+        badge_text: contestForm.badge_text.trim(),
+        hero_pill_text: contestForm.hero_pill_text.trim(),
+        title: contestForm.title.trim(),
+        subtitle: contestForm.subtitle.trim(),
+        topic: contestForm.topic.trim(),
+        gmeet_url: contestForm.gmeet_url.trim(),
+        start_date: contestForm.start_date.trim(),
+        end_date: contestForm.end_date.trim(),
+        description: contestForm.description.trim(),
+        deadline_label: contestForm.deadline_label.trim(),
+        entry_fee_label: contestForm.entry_fee_label.trim(),
+        show_prizes: contestForm.show_prizes,
+        show_steps: contestForm.show_steps,
+        prizes: contestForm.prizes,
+        steps: contestForm.steps,
+        rules,
+      })
+      setContestDbError(api.contest.getContestDbError())
+      if (res.success && res.data) {
+        writeCachedContestConfig(res.data)
+        queryClient.setQueryData(['admin-contest-config'], res.data)
+        queryClient.setQueryData(['contest-config'], res.data)
+        queryClient.setQueryData(['contest-config', 'live'], res.data)
+        syncPublicHomeCache()
+        showToast('Contest settings saved and published!')
+      } else {
+        alert(`Error saving contest settings: ${res.error || 'Unknown error'}`)
+      }
+    } catch (err: any) {
+      alert(`Error saving contest: ${err?.message || 'Unknown error'}`)
+    } finally {
+      setSavingContest(false)
+    }
+  }
+
+  const handleDeleteContestEntry = async (id: string, name: string) => {
+    if (!window.confirm(`Delete contest registration from "${name}"?`)) return
+    const res = await api.contest.deleteContestEntry(id)
+    if (res.success) {
+      queryClient.setQueryData<typeof contestEntries>(['admin-contest-entries'], old =>
+        (old || []).filter(item => item.id !== id)
+      )
+      showToast(`Removed entry for "${name}".`)
+    }
+  }
+
+  const handleExportContestCsv = () => {
+    const headers = ['Date', 'Name', 'Phone', 'Email', 'Category', 'City / Role', 'Notes']
+    const rows = contestEntries.map(entry => [
+      `"${new Date(entry.created_at).toLocaleString()}"`,
+      `"${entry.name}"`,
+      `"${entry.phone}"`,
+      `"${entry.email}"`,
+      `"${entry.category}"`,
+      `"${(entry.city_or_role || '').replace(/"/g, '""')}"`,
+      `"${(entry.notes || '').replace(/"/g, '""')}"`,
+    ])
+    downloadCSV(`verbora-contest-entries-${new Date().toISOString().split('T')[0]}.csv`, [
+      headers,
+      ...rows,
+    ])
   }
 
   const handleSaveCourse = async () => {
@@ -4536,6 +5328,18 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
               <UserCheck size={18} />
               <span className="admin-sidebar-link-text">Trainer Profile</span>
             </Link>
+
+            <Link
+              to={contestRoutePath}
+              className={`admin-sidebar-link ${activeSection === 'contest' ? 'active' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            >
+              <Trophy size={18} />
+              <span className="admin-sidebar-link-text">Contest</span>
+              <span className="admin-sidebar-pill admin-sidebar-pill-secondary">
+                {contestForm.is_active ? 'Live' : 'Off'}
+              </span>
+            </Link>
           </nav>
 
           <div className="admin-sidebar-footer">
@@ -4591,7 +5395,9 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                         ? 'Courses Management'
                         : activeSection === 'trainer'
                           ? 'Trainer Profile'
-                          : 'Home Testimonials'}
+                          : activeSection === 'contest'
+                            ? 'Contest & Entries'
+                            : 'Home Testimonials'}
                   </span>
                 )}
               </div>
@@ -5800,6 +6606,14 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                       Customize trainer details, portrait photo, credentials, and coaching philosophy shown on the Trainer & Contact pages.
                     </p>
                   </div>
+                  <button
+                    type="submit"
+                    form="admin-trainer-profile-form"
+                    className="admin-trainer-save-btn"
+                    disabled={savingTrainer || trainerPhotoBusyMode !== null || (adminTrainerQuery.isLoading && !adminTrainerQuery.data)}
+                  >
+                    {savingTrainer ? 'Saving Trainer Profile...' : 'Save Trainer Profile'}
+                  </button>
                 </div>
 
                 {trainerDbError && (
@@ -5825,7 +6639,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                       <div className="skeleton-shimmer" style={{ height: 54, borderRadius: 10 }} />
                     </div>
                   ) : (
-                  <form className="admin-trainer-form" onSubmit={handleSaveTrainerProfile}>
+                  <form id="admin-trainer-profile-form" className="admin-trainer-form" onSubmit={handleSaveTrainerProfile}>
                     <div>
                       <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
                         Trainer Portrait Photo
@@ -6085,16 +6899,387 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                           <span>Preview Trainer Page</span>
                         </a>
                       </div>
-
-                      <button
-                        type="submit"
-                        className="admin-trainer-save-btn"
-                        disabled={savingTrainer || trainerPhotoBusyMode !== null}
-                      >
-                        {savingTrainer ? 'Saving Trainer Profile...' : 'Save Trainer Profile'}
-                      </button>
                     </div>
                   </form>
+                  )}
+                </div>
+              </>
+            )}
+
+            {activeSection === 'contest' && (
+              <>
+                <div className="admin-section-header">
+                  <div>
+                    <h2 className="admin-section-title">Contest Management & Entries</h2>
+                    <p className="admin-section-subtitle">
+                      Control contest visibility, prizes, steps, rules, and review participant registrations from /contest.
+                    </p>
+                  </div>
+                  <button
+                    type="submit"
+                    form="admin-contest-settings-form"
+                    className="admin-trainer-save-btn"
+                    disabled={savingContest}
+                  >
+                    {savingContest ? 'Saving Contest...' : 'Save Contest Settings'}
+                  </button>
+                </div>
+
+                {(contestDbError || contestEntriesDbError) && (
+                  <div className="admin-trainer-db-alert" role="alert">
+                    <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <div>
+                      <strong>Supabase Table Notice:</strong> {contestDbError || contestEntriesDbError} — Make sure{' '}
+                      <code>public.contest_config</code> and <code>public.contest_entries</code> are created from{' '}
+                      <code>supabase/schema.sql</code>.
+                    </div>
+                  </div>
+                )}
+
+                <div className="admin-trainer-card" style={{ marginBottom: 22 }}>
+                  <form id="admin-contest-settings-form" className="admin-trainer-form" onSubmit={handleSaveContestConfig}>
+                    <div className="admin-contest-status-row">
+                      <div>
+                        <strong style={{ display: 'block', fontSize: 14, color: '#0f172a' }}>
+                          Contest Status: {contestForm.is_active ? 'LIVE (Started)' : 'STOPPED (Hidden)'}
+                        </strong>
+                        <span className="admin-trainer-hint" style={{ marginTop: 2 }}>
+                          Start ya Stop karte hi website (Hero button, Navbar, Home & /contest) turant update ho jayega.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={savingContest}
+                        className={`admin-contest-toggle-btn ${contestForm.is_active ? 'is-live' : 'is-stopped'}`}
+                        onClick={() => setPendingContestToggle(contestForm.is_active ? 'stop' : 'start')}
+                      >
+                        <span className="admin-contest-btn-dot" aria-hidden="true" />
+                        <span>{contestForm.is_active ? 'Stop Contest' : 'Start Contest'}</span>
+                      </button>
+                    </div>
+
+                    <div className="admin-trainer-2col">
+                      <div className="admin-trainer-field">
+                        <label htmlFor="contest-topic-input">Speaking Topic *</label>
+                        <input
+                          id="contest-topic-input"
+                          type="text"
+                          value={contestForm.topic}
+                          onChange={e => setContestForm(prev => ({ ...prev, topic: e.target.value }))}
+                          placeholder="e.g. My Biggest Career Turning Point (2 Mins)"
+                        />
+                      </div>
+
+                      <div className="admin-trainer-field">
+                        <label htmlFor="contest-gmeet-input">Google Meet Link (GMeet URL)</label>
+                        <input
+                          id="contest-gmeet-input"
+                          type="url"
+                          value={contestForm.gmeet_url}
+                          onChange={e => setContestForm(prev => ({ ...prev, gmeet_url: e.target.value }))}
+                          placeholder="https://meet.google.com/xxx-yyyy-zzz"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="admin-trainer-2col">
+                      <div className="admin-trainer-field">
+                        <label htmlFor="contest-fee-input">Entry Fee</label>
+                        <input
+                          id="contest-fee-input"
+                          type="text"
+                          value={contestForm.entry_fee_label}
+                          onChange={e => setContestForm(prev => ({ ...prev, entry_fee_label: e.target.value }))}
+                          placeholder="e.g. Free or ₹199"
+                        />
+                      </div>
+
+                      <div className="admin-trainer-field">
+                        <label htmlFor="contest-badge-input">Status Badge Text</label>
+                        <input
+                          id="contest-badge-input"
+                          type="text"
+                          value={contestForm.badge_text}
+                          onChange={e => setContestForm(prev => ({ ...prev, badge_text: e.target.value }))}
+                          placeholder="e.g. Registrations Open"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="admin-trainer-2col">
+                      <div className="admin-trainer-field">
+                        <label htmlFor="contest-start-date-input">Start Date</label>
+                        <input
+                          id="contest-start-date-input"
+                          type="date"
+                          value={contestForm.start_date}
+                          onChange={e => setContestForm(prev => ({ ...prev, start_date: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="admin-trainer-field">
+                        <label htmlFor="contest-end-date-input">End Date</label>
+                        <input
+                          id="contest-end-date-input"
+                          type="date"
+                          value={contestForm.end_date}
+                          onChange={e => setContestForm(prev => ({ ...prev, end_date: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="admin-trainer-2col">
+                      <div className="admin-trainer-field">
+                        <label htmlFor="contest-hero-pill-input">Hero CTA Button Text</label>
+                        <input
+                          id="contest-hero-pill-input"
+                          type="text"
+                          value={contestForm.hero_pill_text}
+                          onChange={e => setContestForm(prev => ({ ...prev, hero_pill_text: e.target.value }))}
+                          placeholder="e.g. Join Speech Contest"
+                        />
+                      </div>
+
+                      <div className="admin-trainer-field">
+                        <label htmlFor="contest-deadline-input">Deadline Label</label>
+                        <input
+                          id="contest-deadline-input"
+                          type="text"
+                          value={contestForm.deadline_label}
+                          onChange={e => setContestForm(prev => ({ ...prev, deadline_label: e.target.value }))}
+                          placeholder="e.g. Limited Seats · Closes Soon"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="admin-trainer-field">
+                      <label htmlFor="contest-title-input">
+                        Contest Title <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
+                      <input
+                        id="contest-title-input"
+                        type="text"
+                        required
+                        value={contestForm.title}
+                        onChange={e => setContestForm(prev => ({ ...prev, title: e.target.value }))}
+                        placeholder="e.g. All-India Spoken English & Confidence Challenge 2026"
+                      />
+                    </div>
+
+                    <div className="admin-trainer-field">
+                      <label htmlFor="contest-subtitle-input">Subtitle</label>
+                      <textarea
+                        id="contest-subtitle-input"
+                        rows={2}
+                        value={contestForm.subtitle}
+                        onChange={e => setContestForm(prev => ({ ...prev, subtitle: e.target.value }))}
+                        placeholder="Short persuasive description shown under the contest heading"
+                      />
+                    </div>
+
+                    <div className="admin-trainer-field">
+                      <label>About the Challenge</label>
+                      <Suspense
+                        fallback={
+                          <div className="tiptap-editor-wrap">
+                            <div className="tiptap-editor-content" style={{ minHeight: 140, color: '#94a3b8', fontSize: 13 }}>
+                              Loading rich text editor...
+                            </div>
+                          </div>
+                        }
+                      >
+                        <LazyRichTextEditor
+                          key={`contest-${adminContestConfigQuery.dataUpdatedAt || 'initial'}`}
+                          value={contestForm.description}
+                          onChange={html => setContestForm(prev => ({ ...prev, description: html }))}
+                        />
+                      </Suspense>
+                    </div>
+
+                    <TrainerListEditor<ContestPrizeItem>
+                      title="Prizes & Recognition"
+                      subtitle="Shown on the Home contest banner and /contest page."
+                      items={contestForm.prizes}
+                      itemPrefix="Prize"
+                      addLabel="Add Prize Tier"
+                      createEmptyItem={() => ({ rank: '', title: '', detail: '' })}
+                      collapsible
+                      defaultExpanded={false}
+                      visibilityToggle={{
+                        checked: contestForm.show_prizes,
+                        onChange: checked => setContestForm(prev => ({ ...prev, show_prizes: checked })),
+                      }}
+                      onChange={prizes => setContestForm(prev => ({ ...prev, prizes }))}
+                      fields={[
+                        { key: 'rank', label: 'Tier / Rank', placeholder: 'e.g. 1st Prize' },
+                        { key: 'title', label: 'Reward Title', placeholder: 'e.g. ₹15,000 + Scholarship' },
+                        { key: 'detail', label: 'Reward Details', placeholder: 'Describe perks included...', fullWidth: true },
+                      ]}
+                    />
+
+                    <TrainerListEditor<ContestStepItem>
+                      title="How It Works"
+                      subtitle="3-step participation guide shown on Home & /contest."
+                      items={contestForm.steps}
+                      itemPrefix="Step"
+                      addLabel="Add Step"
+                      createEmptyItem={() => ({
+                        step: String(contestForm.steps.length + 1).padStart(2, '0'),
+                        title: '',
+                        desc: '',
+                      })}
+                      collapsible
+                      defaultExpanded={false}
+                      visibilityToggle={{
+                        checked: contestForm.show_steps,
+                        onChange: checked => setContestForm(prev => ({ ...prev, show_steps: checked })),
+                      }}
+                      onChange={steps => setContestForm(prev => ({ ...prev, steps }))}
+                      fields={[
+                        { key: 'step', label: 'Step Number', placeholder: 'e.g. 01' },
+                        { key: 'title', label: 'Step Title', placeholder: 'e.g. Register Online Free' },
+                        { key: 'desc', label: 'Description', placeholder: 'Explain what participant does...', fullWidth: true },
+                      ]}
+                    />
+
+                    <div className="admin-trainer-section-divider">
+                      <div className="admin-trainer-field">
+                        <label htmlFor="contest-rules-input">Eligibility & Guidelines (one per line)</label>
+                        <textarea
+                          id="contest-rules-input"
+                          rows={4}
+                          value={contestForm.rulesText}
+                          onChange={e => setContestForm(prev => ({ ...prev, rulesText: e.target.value }))}
+                          placeholder="One rule per line..."
+                        />
+                      </div>
+                    </div>
+
+                    <div className="admin-trainer-footer">
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <a
+                          href="/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="admin-trainer-preview-link"
+                        >
+                          <ExternalLink size={14} />
+                          <span>Preview Home Banner</span>
+                        </a>
+                        <a
+                          href="/contest"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="admin-trainer-preview-link"
+                        >
+                          <ExternalLink size={14} />
+                          <span>Preview /contest Page</span>
+                        </a>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Registered Contest Entries Card */}
+                <div className="admin-trainer-card">
+                  <div className="admin-trainer-list-head">
+                    <div>
+                      <h3 className="admin-trainer-section-title" style={{ marginBottom: 3 }}>
+                        Registered Contest Participants ({contestEntries.length})
+                      </h3>
+                      <span className="admin-trainer-hint" style={{ marginTop: 0 }}>
+                        Submissions from the /contest registration form.
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <input
+                        type="search"
+                        value={contestSearch}
+                        onChange={e => setContestSearch(e.target.value)}
+                        placeholder="Search participants..."
+                        style={{
+                          padding: '7px 11px',
+                          borderRadius: 8,
+                          border: '1px solid #cbd5e1',
+                          fontSize: 13,
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="admin-trainer-add-btn"
+                        onClick={handleExportContestCsv}
+                        disabled={contestEntries.length === 0}
+                      >
+                        <Download size={14} />
+                        <span>Export CSV</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {adminContestEntriesQuery.isLoading ? (
+                    <div className="skeleton-shimmer" style={{ height: 110, borderRadius: 10 }} />
+                  ) : contestEntries.length === 0 ? (
+                    <p className="admin-trainer-empty-note">
+                      No contest registrations yet. Once visitors register on /contest, they will appear here.
+                    </p>
+                  ) : (
+                    <div className="admin-contest-entries-table-wrap">
+                      <table className="admin-contest-entries-table">
+                        <thead>
+                          <tr>
+                            <th>Participant</th>
+                            <th>Contact</th>
+                            <th>Category & Info</th>
+                            <th>Date</th>
+                            <th />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {contestEntries
+                            .filter(entry => {
+                              const q = contestSearch.trim().toLowerCase()
+                              if (!q) return true
+                              return `${entry.name} ${entry.email} ${entry.phone} ${entry.category} ${entry.city_or_role || ''}`
+                                .toLowerCase()
+                                .includes(q)
+                            })
+                            .map(entry => (
+                              <tr key={entry.id}>
+                                <td>
+                                  <strong>{entry.name}</strong>
+                                  {entry.city_or_role && (
+                                    <div style={{ fontSize: 12, color: '#64748b' }}>{entry.city_or_role}</div>
+                                  )}
+                                </td>
+                                <td>
+                                  <div>{entry.phone}</div>
+                                  <div style={{ fontSize: 12, color: '#64748b' }}>{entry.email}</div>
+                                </td>
+                                <td>
+                                  <span className="admin-trainer-count-pill">{entry.category}</span>
+                                  {entry.notes && (
+                                    <div style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>{entry.notes}</div>
+                                  )}
+                                </td>
+                                <td style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>
+                                  {new Date(entry.created_at).toLocaleDateString()}
+                                </td>
+                                <td>
+                                  <button
+                                    type="button"
+                                    className="admin-course-cover-remove-btn"
+                                    onClick={() => handleDeleteContestEntry(entry.id, entry.name)}
+                                    title="Delete entry"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                 </div>
               </>
@@ -6387,6 +7572,52 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Minimal Confirmation Modal for Start / Stop Contest */}
+      {pendingContestToggle && (
+        <div
+          className="admin-modal-overlay"
+          onClick={() => {
+            if (!savingContest) setPendingContestToggle(null)
+          }}
+        >
+          <div
+            className="admin-contest-confirm-modal"
+            role="dialog"
+            aria-modal="true"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3>{pendingContestToggle === 'stop' ? 'Stop Contest?' : 'Start Contest?'}</h3>
+            <p>
+              {pendingContestToggle === 'stop'
+                ? 'Contest will be hidden from the website.'
+                : 'Contest will be live on the website.'}
+            </p>
+            <div className="admin-contest-confirm-actions">
+              <button
+                type="button"
+                className="admin-contest-cancel-btn"
+                disabled={savingContest}
+                onClick={() => setPendingContestToggle(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={`admin-contest-confirm-btn ${pendingContestToggle === 'stop' ? 'is-stop' : 'is-start'}`}
+                disabled={savingContest}
+                onClick={handleConfirmToggleContestActive}
+              >
+                {savingContest
+                  ? 'Updating...'
+                  : pendingContestToggle === 'stop'
+                    ? 'Stop Contest'
+                    : 'Start Contest'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -6944,8 +8175,9 @@ const storiesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/stor
 const successStoriesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/success-stories', component: StoriesPage })
 const contactRoute = createRoute({ getParentRoute: () => rootRoute, path: '/contact', component: ContactPage })
 const contactUsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/contact-us', component: ContactPage })
+const contestRoute = createRoute({ getParentRoute: () => rootRoute, path: '/contest', component: ContestPage })
 
-// Admin Routes (Main portal, Leads, Testimonials, Add & Edit, Courses, Trainer)
+// Admin Routes (Main portal, Leads, Testimonials, Add & Edit, Courses, Trainer, Contest)
 const verboraEduAdminRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
 const verboraEduAdminLeadsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin/leads', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
 const verboraEduAdminTestimonialsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin/testimonials', component: () => <VerboraEduAdminPage defaultRoute="testimonials" /> })
@@ -6957,6 +8189,7 @@ const verboraEduAdminTestimonialsEditRoute = createRoute({
 })
 const verboraEduAdminCoursesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin/courses', component: () => <VerboraEduAdminPage defaultRoute="courses" /> })
 const verboraEduAdminTrainerRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin/trainer', component: () => <VerboraEduAdminPage defaultRoute="trainer" /> })
+const verboraEduAdminContestRoute = createRoute({ getParentRoute: () => rootRoute, path: '/verbora-edu-admin/contest', component: () => <VerboraEduAdminPage defaultRoute="contest" /> })
 
 // Shivam-admin Aliases
 const shivamAdminRoute = createRoute({ getParentRoute: () => rootRoute, path: '/shivam-admin', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
@@ -6970,6 +8203,7 @@ const shivamAdminTestimonialsEditRoute = createRoute({
 })
 const shivamAdminCoursesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/shivam-admin/courses', component: () => <VerboraEduAdminPage defaultRoute="courses" /> })
 const shivamAdminTrainerRoute = createRoute({ getParentRoute: () => rootRoute, path: '/shivam-admin/trainer', component: () => <VerboraEduAdminPage defaultRoute="trainer" /> })
+const shivamAdminContestRoute = createRoute({ getParentRoute: () => rootRoute, path: '/shivam-admin/contest', component: () => <VerboraEduAdminPage defaultRoute="contest" /> })
 
 // General admin Aliases
 const adminRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admin', component: () => <VerboraEduAdminPage defaultRoute="leads" /> })
@@ -6983,6 +8217,7 @@ const adminTestimonialsEditRoute = createRoute({
 })
 const adminCoursesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admin/courses', component: () => <VerboraEduAdminPage defaultRoute="courses" /> })
 const adminTrainerRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admin/trainer', component: () => <VerboraEduAdminPage defaultRoute="trainer" /> })
+const adminContestRoute = createRoute({ getParentRoute: () => rootRoute, path: '/admin/contest', component: () => <VerboraEduAdminPage defaultRoute="contest" /> })
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -6995,6 +8230,7 @@ const routeTree = rootRoute.addChildren([
   successStoriesRoute,
   contactRoute,
   contactUsRoute,
+  contestRoute,
   verboraEduAdminRoute,
   verboraEduAdminLeadsRoute,
   verboraEduAdminTestimonialsRoute,
@@ -7002,6 +8238,7 @@ const routeTree = rootRoute.addChildren([
   verboraEduAdminTestimonialsEditRoute,
   verboraEduAdminCoursesRoute,
   verboraEduAdminTrainerRoute,
+  verboraEduAdminContestRoute,
   shivamAdminRoute,
   shivamAdminLeadsRoute,
   shivamAdminTestimonialsRoute,
@@ -7009,6 +8246,7 @@ const routeTree = rootRoute.addChildren([
   shivamAdminTestimonialsEditRoute,
   shivamAdminCoursesRoute,
   shivamAdminTrainerRoute,
+  shivamAdminContestRoute,
   adminRoute,
   adminLeadsRoute,
   adminTestimonialsRoute,
@@ -7016,6 +8254,7 @@ const routeTree = rootRoute.addChildren([
   adminTestimonialsEditRoute,
   adminCoursesRoute,
   adminTrainerRoute,
+  adminContestRoute,
 ])
 const router = createRouter({ routeTree })
 
@@ -7048,6 +8287,13 @@ if (!isInitialAdminPath) {
     queryFn: async () => {
       const data = await api.home.getPublicHomeData()
       return data.trainerProfile
+    },
+  })
+  void queryClient.prefetchQuery({
+    queryKey: ['contest-config'],
+    queryFn: async () => {
+      const data = await api.home.getPublicHomeData()
+      return data.contestConfig
     },
   })
 }

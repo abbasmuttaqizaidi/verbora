@@ -344,13 +344,92 @@ VALUES (
 )
 ON CONFLICT (id) DO NOTHING;
 
--- 6. Schema-level grants for anon and authenticated roles
+-- 6. Create Contest Config & Entries Tables
+CREATE TABLE IF NOT EXISTS public.contest_config (
+  id TEXT PRIMARY KEY DEFAULT 'active-contest',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  badge_text TEXT NOT NULL DEFAULT 'Registrations Open',
+  hero_pill_text TEXT NOT NULL DEFAULT 'Join Speech Contest',
+  title TEXT NOT NULL DEFAULT 'All-India Spoken English & Confidence Challenge 2026',
+  subtitle TEXT NOT NULL DEFAULT 'Put your voice forward, conquer stage hesitation, win exciting prizes, and earn direct mentorship feedback from VERBORA coaches.',
+  topic TEXT NOT NULL DEFAULT 'My Biggest Career Turning Point — Speak Clearly for 2 Minutes in English',
+  gmeet_url TEXT DEFAULT '',
+  start_date TEXT DEFAULT '',
+  end_date TEXT DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  deadline_label TEXT NOT NULL DEFAULT 'Limited Seats · Round 1 Closes Soon',
+  entry_fee_label TEXT NOT NULL DEFAULT 'Free Entry · Open to All',
+  show_prizes BOOLEAN NOT NULL DEFAULT true,
+  show_steps BOOLEAN NOT NULL DEFAULT true,
+  prizes JSONB,
+  steps JSONB,
+  rules JSONB
+);
+
+ALTER TABLE public.contest_config
+  ADD COLUMN IF NOT EXISTS topic TEXT NOT NULL DEFAULT 'My Biggest Career Turning Point — Speak Clearly for 2 Minutes in English',
+  ADD COLUMN IF NOT EXISTS gmeet_url TEXT DEFAULT '',
+  ADD COLUMN IF NOT EXISTS start_date TEXT DEFAULT '',
+  ADD COLUMN IF NOT EXISTS end_date TEXT DEFAULT '',
+  ADD COLUMN IF NOT EXISTS show_prizes BOOLEAN NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS show_steps BOOLEAN NOT NULL DEFAULT true;
+
+ALTER TABLE public.contest_config ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read contest_config" ON public.contest_config;
+CREATE POLICY "Allow public read contest_config"
+  ON public.contest_config
+  FOR SELECT
+  TO anon, authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "Allow anon and auth manage contest_config" ON public.contest_config;
+CREATE POLICY "Allow anon and auth manage contest_config"
+  ON public.contest_config
+  FOR ALL
+  TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
+
+CREATE TABLE IF NOT EXISTS public.contest_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'Student / Fresher',
+  city_or_role TEXT,
+  notes TEXT,
+  status TEXT NOT NULL DEFAULT 'registered'
+);
+
+ALTER TABLE public.contest_entries ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow anon insert contest_entries" ON public.contest_entries;
+CREATE POLICY "Allow anon insert contest_entries"
+  ON public.contest_entries
+  FOR INSERT
+  TO anon, authenticated
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon and auth manage contest_entries" ON public.contest_entries;
+CREATE POLICY "Allow anon and auth manage contest_entries"
+  ON public.contest_entries
+  FOR ALL
+  TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
+
+-- 7. Schema-level grants for anon and authenticated roles
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT ALL ON TABLE public.leads TO anon, authenticated;
 GRANT ALL ON TABLE public.testimonials TO anon, authenticated;
 GRANT ALL ON TABLE public.courses TO anon, authenticated, service_role;
 GRANT ALL ON TABLE public.trainer_profile TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.contest_config TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.contest_entries TO anon, authenticated, service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 
--- 7. Reload PostgREST schema cache
+-- 8. Reload PostgREST schema cache
 NOTIFY pgrst, 'reload schema';

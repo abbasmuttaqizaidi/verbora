@@ -20,12 +20,16 @@ interface TrainerListEditorProps<T extends object> {
   itemPrefix?: string
   collapsible?: boolean
   defaultExpanded?: boolean
+  visibilityToggle?: {
+    checked: boolean
+    onChange: (checked: boolean) => void
+  }
   onChange: (nextItems: T[]) => void
 }
 
 /**
- * Reusable structured list editor for Trainer Profile admin sections.
- * Supports fixed-count cards (allowAddRemove=false) and unified collapsible card bodies.
+ * Reusable structured list editor for Trainer Profile & Contest admin sections.
+ * Supports fixed-count cards, section visibility toggles, and unified collapsible cards.
  */
 export function TrainerListEditor<T extends object>({
   title,
@@ -38,6 +42,7 @@ export function TrainerListEditor<T extends object>({
   itemPrefix = 'Item',
   collapsible = false,
   defaultExpanded = true,
+  visibilityToggle,
   onChange,
 }: TrainerListEditorProps<T>) {
   const [isOpen, setIsOpen] = useState(defaultExpanded)
@@ -60,6 +65,15 @@ export function TrainerListEditor<T extends object>({
 
   const renderFieldsList = () => (
     <div className={collapsible ? 'admin-trainer-collapse-items' : 'admin-trainer-list-stack'}>
+      {collapsible && allowAddRemove && createEmptyItem && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button type="button" className="admin-trainer-add-btn" onClick={handleAdd}>
+            <Plus size={14} />
+            <span>{addLabel}</span>
+          </button>
+        </div>
+      )}
+
       {items.map((item, index) => (
         <div
           key={index}
@@ -123,30 +137,43 @@ export function TrainerListEditor<T extends object>({
     <div className="admin-trainer-section-divider">
       {collapsible ? (
         <div className={`admin-trainer-collapse-card ${isOpen ? 'is-open' : ''}`}>
-          <button
-            type="button"
-            className="admin-trainer-collapse-toggle"
-            aria-expanded={isOpen}
-            onClick={() => setIsOpen(prev => !prev)}
-          >
-            <div className="admin-trainer-collapse-text">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <h3 className="admin-trainer-section-title" style={{ margin: 0 }}>
-                  {title}
-                </h3>
-                <span className="admin-trainer-count-pill">{items.length} Cards</span>
+          <div className="admin-trainer-collapse-header">
+            <button
+              type="button"
+              className="admin-trainer-collapse-toggle"
+              aria-expanded={isOpen}
+              onClick={() => setIsOpen(prev => !prev)}
+            >
+              <div className="admin-trainer-collapse-text">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <h3 className="admin-trainer-section-title" style={{ margin: 0 }}>
+                    {title}
+                  </h3>
+                  <span className="admin-trainer-count-pill">{items.length} Cards</span>
+                </div>
+                {subtitle && (
+                  <span className="admin-trainer-hint" style={{ marginTop: 2 }}>
+                    {subtitle}
+                  </span>
+                )}
               </div>
-              {subtitle && (
-                <span className="admin-trainer-hint" style={{ marginTop: 2 }}>
-                  {subtitle}
-                </span>
-              )}
-            </div>
-            <ChevronDown
-              size={18}
-              className={`admin-trainer-collapse-chevron ${isOpen ? 'is-open' : ''}`}
-            />
-          </button>
+              <ChevronDown
+                size={18}
+                className={`admin-trainer-collapse-chevron ${isOpen ? 'is-open' : ''}`}
+              />
+            </button>
+
+            {visibilityToggle && (
+              <label className="admin-trainer-vis-switch" title={`Show or hide ${title} section`}>
+                <input
+                  type="checkbox"
+                  checked={visibilityToggle.checked}
+                  onChange={e => visibilityToggle.onChange(e.target.checked)}
+                />
+                <span>{visibilityToggle.checked ? 'Visible' : 'Hidden'}</span>
+              </label>
+            )}
+          </div>
 
           {isOpen && (
             <div className="admin-trainer-collapse-body">

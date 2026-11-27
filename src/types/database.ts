@@ -164,3 +164,64 @@ export interface TrainerProfile {
 }
 
 export type UpdateTrainerProfileInput = Partial<Omit<TrainerProfile, 'id' | 'updated_at'>>
+
+// -------------------------------------------------------------------------
+// Contest
+// -------------------------------------------------------------------------
+
+export interface ContestPrizeItem {
+  rank: string
+  title: string
+  detail: string
+}
+
+export interface ContestStepItem {
+  step: string
+  title: string
+  desc: string
+}
+
+export interface ContestConfig {
+  id: string
+  updated_at?: string
+  is_active: boolean
+  badge_text: string
+  hero_pill_text: string
+  title: string
+  subtitle: string
+  topic: string
+  gmeet_url: string
+  start_date: string
+  end_date: string
+  description: string
+  deadline_label: string
+  entry_fee_label: string
+  show_prizes: boolean
+  show_steps: boolean
+  prizes: ContestPrizeItem[]
+  steps: ContestStepItem[]
+  rules: string[]
+}
+
+export type UpdateContestConfigInput = Partial<Omit<ContestConfig, 'id' | 'updated_at'>>
+
+export interface ContestEntry {
+  id: string
+  created_at: string
+  name: string
+  email: string
+  phone: string
+  category: string
+  city_or_role?: string | null
+  notes?: string | null
+  status?: string
+}
+
+export type CreateContestEntryInput = {
+  name: string
+  email: string
+  phone: string
+  category: string
+  city_or_role?: string
+  notes?: string
+}

@@ -17,6 +17,9 @@ const TRAINER_FULL_COLUMNS =
   'id,hero_kicker,name,role_title,quote,bio,photo_url,photo_size_bytes,credential_label,experience_label,learners_label,rating_label,story_heading,story_body,stats,updated_at'
 const TRAINER_CORE_COLUMNS =
   'id,name,role_title,quote,bio,photo_url,photo_size_bytes,credential_label,experience_label,learners_label,rating_label,story_heading,story_body,updated_at'
+const CONTEST_LEGACY_COLUMNS =
+  'id,is_active,badge_text,hero_pill_text,title,subtitle,description,deadline_label,entry_fee_label,prizes,steps,rules,updated_at'
+const CONTEST_COLUMNS = `${CONTEST_LEGACY_COLUMNS},topic,gmeet_url,start_date,end_date,show_prizes,show_steps`
 
 async function fetchSupabaseTable(pathAndQuery: string) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${pathAndQuery}`, {
@@ -74,7 +77,36 @@ async function fetchTrainerProfile() {
         return null
       }
     }
-    // Table may not exist yet — client maps null safely to DEFAULT_TRAINER_PROFILE
+    return null
+  }
+}
+
+async function fetchContestConfig() {
+  try {
+    const rows = await fetchSupabaseTable(
+      `contest_config?select=${CONTEST_COLUMNS}&id=eq.active-contest&limit=1`
+    )
+    return Array.isArray(rows) ? rows[0] || null : null
+  } catch (err: any) {
+    const body = String(err?.body || '')
+    if (
+      err?.status === 400 &&
+      (body.includes('topic') ||
+        body.includes('gmeet_url') ||
+        body.includes('start_date') ||
+        body.includes('end_date') ||
+        body.includes('show_prizes') ||
+        body.includes('show_steps'))
+    ) {
+      try {
+        const fallbackRows = await fetchSupabaseTable(
+          `contest_config?select=${CONTEST_LEGACY_COLUMNS}&id=eq.active-contest&limit=1`
+        )
+        return Array.isArray(fallbackRows) ? fallbackRows[0] || null : null
+      } catch {
+        return null
+      }
+    }
     return null
   }
 }
@@ -86,19 +118,20 @@ export default async function handler(req: any, res: any) {
 
   try {
     const fresh = req.query?.fresh === '1'
-    const [courses, testimonials, trainerProfile] = await Promise.all([
+    const [courses, testimonials, trainerProfile, contestConfig] = await Promise.all([
       fetchVisibleCourses(),
       fetchSupabaseTable(
         `testimonials?select=${TESTIMONIAL_COLUMNS}&is_active=eq.true&order=display_order.asc,created_at.desc`
       ),
       fetchTrainerProfile(),
+      fetchContestConfig(),
     ])
 
     res.setHeader(
       'Cache-Control',
       fresh ? 'no-store' : 'public, s-maxage=60, stale-while-revalidate=300'
     )
-    return res.status(200).json({ courses, testimonials, trainerProfile })
+    return res.status(200).json({ courses, testimonials, trainerProfile, contestConfig })
   } catch (error: any) {
     console.error('Error in /api/home-data:', error)
     return res.status(500).json({ error: error?.message || 'Failed to load home data' })
