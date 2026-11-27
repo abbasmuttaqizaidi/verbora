@@ -193,8 +193,8 @@ function DemoForm({ inModal = false, defaultCourse }: { inModal?: boolean; defau
     course: defaultCourse || '',
   }))
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const [phase, setPhase] = useState<'idle' | 'done'>('idle')
-  const [lastWaUrl, setLastWaUrl] = useState('')
 
   function update<K extends keyof DemoValues>(key: K, value: DemoValues[K]) {
     setValues(old => ({ ...old, [key]: value }))
@@ -202,8 +202,9 @@ function DemoForm({ inModal = false, defaultCourse }: { inModal?: boolean; defau
     if (phase !== 'idle') setPhase('idle')
   }
 
-  function submit(e: React.FormEvent<HTMLFormElement>) {
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (submitting) return
     if (values.name.trim().length < 2) {
       return setError('Please enter your full name.')
     }
@@ -218,44 +219,34 @@ function DemoForm({ inModal = false, defaultCourse }: { inModal?: boolean; defau
     }
 
     const selectedCourse = dynamicCourses.find(c => c.id === values.course)?.title || values.course
-    const messageLines = [
-      `*New Free Demo Booking — VERBORA*`,
-      ``,
-      `👤 *Name:* ${values.name.trim()}`,
-      `📚 *Course:* ${selectedCourse}`,
-      values.phone.trim() ? `📞 *Phone:* ${values.phone.trim()}` : null,
-      values.email.trim() ? `✉️ *Email:* ${values.email.trim()}` : null,
-      ``,
-      `Hi, I want to book my free demo session. Please share available timings!`,
-    ].filter(Boolean).join('\n')
+    setSubmitting(true)
+    setError('')
 
-    const cleanNumber = WHATSAPP_PHONE_NUMBER.replace(/\D/g, '')
-    const waUrl = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(messageLines)}`
+    try {
+      const res = await api.leads.createLead({
+        lead_type: 'demo-booking',
+        name: values.name.trim(),
+        email: values.email.trim() || undefined,
+        phone: values.phone.trim(),
+        course: selectedCourse,
+        source: inModal ? 'popup-modal' : 'floating-card',
+        status: 'new',
+      })
 
-    // Save lead record into unified Supabase leads table (non-blocking)
-    api.leads.createLead({
-      lead_type: 'demo-booking',
-      name: values.name.trim(),
-      email: values.email.trim() || undefined,
-      phone: values.phone.trim(),
-      course: selectedCourse,
-      source: inModal ? 'popup-modal' : 'floating-card',
-      status: 'new',
-    }).then(res => {
-      if (res.success) {
-        queryClient.invalidateQueries({ queryKey: ['admin-leads'] })
-        queryClient.invalidateQueries({ queryKey: ['admin-lead-stats'] })
+      if (!res.success) {
+        setError(res.error || 'Could not submit your demo request. Please try again.')
+        return
       }
-    }).catch(err => {
-      console.warn('[DemoForm] Non-blocking Supabase save notice:', err)
-    })
 
-    setLastWaUrl(waUrl)
-    setPhase('done')
-    recordPopupDismissed()
-
-    // Open WhatsApp directly in a new tab/app
-    window.open(waUrl, '_blank', 'noopener,noreferrer')
+      queryClient.invalidateQueries({ queryKey: ['admin-leads'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-lead-stats'] })
+      setPhase('done')
+      recordPopupDismissed()
+    } catch (err: any) {
+      setError(err?.message || 'Could not submit your demo request. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -263,7 +254,7 @@ function DemoForm({ inModal = false, defaultCourse }: { inModal?: boolean; defau
       {/* Top Header */}
       <div className="modern-demo-header">
         <h2>Book Your Free <span>Demo Session</span></h2>
-        <p>Experience our live spoken English coaching and get direct trainer feedback on WhatsApp.</p>
+        <p>Experience our live spoken English coaching and get personalized feedback from our trainer desk.</p>
       </div>
 
       {phase === 'done' ? (
@@ -271,18 +262,8 @@ function DemoForm({ inModal = false, defaultCourse }: { inModal?: boolean; defau
           <div className="success-icon-wrap">
             <CheckCircle2 size={44} />
           </div>
-          <h3>Connecting to WhatsApp!</h3>
-          <p>Your demo details have been prepared. If WhatsApp didn't open automatically, click below to chat:</p>
-          <a
-            href={lastWaUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="primary-button modern-wa-btn"
-          >
-            <MessageCircle size={18} />
-            <span>Open WhatsApp Chat</span>
-            <MoveRight size={16} />
-          </a>
+          <h3>Demo Request Received!</h3>
+          <p>Thank you! Your free demo session request has been saved. Our team will reach out to you shortly to schedule your slot.</p>
           <button
             type="button"
             className="modern-reset-btn"
@@ -366,9 +347,9 @@ function DemoForm({ inModal = false, defaultCourse }: { inModal?: boolean; defau
 
           {error && <p className="modern-form-error" role="alert">{error}</p>}
 
-          <button className="primary-button modern-submit-btn" type="submit">
-            <MessageCircle size={18} />
-            <span>Book Free Demo on WhatsApp</span>
+          <button className="primary-button modern-submit-btn" type="submit" disabled={submitting}>
+            <Send size={16} />
+            <span>{submitting ? 'Submitting Demo Request...' : 'Book Free Demo Session'}</span>
             <MoveRight size={16} />
           </button>
         </form>
