@@ -18,9 +18,9 @@ import {
 } from '@tanstack/react-router'
 import {
   BriefcaseBusiness, Check,
-  CheckCircle2, ChevronDown, CirclePlay, Clock, GraduationCap, Handshake,
-  Headphones, Mail, Menu, MessageCircle, Mic2, MonitorPlay, Phone,
-  Rocket, Search, Sparkles, Star, TrendingUp, UsersRound,
+  CheckCircle2, ChevronDown, CirclePlay, Clock, GraduationCap,
+  Mail, Menu, MessageCircle, Mic2, Phone,
+  Rocket, Search, Sparkles, Star, UsersRound,
   X, MoveRight, ChevronLeft, ChevronRight, Instagram, Youtube, Linkedin,
   Quote, HeartHandshake, Target, Award, BadgeCheck, ShieldCheck,
   MapPin, Send, Lock, KeyRound, RefreshCw, Trash2, Download, LogOut,
@@ -670,14 +670,6 @@ function CoursesSection() {
   )
 }
 
-const benefits = [
-  { icon: Rocket, title: 'Expert Trainers', text: '1-on-1 guidance that continually refines your pronunciation, diction, and tonality.' },
-  { icon: MonitorPlay, title: 'Interactive Classes', text: 'Active participatory drills, live mock situations, and constructive real-time feedback.' },
-  { icon: TrendingUp, title: 'Practical Learning', text: 'Speech frameworks that apply directly in office meetings, presentations, and client discussions.' },
-  { icon: Handshake, title: 'Career Confidence', text: 'Speak with executive presence, natural assertiveness, and composure in high-stakes rooms.' },
-  { icon: Headphones, title: 'Continued Support', text: 'Daily WhatsApp voice note coaching and habit drills to guarantee lasting fluency.' },
-]
-
 const TRAINER_PILLAR_ICONS = [HeartHandshake, Mic2, Target, Sparkles]
 const TRAINER_SPECIALIZATION_ICONS = [
   MessageCircle,
@@ -869,22 +861,121 @@ function HomeTrainerSection({ onDemo }: { onDemo: () => void }) {
   )
 }
 
-function WhySection({ onDemo: _onDemo }: { onDemo?: () => void } = {}) {
+const WHY_COMPARISONS = [
+  {
+    aspect: 'Speaking Time',
+    typical: 'Crowded batches where you listen passively and speak for 2 minutes.',
+    verbora: '1-on-1 live drills where you speak 80% of every session with instant fixes.',
+  },
+  {
+    aspect: 'Thinking Process',
+    typical: 'Mentally translating from Hindi or mother tongue mid-sentence.',
+    verbora: 'PREP & STAR speech frameworks so ideas flow directly in English.',
+  },
+  {
+    aspect: 'Between Classes',
+    typical: 'No guidance once the video call ends until next week.',
+    verbora: 'Daily WhatsApp voice-note critiques to wire clarity into daily habits.',
+  },
+  {
+    aspect: 'Real Pressure',
+    typical: 'Rehearsed textbook dialogues that fall apart in tough rooms.',
+    verbora: 'Simulated client calls, interviews, and leadership Q&A pushback.',
+  },
+]
+
+const WHY_PILLARS = [
+  {
+    num: '01',
+    title: 'Safe, Judgment-Free Room',
+    text: 'Hesitation vanishes when you have a dedicated mentor who corrects grammar and tone gently without classroom embarrassment.',
+  },
+  {
+    num: '02',
+    title: 'Vocal Authority & Clarity',
+    text: 'Fluency is more than vocabulary. We refine pacing, strategic pauses, and word stress so colleagues listen the first time.',
+  },
+  {
+    num: '03',
+    title: 'Ready for Real Stakes',
+    text: 'Train directly on your upcoming interviews, stakeholder updates, and client pitches rather than generic worksheets.',
+  },
+]
+
+function WhySection({ onDemo }: { onDemo?: () => void } = {}) {
   return (
-    <section className="home-row-section" id="about">
-      <div className="home-row-header">
-        <h2 className="home-row-title">Why Verbora?</h2>
-        <p className="home-row-sub">Transforming learners into confident communicators through personalized mentorship and practical speech habits.</p>
+    <section className="home-row-section why-verbora-section" id="about">
+      <div className="why-editorial-grid">
+        <div className="why-editorial-lead">
+          <span className="why-kicker">Why Verbora?</span>
+          <h2 className="why-headline">
+            You already know English grammar. <span>You just haven&apos;t trained the reflex to speak.</span>
+          </h2>
+          <p className="why-lead-copy">
+            Most professionals read emails and understand meetings effortlessly — yet freeze, translate, or lose impact the moment all eyes turn to them. Verbora replaces passive rules with guided speaking mileage.
+          </p>
+
+          <div className="why-ratio-card" aria-label="Session practice breakdown: 80% active speaking and 20% practical frameworks">
+            <div className="why-ratio-header">
+              <span>Inside Every 1-on-1 Session</span>
+              <strong>80% Speaking · 20% Frameworks</strong>
+            </div>
+            <div className="why-ratio-bar">
+              <div className="why-ratio-fill" style={{ width: '80%' }} />
+            </div>
+            <div className="why-ratio-legend">
+              <span>Live voice drills, interruptions &amp; feedback</span>
+              <span>PREP / STAR structure</span>
+            </div>
+          </div>
+
+          <div className="why-actions-row">
+            {onDemo && (
+              <button type="button" className="why-primary-btn" onClick={onDemo}>
+                <span>Book Free 1-on-1 Assessment</span>
+                <MoveRight size={16} strokeWidth={2.2} />
+              </button>
+            )}
+            <Link className="why-secondary-link" to="/about">
+              Explore our method
+            </Link>
+          </div>
+        </div>
+
+        <div className="why-compare-card">
+          <div className="why-compare-top">
+            <span className="why-compare-col-label muted">Typical Spoken Classes</span>
+            <span className="why-compare-col-label brand">The VERBORA Method</span>
+          </div>
+          <div className="why-compare-list">
+            {WHY_COMPARISONS.map(row => (
+              <div className="why-compare-row" key={row.aspect}>
+                <div className="why-compare-cell is-typical">
+                  <X size={14} strokeWidth={2.3} aria-hidden="true" />
+                  <div>
+                    <span className="why-compare-tag">{row.aspect}</span>
+                    <p>{row.typical}</p>
+                  </div>
+                </div>
+                <div className="why-compare-cell is-verbora">
+                  <Check size={14} strokeWidth={2.5} aria-hidden="true" />
+                  <div>
+                    <span className="why-compare-tag">{row.aspect}</span>
+                    <p>{row.verbora}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div className="home-cards-scroll-track">
-        {benefits.map(benefit => (
-          <div className="home-benefit-item-card" key={benefit.title}>
-            <span className="home-benefit-icon-box">
-              <benefit.icon size={26} strokeWidth={2} />
-            </span>
-            <strong className="home-benefit-card-title">{benefit.title}</strong>
-            <p className="home-benefit-card-text">{benefit.text}</p>
+      <div className="why-pillars-strip">
+        {WHY_PILLARS.map(pillar => (
+          <div className="why-pillar-item" key={pillar.num}>
+            <span className="why-pillar-num">{pillar.num}</span>
+            <h3 className="why-pillar-title">{pillar.title}</h3>
+            <p className="why-pillar-text">{pillar.text}</p>
           </div>
         ))}
       </div>
