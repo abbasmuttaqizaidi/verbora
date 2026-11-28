@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-const ORIGIN = 'https://verbora.in'
+const ORIGIN = 'https://www.verbora.in'
 const dist = resolve('dist')
 const baseHtml = readFileSync(resolve(dist, 'index.html'), 'utf8')
 
@@ -28,8 +28,24 @@ function buildRouteHtml({ path, title, description, noindex = false }) {
       `<meta property="og:url" content="${canonical}" />`
     )
     .replace(
+      /<meta property="og:title" content="[^"]*"\s*\/>/,
+      `<meta property="og:title" content="${title.replace(/"/g, '&quot;')}" />`
+    )
+    .replace(
+      /<meta property="og:description" content="[^"]*"\s*\/>/,
+      `<meta property="og:description" content="${description.replace(/"/g, '&quot;')}" />`
+    )
+    .replace(
       /<meta name="twitter:url" content="[^"]*"\s*\/>/,
       `<meta name="twitter:url" content="${canonical}" />`
+    )
+    .replace(
+      /<meta name="twitter:title" content="[^"]*"\s*\/>/,
+      `<meta name="twitter:title" content="${title.replace(/"/g, '&quot;')}" />`
+    )
+    .replace(
+      /<meta name="twitter:description" content="[^"]*"\s*\/>/,
+      `<meta name="twitter:description" content="${description.replace(/"/g, '&quot;')}" />`
     )
 }
 

@@ -8436,7 +8436,7 @@ function NotFoundPage() {
   )
 }
 
-const SITE_ORIGIN = 'https://verbora.in'
+const SITE_ORIGIN = 'https://www.verbora.in'
 
 const STATIC_ROUTE_SEO: Record<string, { title: string; description: string }> = {
   '/': {
