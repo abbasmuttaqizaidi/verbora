@@ -8440,8 +8440,8 @@ const SITE_ORIGIN = 'https://www.verbora.in'
 
 const STATIC_ROUTE_SEO: Record<string, { title: string; description: string }> = {
   '/': {
-    title: 'VERBORA — Spoken English, Public Speaking & Communication Coaching',
-    description: 'VERBORA (verbora.in) — Spoken English, Business English, Public Speaking, Interview Preparation & Executive Communication Coaching.',
+    title: 'VERBORA Spoken English — 1-on-1 Communication Coaching & Public Speaking',
+    description: 'VERBORA Spoken English (www.verbora.in) — 1-on-1 speech coaching, business English, public speaking & interview preparation. Transform into a confident English speaker.',
   },
   '/courses': {
     title: 'Courses | VERBORA — Spoken English & Communication Programs',
