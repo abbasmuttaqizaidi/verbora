@@ -159,6 +159,7 @@ const courses = [
  * =========================================================================
  */
 export const WHATSAPP_PHONE_NUMBER = '919876543210'
+export const OFFICIAL_EMAIL = 'connect@verbora.in'
 
 // 48 Hours Cooldown: 48 * 60 * 60 * 1000 = 172,800,000 milliseconds
 export const POPUP_COOLDOWN_MS = 48 * 60 * 60 * 1000
@@ -1674,9 +1675,9 @@ function SiteFooter({ onDemo }: { onDemo: () => void }) {
           <div className="footer-col footer-col-contact">
             <h4 className="footer-col-title">Get in Touch</h4>
             <div className="footer-contact-items">
-              <a href="mailto:hello@verbora.com" className="footer-contact-item">
+              <a href={`mailto:${OFFICIAL_EMAIL}`} className="footer-contact-item">
                 <Mail size={14} />
-                <span>hello@verbora.com</span>
+                <span>{OFFICIAL_EMAIL}</span>
               </a>
               <a href="tel:+919876543210" className="footer-contact-item">
                 <Phone size={14} />
@@ -2937,9 +2938,9 @@ function ContactPage() {
       icon: Mail,
       title: 'Email Inquiries',
       sub: 'Admissions, partnerships & corporates',
-      value: 'hello@verbora.com',
+      value: OFFICIAL_EMAIL,
       actionText: 'Send Email',
-      actionHref: 'mailto:hello@verbora.com',
+      actionHref: `mailto:${OFFICIAL_EMAIL}`,
     },
     {
       icon: MapPin,
