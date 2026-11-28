@@ -9975,7 +9975,57 @@ footer.site-footer::before {
   padding: 13px 24px;
 }
 
+.course-detail-video-section {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 46px 26px 0;
+}
+
+.course-detail-video-header {
+  margin-bottom: 18px;
+}
+
+.course-detail-video-header h2 {
+  font-size: clamp(24px, 3vw, 32px);
+  line-height: 1.2;
+  margin: 8px 0 0;
+  color: #09244f;
+}
+
+.course-detail-video-header h2 span {
+  color: #078bce;
+}
+
+.course-detail-video-frame {
+  border-radius: 20px;
+  overflow: hidden;
+  background: #061327;
+  border: 1px solid #cce6f6;
+  box-shadow: 0 18px 44px rgba(6, 38, 91, 0.12);
+}
+
+.course-detail-video-player {
+  display: block;
+  width: 100%;
+  max-height: 560px;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  background: #061327;
+}
+
+.admin-course-visibility-badge.is-video-admin {
+  background: #eff6ff;
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+
 @media (max-width: 640px) {
+  .course-detail-video-section {
+    padding: 28px 20px 0;
+  }
+  .course-detail-video-frame {
+    border-radius: 14px;
+  }
   .course-detail-price-box {
     flex-direction: column;
     align-items: stretch;

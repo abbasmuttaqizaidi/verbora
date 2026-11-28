@@ -8,6 +8,8 @@ const SUPABASE_ANON_KEY =
   process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_nIVc7DMCydkRh3jDWP0OPA_tMfbK1Zj'
 
 const COURSE_COLUMNS =
+  'id,title,tagline,short,summary,cover,video,video_size_bytes,fee_amount,discount_percent,display_order,is_visible,is_upcoming,created_at,updated_at'
+const COURSE_NO_VIDEO_COLUMNS =
   'id,title,tagline,short,summary,cover,fee_amount,discount_percent,display_order,is_visible,is_upcoming,created_at,updated_at'
 const LEGACY_COURSE_COLUMNS =
   'id,title,tagline,short,summary,fee_amount,discount_percent,display_order,created_at,updated_at'
@@ -47,8 +49,16 @@ async function fetchVisibleCourses() {
       `courses?select=${COURSE_COLUMNS}&is_visible=eq.true&order=display_order.asc`
     )
   } catch (err: any) {
-    // Graceful fallback if is_visible/is_upcoming/cover columns have not been added on remote DB yet
     const body = String(err?.body || '')
+    if (err?.status === 400 && (body.includes('video') || body.includes('video_size_bytes'))) {
+      try {
+        return await fetchSupabaseTable(
+          `courses?select=${COURSE_NO_VIDEO_COLUMNS}&is_visible=eq.true&order=display_order.asc`
+        )
+      } catch {
+        // fall through to legacy check
+      }
+    }
     if (
       err?.status === 400 &&
       (body.includes('is_visible') || body.includes('is_upcoming') || body.includes('cover'))

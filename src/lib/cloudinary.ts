@@ -45,7 +45,8 @@ export interface CloudinaryUploadResult {
 export async function uploadVideoToCloudinary(
   file: File,
   currentUsedBytes: number = 0,
-  presetOverride?: string
+  presetOverride?: string,
+  folder: string = 'verbora/testimonials/videos'
 ): Promise<CloudinaryUploadResult> {
   const preset = (presetOverride || getSavedUploadPreset()).trim()
 
@@ -73,7 +74,7 @@ export async function uploadVideoToCloudinary(
   const formData = new FormData()
   formData.append('file', file)
   formData.append('upload_preset', preset)
-  formData.append('folder', 'verbora/testimonials/videos')
+  formData.append('folder', folder)
 
   const uploadEndpoint = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`
 

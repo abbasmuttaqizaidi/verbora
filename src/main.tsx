@@ -60,6 +60,7 @@ const LazyRichTextEditor = lazy(() =>
 )
 import {
   uploadImageToCloudinary,
+  uploadVideoToCloudinary,
   deleteMediaFromCloudinary,
   getSavedUploadPreset,
   saveUploadPreset,
@@ -94,6 +95,7 @@ const courses = [
     icon: MessageCircle,
     iconClass: 'aqua',
     cover: 'https://res.cloudinary.com/mtjv4nu9/image/upload/v1795809123/verbora/courses/spoken-english.png',
+    video: 'https://res.cloudinary.com/mtjv4nu9/video/upload/v1795853343/verbora/testimonials/p8rd7iph6tdmxu64psbq.mp4',
     topics: ['Everyday conversation practice', 'Pronunciation and clarity', 'Vocabulary in real situations', 'Building fluency without hesitation'],
   },
   {
@@ -1481,6 +1483,7 @@ export function useMergedCourses() {
             icon: staticCourse?.icon || courseIconMap[dynamic.id] || BookOpen,
             iconClass: staticCourse?.iconClass || dynamic.iconClass || 'aqua',
             cover: dynamic.cover === undefined ? (staticCourse?.cover || '') : (dynamic.cover || ''),
+            video: dynamic.video || staticCourse?.video || '',
             topics: staticCourse?.topics || dynamic.topics || [],
             fee_amount: dynamic.fee_amount ?? 4999,
             discount_percent: dynamic.discount_percent ?? 0,
@@ -1493,6 +1496,7 @@ export function useMergedCourses() {
 
     return courses.map((staticCourse, index) => ({
       ...staticCourse,
+      video: '',
       fee_amount: 4999,
       discount_percent: 0,
       display_order: index + 1,
@@ -3429,6 +3433,27 @@ function CourseDetail() {
           </div>
         </div>
 
+        {course.video && (
+          <section className="course-detail-video-section" aria-label={`${course.title} preview video`}>
+            <div className="course-detail-video-header">
+              <span className="section-kicker">Program Preview</span>
+              <h2>Watch what&apos;s inside <span>{course.title}</span></h2>
+            </div>
+            <div className="course-detail-video-frame">
+              <video
+                src={course.video}
+                poster={course.cover || undefined}
+                controls
+                playsInline
+                preload="metadata"
+                className="course-detail-video-player"
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+          </section>
+        )}
+
         <div className="course-detail-body">
           <div>
             <span className="section-kicker">The Program</span>
@@ -4065,6 +4090,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     short: string
     cover: string
     cover_size_bytes: number
+    video: string
+    video_size_bytes: number
     fee_amount: number
     discount_percent: number
     is_visible: boolean
@@ -4076,6 +4103,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     short: '',
     cover: '',
     cover_size_bytes: 0,
+    video: '',
+    video_size_bytes: 0,
     fee_amount: 4999,
     discount_percent: 0,
     is_visible: true,
@@ -4085,6 +4114,9 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const [courseCoverBusyMode, setCourseCoverBusyMode] = useState<'uploading' | 'removing' | null>(null)
   const uploadingCourseCover = courseCoverBusyMode !== null
   const [courseCoverError, setCourseCoverError] = useState<string | null>(null)
+  const [courseVideoBusyMode, setCourseVideoBusyMode] = useState<'uploading' | 'removing' | null>(null)
+  const uploadingCourseVideo = courseVideoBusyMode !== null
+  const [courseVideoError, setCourseVideoError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -4437,6 +4469,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const handleEditCourse = (course: Course) => {
     setEditingCourse(course)
     setCourseCoverError(null)
+    setCourseVideoError(null)
     setCourseForm({
       title: course.title,
       summary: course.summary,
@@ -4444,6 +4477,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
       short: course.short,
       cover: course.cover || '',
       cover_size_bytes: course.cover ? (course.cover_size_bytes || 0) : 0,
+      video: course.video || '',
+      video_size_bytes: course.video ? (course.video_size_bytes || 0) : 0,
       fee_amount: course.fee_amount,
       discount_percent: course.discount_percent,
       is_visible: course.is_visible !== false,
@@ -4534,6 +4569,90 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
       setCourseCoverError(err?.message || 'Failed to remove course image.')
     } finally {
       setCourseCoverBusyMode(null)
+    }
+  }
+
+  const handleUploadCourseVideoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !editingCourse) return
+
+    const netUsedBytes = Math.max(0, totalUsedStorageBytes - (editingCourse.video_size_bytes || 0))
+    setCourseVideoBusyMode('uploading')
+    setCourseVideoError(null)
+    const unsavedDraftVideo =
+      courseForm.video && courseForm.video !== editingCourse.video ? courseForm.video : null
+
+    try {
+      saveUploadPreset(customPreset)
+      const result = await uploadVideoToCloudinary(
+        file,
+        netUsedBytes,
+        customPreset,
+        'verbora/courses/videos'
+      )
+      if (result.url) {
+        if (unsavedDraftVideo && unsavedDraftVideo.includes('cloudinary.com')) {
+          deleteMediaFromCloudinary(unsavedDraftVideo, 'video').catch(() => {})
+        }
+        setCourseForm(prev => ({
+          ...prev,
+          video: result.url!,
+          video_size_bytes: result.bytes || file.size,
+        }))
+        showToast('Course video uploaded! Click Save Course Changes to publish.')
+      } else {
+        setCourseVideoError(result.error || 'Failed to upload course video.')
+      }
+    } catch (err: any) {
+      setCourseVideoError(err?.message || 'Error uploading course video.')
+    } finally {
+      setCourseVideoBusyMode(null)
+    }
+  }
+
+  const handleRemoveCourseVideo = async () => {
+    if (!editingCourse) return
+    const currentFormVideo = courseForm.video
+    const dbVideo = editingCourse.video
+    if (!currentFormVideo && !dbVideo) return
+    if (!window.confirm(`Remove attached video from "${editingCourse.title}"? This will also delete it from Cloudinary.`)) {
+      return
+    }
+
+    setCourseVideoBusyMode('removing')
+    setCourseVideoError(null)
+    try {
+      const urlsToDestroy = Array.from(
+        new Set(
+          [currentFormVideo, dbVideo].filter(
+            (u): u is string => Boolean(u && u.includes('cloudinary.com'))
+          )
+        )
+      )
+
+      const [res] = await Promise.all([
+        api.courses.updateCourse(editingCourse.id, {
+          video: '',
+          video_size_bytes: 0,
+        }),
+        ...urlsToDestroy.map(u => deleteMediaFromCloudinary(u, 'video').catch(() => null)),
+      ])
+      setCoursesDbError(api.courses.getCoursesDbError())
+
+      if (res.success && res.data) {
+        setEditingCourse(res.data)
+        setCourseForm(prev => ({ ...prev, video: '', video_size_bytes: 0 }))
+        setAdminCourses(prev => prev.map(c => (c.id === editingCourse.id ? res.data! : c)))
+        syncPublicHomeCache()
+        showToast(`Video removed from "${editingCourse.title}"!`)
+      } else {
+        setCourseVideoError(res.error || 'Failed to clear course video in database.')
+      }
+    } catch (err: any) {
+      setCourseVideoError(err?.message || 'Failed to remove course video.')
+    } finally {
+      setCourseVideoBusyMode(null)
     }
   }
 
@@ -4807,6 +4926,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     }
     setSavingCourse(true)
     const previousCover = editingCourse.cover
+    const previousVideo = editingCourse.video
     try {
       const res = await api.courses.updateCourse(editingCourse.id, {
         title: courseForm.title,
@@ -4815,6 +4935,8 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
         short: courseForm.short,
         cover: courseForm.cover.trim(),
         cover_size_bytes: courseForm.cover.trim() ? courseForm.cover_size_bytes : 0,
+        video: courseForm.video.trim(),
+        video_size_bytes: courseForm.video.trim() ? courseForm.video_size_bytes : 0,
         fee_amount: courseForm.fee_amount,
         discount_percent: courseForm.discount_percent,
         is_visible: courseForm.is_visible,
@@ -4829,6 +4951,13 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
           previousCover.includes('cloudinary.com')
         ) {
           deleteMediaFromCloudinary(previousCover, 'image').catch(() => {})
+        }
+        if (
+          previousVideo &&
+          previousVideo !== res.data.video &&
+          previousVideo.includes('cloudinary.com')
+        ) {
+          deleteMediaFromCloudinary(previousVideo, 'video').catch(() => {})
         }
         setAdminCourses(prev =>
           prev.map(c => (c.id === editingCourse.id ? res.data! : c))
@@ -5287,8 +5416,14 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   }, 0)
 
   const courseStorageBytes = adminCourses.reduce((acc, c) => {
-    if (!c.cover || !c.cover.includes('cloudinary.com')) return acc
-    return acc + (c.cover_size_bytes || 0)
+    let bytes = 0
+    if (c.cover && c.cover.includes('cloudinary.com')) {
+      bytes += c.cover_size_bytes || 0
+    }
+    if (c.video && c.video.includes('cloudinary.com')) {
+      bytes += c.video_size_bytes || 0
+    }
+    return acc + bytes
   }, 0)
 
   const trainerStorageBytes =
@@ -6668,6 +6803,12 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                                   <span>Upcoming</span>
                                 </span>
                               )}
+                              {c.video && (
+                                <span className="admin-course-visibility-badge is-video-admin">
+                                  <Video size={12} />
+                                  <span>Video</span>
+                                </span>
+                              )}
                             </div>
 
                             <button
@@ -7494,6 +7635,81 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                     {courseCoverError && (
                       <span style={{ display: 'block', marginTop: 4, fontSize: 11, color: '#dc2626', fontWeight: 600 }}>
                         {courseCoverError}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="admin-course-edit-field admin-course-cover-field">
+                    <label>Course Preview Video (Optional)</label>
+                    <div className="admin-course-cover-row">
+                      <div className="admin-course-cover-left">
+                        {courseForm.video ? (
+                          <video
+                            src={courseForm.video}
+                            muted
+                            playsInline
+                            preload="metadata"
+                            className="admin-course-cover-thumb"
+                          />
+                        ) : (
+                          <div className="admin-course-cover-empty" title="No course video attached">
+                            <Video size={17} />
+                          </div>
+                        )}
+                        <div className="admin-course-cover-meta">
+                          <strong>
+                            {courseVideoBusyMode === 'uploading'
+                              ? 'Uploading Video...'
+                              : courseVideoBusyMode === 'removing'
+                                ? 'Removing Video...'
+                                : courseForm.video
+                                  ? 'Course Video Ready'
+                                  : 'No Course Video'}
+                          </strong>
+                          <span>
+                            {courseForm.video
+                              ? courseForm.video_size_bytes > 0
+                                ? `${(courseForm.video_size_bytes / (1024 * 1024)).toFixed(2)} MB`
+                                : 'Attached'
+                              : 'Upload MP4, MOV or WEBM'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="admin-course-cover-btns">
+                        <label className="admin-course-cover-upload-btn">
+                          <Upload size={13} className={courseVideoBusyMode === 'uploading' ? 'spin' : ''} />
+                          <span>
+                            {courseVideoBusyMode === 'uploading'
+                              ? 'Uploading...'
+                              : courseForm.video
+                                ? 'Change'
+                                : 'Upload'}
+                          </span>
+                          <input
+                            type="file"
+                            accept="video/*"
+                            disabled={uploadingCourseVideo}
+                            onChange={handleUploadCourseVideoFile}
+                            style={{ display: 'none' }}
+                          />
+                        </label>
+                        {courseForm.video && (
+                          <button
+                            type="button"
+                            className="admin-course-cover-remove-btn"
+                            disabled={uploadingCourseVideo}
+                            onClick={handleRemoveCourseVideo}
+                          >
+                            <Trash2 size={12} />
+                            <span>Remove</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {courseVideoError && (
+                      <span style={{ display: 'block', marginTop: 4, fontSize: 11, color: '#dc2626', fontWeight: 600 }}>
+                        {courseVideoError}
                       </span>
                     )}
                   </div>

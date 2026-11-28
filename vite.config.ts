@@ -22,9 +22,9 @@ export default defineConfig({
               process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_nIVc7DMCydkRh3jDWP0OPA_tMfbK1Zj'
 
             const courseCols =
-              'id,title,tagline,short,summary,cover,fee_amount,discount_percent,display_order,is_visible,is_upcoming,created_at,updated_at'
+              'id,title,tagline,short,summary,cover,video,video_size_bytes,fee_amount,discount_percent,display_order,is_visible,is_upcoming,created_at,updated_at'
             const legacyCourseCols =
-              'id,title,tagline,short,summary,fee_amount,discount_percent,display_order,created_at,updated_at'
+              'id,title,tagline,short,summary,cover,fee_amount,discount_percent,display_order,is_visible,is_upcoming,created_at,updated_at'
             const testiCols =
               'id,name,role,image,video,text,badge,is_active,is_spotlight,display_order,created_at'
             const headers = {

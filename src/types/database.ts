@@ -114,6 +114,8 @@ export interface Course {
   iconClass: string
   cover: string
   cover_size_bytes?: number | null
+  video?: string | null
+  video_size_bytes?: number | null
   fee_amount: number // e.g. 4999 (original base price in INR)
   discount_percent: number // e.g. 20 (20% OFF)
   display_order?: number
@@ -128,6 +130,8 @@ export type UpdateCourseInput = {
   short?: string
   cover?: string
   cover_size_bytes?: number | null
+  video?: string | null
+  video_size_bytes?: number | null
   fee_amount?: number
   discount_percent?: number
   is_visible?: boolean

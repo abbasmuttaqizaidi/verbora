@@ -159,6 +159,8 @@ CREATE TABLE IF NOT EXISTS public.courses (
   summary TEXT NOT NULL,
   cover TEXT,
   cover_size_bytes BIGINT DEFAULT 0,
+  video TEXT,
+  video_size_bytes BIGINT DEFAULT 0,
   fee_amount NUMERIC NOT NULL DEFAULT 4999,
   discount_percent NUMERIC NOT NULL DEFAULT 0,
   display_order INT DEFAULT 0,
@@ -168,6 +170,8 @@ CREATE TABLE IF NOT EXISTS public.courses (
 
 ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS cover TEXT;
 ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS cover_size_bytes BIGINT DEFAULT 0;
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS video TEXT;
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS video_size_bytes BIGINT DEFAULT 0;
 ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS is_visible BOOLEAN NOT NULL DEFAULT true;
 ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS is_upcoming BOOLEAN NOT NULL DEFAULT false;
 

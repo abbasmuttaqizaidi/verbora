@@ -1,6 +1,6 @@
 import { Course, Testimonial, TrainerProfile, ContestConfig } from '../types/database'
 
-const COURSES_CACHE_KEY = 'verbora_cache_courses_v4'
+const COURSES_CACHE_KEY = 'verbora_cache_courses_v5'
 const TESTIMONIALS_CACHE_KEY = 'verbora_cache_testimonials_v1'
 const TRAINER_CACHE_KEY = 'verbora_cache_trainer_v1'
 const CONTEST_CACHE_KEY = 'verbora_cache_contest_v1'

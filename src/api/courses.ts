@@ -13,6 +13,8 @@ export const DEFAULT_INITIAL_COURSES: Course[] = [
     iconClass: 'aqua',
     cover: 'https://res.cloudinary.com/mtjv4nu9/image/upload/v1795809123/verbora/courses/spoken-english.png',
     cover_size_bytes: 1951266,
+    video: 'https://res.cloudinary.com/mtjv4nu9/video/upload/v1795853343/verbora/testimonials/p8rd7iph6tdmxu64psbq.mp4',
+    video_size_bytes: 15664583,
     fee_amount: 4999,
     discount_percent: 20,
     display_order: 1,
@@ -113,6 +115,14 @@ function mapCourseRow(row: any, def: Course): Course {
         ? Number(row.cover_size_bytes)
         : (def.cover_size_bytes ?? 0)
 
+  const resolvedVideo = row.video ? String(row.video) : ''
+  const resolvedVideoBytes =
+    !resolvedVideo
+      ? 0
+      : row.video_size_bytes !== undefined && row.video_size_bytes !== null
+        ? Number(row.video_size_bytes)
+        : 0
+
   return {
     ...def,
     title: row.title || def.title,
@@ -121,6 +131,8 @@ function mapCourseRow(row: any, def: Course): Course {
     short: row.short || def.short,
     cover: resolvedCover,
     cover_size_bytes: resolvedCoverBytes,
+    video: resolvedVideo,
+    video_size_bytes: resolvedVideoBytes,
     fee_amount: Number(row.fee_amount ?? def.fee_amount),
     discount_percent: Number(row.discount_percent ?? def.discount_percent),
     display_order: Number(row.display_order ?? def.display_order),
@@ -156,8 +168,15 @@ export function mergeVisibleCourseRows(rows: any[]): Course[] {
 
 const LEGACY_COURSE_COLUMNS =
   'id,title,tagline,short,summary,fee_amount,discount_percent,display_order,created_at,updated_at'
-const COURSE_COLUMNS =
+const COURSE_NO_VIDEO_COLUMNS =
   'id,title,tagline,short,summary,cover,cover_size_bytes,fee_amount,discount_percent,display_order,is_visible,is_upcoming,created_at,updated_at'
+const COURSE_COLUMNS =
+  'id,title,tagline,short,summary,cover,cover_size_bytes,video,video_size_bytes,fee_amount,discount_percent,display_order,is_visible,is_upcoming,created_at,updated_at'
+
+function isMissingCourseVideoColumnError(error: any): boolean {
+  const msg = String(error?.message || error?.details || '').toLowerCase()
+  return msg.includes('video') || msg.includes('video_size_bytes')
+}
 
 function isMissingCourseColumnError(error: any): boolean {
   const msg = String(error?.message || error?.details || '').toLowerCase()
@@ -165,7 +184,9 @@ function isMissingCourseColumnError(error: any): boolean {
     msg.includes('is_visible') ||
     msg.includes('is_upcoming') ||
     msg.includes('cover') ||
-    msg.includes('cover_size_bytes')
+    msg.includes('cover_size_bytes') ||
+    msg.includes('video') ||
+    msg.includes('video_size_bytes')
   )
 }
 
@@ -180,6 +201,16 @@ export async function getCourses(): Promise<ApiResponse<Course[]>> {
       .order('display_order', { ascending: true })
 
     let missingSchemaColumn = false
+    if (error && isMissingCourseVideoColumnError(error)) {
+      missingSchemaColumn = true
+      const withoutVideo = await supabase
+        .from('courses')
+        .select(COURSE_NO_VIDEO_COLUMNS)
+        .order('display_order', { ascending: true })
+      data = withoutVideo.data as any
+      error = withoutVideo.error
+    }
+
     if (error && isMissingCourseColumnError(error)) {
       missingSchemaColumn = true
       const fallback = await supabase
@@ -196,7 +227,7 @@ export async function getCourses(): Promise<ApiResponse<Course[]>> {
     }
 
     lastCoursesDbError = missingSchemaColumn
-      ? 'Course columns (cover / cover_size_bytes / is_visible / is_upcoming) not found yet — run supabase/schema.sql to enable persistent course settings.'
+      ? 'Course columns (cover / video / is_visible / is_upcoming) not found yet — run supabase/schema.sql to enable persistent course media and settings.'
       : null
 
     if (data && data.length > 0) {
@@ -274,6 +305,16 @@ export async function getVisibleCourses(): Promise<ApiResponse<Course[]>> {
       .eq('is_visible', true)
       .order('display_order', { ascending: true })
 
+    if (error && isMissingCourseVideoColumnError(error)) {
+      const noVideo = await supabase
+        .from('courses')
+        .select(COURSE_NO_VIDEO_COLUMNS)
+        .eq('is_visible', true)
+        .order('display_order', { ascending: true })
+      data = noVideo.data as any
+      error = noVideo.error
+    }
+
     if (error && isMissingCourseColumnError(error)) {
       const legacy = await supabase
         .from('courses')
@@ -330,6 +371,15 @@ export async function updateCourse(
         ? Math.max(0, Number(updates.cover_size_bytes) || 0)
         : (existing.cover_size_bytes ?? defaultDef.cover_size_bytes ?? 0)
 
+  const nextVideo =
+    updates.video !== undefined ? (updates.video || '').trim() : (existing.video || '')
+  const nextVideoBytes =
+    !nextVideo
+      ? 0
+      : updates.video_size_bytes !== undefined && updates.video_size_bytes !== null
+        ? Math.max(0, Number(updates.video_size_bytes) || 0)
+        : (existing.video_size_bytes ?? 0)
+
   const updatedRecord: Course = {
     ...existing,
     title: updates.title !== undefined && updates.title.trim() ? updates.title.trim() : existing.title,
@@ -338,6 +388,8 @@ export async function updateCourse(
     short: updates.short !== undefined ? updates.short.trim() : existing.short,
     cover: nextCover,
     cover_size_bytes: nextCoverBytes,
+    video: nextVideo,
+    video_size_bytes: nextVideoBytes,
     fee_amount: safeFee,
     discount_percent: safeDiscount,
     is_visible: safeVisible,
@@ -356,6 +408,8 @@ export async function updateCourse(
         summary: updatedRecord.summary,
         cover: updatedRecord.cover || null,
         cover_size_bytes: updatedRecord.cover_size_bytes ?? 0,
+        video: updatedRecord.video || null,
+        video_size_bytes: updatedRecord.video_size_bytes ?? 0,
         fee_amount: updatedRecord.fee_amount,
         discount_percent: updatedRecord.discount_percent,
         display_order: defaultDef.display_order,
