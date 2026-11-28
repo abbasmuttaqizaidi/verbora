@@ -62,7 +62,7 @@ export default defineConfig({
 
             res.statusCode = 200
             res.setHeader('Content-Type', 'application/json')
-            res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=120')
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
             res.end(JSON.stringify({ courses, testimonials }))
           } catch (err: any) {
             res.statusCode = 500

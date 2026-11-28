@@ -46,7 +46,6 @@ import {
 import { sanitizeRichHtml, stripHtmlToText } from './lib/richText'
 import { TrainerListEditor } from './components/TrainerListEditor'
 import {
-  readCachedCourses,
   readCachedTestimonials,
   readCachedTrainerProfile,
   writeCachedTrainerProfile,
@@ -95,7 +94,6 @@ const courses = [
     icon: MessageCircle,
     iconClass: 'aqua',
     cover: 'https://res.cloudinary.com/mtjv4nu9/image/upload/v1795809123/verbora/courses/spoken-english.png',
-    video: 'https://res.cloudinary.com/mtjv4nu9/video/upload/v1795853343/verbora/testimonials/p8rd7iph6tdmxu64psbq.mp4',
     topics: ['Everyday conversation practice', 'Pronunciation and clarity', 'Vocabulary in real situations', 'Building fluency without hesitation'],
   },
   {
@@ -1292,10 +1290,10 @@ export function useTestimonialsQuery() {
 export function useCoursesQuery() {
   return useQuery({
     queryKey: ['courses'],
-    initialData: () => readCachedCourses(),
-    initialDataUpdatedAt: 0,
+    staleTime: 0,
+    refetchOnMount: 'always',
     queryFn: async () => {
-      const data = await api.home.getPublicHomeData()
+      const data = await api.home.getPublicHomeData(true)
       return data.courses
     },
   })
@@ -1483,7 +1481,7 @@ export function useMergedCourses() {
             icon: staticCourse?.icon || courseIconMap[dynamic.id] || BookOpen,
             iconClass: staticCourse?.iconClass || dynamic.iconClass || 'aqua',
             cover: dynamic.cover === undefined ? (staticCourse?.cover || '') : (dynamic.cover || ''),
-            video: dynamic.video || staticCourse?.video || '',
+            video: dynamic.video && dynamic.video.trim() ? dynamic.video.trim() : '',
             topics: staticCourse?.topics || dynamic.topics || [],
             fee_amount: dynamic.fee_amount ?? 4999,
             discount_percent: dynamic.discount_percent ?? 0,
@@ -4117,6 +4115,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
   const [courseVideoBusyMode, setCourseVideoBusyMode] = useState<'uploading' | 'removing' | null>(null)
   const uploadingCourseVideo = courseVideoBusyMode !== null
   const [courseVideoError, setCourseVideoError] = useState<string | null>(null)
+  const [testimonialVideoBusyMode, setTestimonialVideoBusyMode] = useState<'uploading' | 'removing' | null>(null)
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -4484,6 +4483,27 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
       is_visible: course.is_visible !== false,
       is_upcoming: Boolean(course.is_upcoming),
     })
+  }
+
+  const handleCloseCourseModal = () => {
+    if (!editingCourse) return
+    const draftVideo = (courseForm.video || '').trim()
+    const dbVideo = (editingCourse.video || '').trim()
+    // If user uploaded a new video during this modal session and cancels, clean it up from Cloudinary
+    if (draftVideo && draftVideo !== dbVideo && draftVideo.includes('cloudinary.com')) {
+      deleteMediaFromCloudinary(draftVideo, 'video').catch(() => {})
+    }
+
+    const draftCover = (courseForm.cover || '').trim()
+    const dbCover = (editingCourse.cover || '').trim()
+    // If user uploaded a new cover image during this modal session and cancels, clean it up from Cloudinary
+    if (draftCover && draftCover !== dbCover && draftCover.includes('cloudinary.com')) {
+      deleteMediaFromCloudinary(draftCover, 'image').catch(() => {})
+    }
+
+    setEditingCourse(null)
+    setCourseCoverError(null)
+    setCourseVideoError(null)
   }
 
   const handleUploadCourseCoverFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -5118,19 +5138,24 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     if (!window.confirm(`Remove video story from "${target.name}"?`)) return
 
     setUpdatingId(id)
+    setTestimonialVideoBusyMode('removing')
     const videoToDelete = target.video
     deleteMediaFromCloudinary(videoToDelete, 'video').catch(() => {})
 
-    const res = await api.testimonials.updateTestimonial(id, {
-      video: null,
-      video_size_bytes: 0,
-    })
-    if (res.success) {
-      setTestimonials(prev => prev.map(t => (t.id === id ? { ...t, video: null, video_size_bytes: 0 } : t)))
-      showToast(`Video removed from "${target.name}"!`)
-      syncPublicHomeCache()
+    try {
+      const res = await api.testimonials.updateTestimonial(id, {
+        video: null,
+        video_size_bytes: 0,
+      })
+      if (res.success) {
+        setTestimonials(prev => prev.map(t => (t.id === id ? { ...t, video: null, video_size_bytes: 0 } : t)))
+        showToast(`Video removed from "${target.name}"!`)
+        syncPublicHomeCache()
+      }
+    } finally {
+      setUpdatingId(null)
+      setTestimonialVideoBusyMode(null)
     }
-    setUpdatingId(null)
   }
 
   const handleSaveTestimonial = async (e: React.FormEvent) => {
@@ -5262,9 +5287,24 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
     setVideoUploadError(null)
     setVideoSuccessUrl(null)
     saveUploadPreset(customPreset)
+    setTestimonialVideoBusyMode('uploading')
 
-    showToast(`Uploading ${file.name} in background... You can switch tabs/routes freely!`)
-    startBackgroundVideoUpload(file, totalUsedStorageBytes, customPreset, testimonialForm.video)
+    try {
+      const task = await startBackgroundVideoUpload(file, totalUsedStorageBytes, customPreset, testimonialForm.video)
+      if (task.status === 'completed' && task.resultUrl) {
+        setTestimonialForm(prev => ({
+          ...prev,
+          video: task.resultUrl!,
+          video_size_bytes: task.resultBytes || file.size,
+        }))
+        setVideoSuccessUrl(task.resultUrl)
+        showToast('Video uploaded successfully!')
+      } else if (task.status === 'error') {
+        setVideoUploadError(task.error || 'Failed to upload video.')
+      }
+    } finally {
+      setTestimonialVideoBusyMode(null)
+    }
   }
 
   // Status Handlers
@@ -6267,14 +6307,19 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
                                     </span>
                                     <button
                                       type="button"
-                                      onClick={() => {
+                                      onClick={async () => {
                                         const videoToDelete = testimonialForm.video
-                                        if (videoToDelete) {
-                                          deleteMediaFromCloudinary(videoToDelete, 'video').catch(() => {})
+                                        setTestimonialVideoBusyMode('removing')
+                                        try {
+                                          if (videoToDelete) {
+                                            await deleteMediaFromCloudinary(videoToDelete, 'video').catch(() => {})
+                                          }
+                                          setTestimonialForm(prev => ({ ...prev, video: '', video_size_bytes: 0 }))
+                                          setVideoSuccessUrl(null)
+                                          showToast('Video removed successfully.')
+                                        } finally {
+                                          setTestimonialVideoBusyMode(null)
                                         }
-                                        setTestimonialForm(prev => ({ ...prev, video: '', video_size_bytes: 0 }))
-                                        setVideoSuccessUrl(null)
-                                        showToast('Video removed successfully.')
                                       }}
                                       style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}
                                     >
@@ -7522,7 +7567,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
 
       {/* Edit Course Modal */}
       {editingCourse && (
-        <div className="admin-modal-overlay" onClick={() => setEditingCourse(null)}>
+        <div className="admin-modal-overlay" onClick={handleCloseCourseModal}>
           <div
             className="admin-modal-dialog admin-course-edit-modal"
             onClick={e => e.stopPropagation()}
@@ -7542,7 +7587,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
               <button
                 type="button"
                 className="admin-modal-close-btn"
-                onClick={() => setEditingCourse(null)}
+                onClick={handleCloseCourseModal}
                 aria-label="Close edit course modal"
               >
                 <X size={18} />
@@ -7847,7 +7892,7 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
               <div className="admin-course-edit-footer">
                 <button
                   type="button"
-                  onClick={() => setEditingCourse(null)}
+                  onClick={handleCloseCourseModal}
                   style={{
                     background: '#f1f5f9',
                     border: '1px solid #cbd5e1',
@@ -7929,21 +7974,29 @@ function VerboraEduAdminPage({ defaultRoute }: { defaultRoute?: 'leads' | 'testi
         </div>
       )}
 
-      {/* Full-Page Loader for Course Cover / Trainer Photo Upload or Removal */}
-      {(courseCoverBusyMode || trainerPhotoBusyMode) && (
+      {/* Full-Page Loader for Media Upload or Removal */}
+      {(courseCoverBusyMode || courseVideoBusyMode || trainerPhotoBusyMode || testimonialVideoBusyMode) && (
         <div className="admin-fullscreen-loader-overlay" role="status" aria-live="polite">
           <div className="admin-fullscreen-loader-card">
             <div className="admin-loader-spinner-wrap" aria-hidden="true">
               <div className="admin-loader-ring" />
             </div>
             <strong>
-              {courseCoverBusyMode === 'uploading'
-                ? 'Uploading Course Cover Image...'
-                : courseCoverBusyMode === 'removing'
-                  ? 'Removing Course Cover Image...'
-                  : trainerPhotoBusyMode === 'uploading'
-                    ? 'Uploading Trainer Profile Photo...'
-                    : 'Removing Trainer Profile Photo...'}
+              {courseVideoBusyMode === 'uploading'
+                ? 'Uploading Course Preview Video...'
+                : courseVideoBusyMode === 'removing'
+                  ? 'Removing Course Preview Video...'
+                  : testimonialVideoBusyMode === 'uploading'
+                    ? 'Uploading Video Story...'
+                    : testimonialVideoBusyMode === 'removing'
+                      ? 'Removing Video Story...'
+                      : courseCoverBusyMode === 'uploading'
+                        ? 'Uploading Course Cover Image...'
+                        : courseCoverBusyMode === 'removing'
+                          ? 'Removing Course Cover Image...'
+                          : trainerPhotoBusyMode === 'uploading'
+                            ? 'Uploading Trainer Profile Photo...'
+                            : 'Removing Trainer Profile Photo...'}
             </strong>
             <span>Please wait while Cloudinary and database update.</span>
             <div className="admin-loader-progress-track" aria-hidden="true">

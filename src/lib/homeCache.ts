@@ -1,6 +1,5 @@
 import { Course, Testimonial, TrainerProfile, ContestConfig } from '../types/database'
 
-const COURSES_CACHE_KEY = 'verbora_cache_courses_v5'
 const TESTIMONIALS_CACHE_KEY = 'verbora_cache_testimonials_v1'
 const TRAINER_CACHE_KEY = 'verbora_cache_trainer_v1'
 const CONTEST_CACHE_KEY = 'verbora_cache_contest_v1'
@@ -77,11 +76,12 @@ function writeObjectCache<T>(key: string, data: T): void {
 }
 
 export function readCachedCourses(): Course[] | undefined {
-  return readCache<Course[]>(COURSES_CACHE_KEY, true)
+  // Always fetch fresh from database / API - do not serve stale courses from localStorage
+  return undefined
 }
 
-export function writeCachedCourses(courses: Course[]): void {
-  writeCache(COURSES_CACHE_KEY, courses, true)
+export function writeCachedCourses(_courses: Course[]): void {
+  // Do not write courses to localStorage
 }
 
 export function readCachedTestimonials(): Testimonial[] | undefined {
@@ -111,10 +111,12 @@ export function writeCachedContestConfig(config: ContestConfig): void {
 export function clearHomeCache(): void {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return
-    window.localStorage.removeItem(COURSES_CACHE_KEY)
-    window.localStorage.removeItem(TESTIMONIALS_CACHE_KEY)
-    window.localStorage.removeItem(TRAINER_CACHE_KEY)
-    window.localStorage.removeItem(CONTEST_CACHE_KEY)
+    for (let i = window.localStorage.length - 1; i >= 0; i--) {
+      const k = window.localStorage.key(i)
+      if (k && (k.startsWith('verbora_cache_courses') || k.startsWith('verbora_cache_'))) {
+        window.localStorage.removeItem(k)
+      }
+    }
   } catch {
     // Ignore storage restrictions
   }

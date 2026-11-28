@@ -13,8 +13,6 @@ export const DEFAULT_INITIAL_COURSES: Course[] = [
     iconClass: 'aqua',
     cover: 'https://res.cloudinary.com/mtjv4nu9/image/upload/v1795809123/verbora/courses/spoken-english.png',
     cover_size_bytes: 1951266,
-    video: 'https://res.cloudinary.com/mtjv4nu9/video/upload/v1795853343/verbora/testimonials/p8rd7iph6tdmxu64psbq.mp4',
-    video_size_bytes: 15664583,
     fee_amount: 4999,
     discount_percent: 20,
     display_order: 1,
